@@ -8,9 +8,9 @@ export default function NotesPage() {
       <TopNav />
 
       <PageHeader
-        eyebrow="beta"
-        title="Notes"
-        description="Keep mix notes, artwork ideas, practice reminders, and rough thoughts organized in one place."
+        eyebrow="Notes"
+        title="Money Notes"
+        description="Keep important reminders, spending observations, credit notes, and budgeting thoughts in one place."
       />
 
       <section className="grid gap-4 md:grid-cols-2">
@@ -19,7 +19,7 @@ export default function NotesPage() {
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
                 <p className="mb-2 text-xs uppercase tracking-[0.25em] text-stone-500">
-                  Band Note
+                  Finance Note
                 </p>
 
                 <h2 className="text-xl font-semibold tracking-tight text-stone-100">

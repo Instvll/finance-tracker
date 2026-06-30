@@ -1,207 +1,402 @@
-import Link from "next/link";
-import TopNav from "@/components/TopNav";
-import { Card, PageHeader, PageShell, Panel, Pill } from "@/components/Layout";
-import { songs, tasks, files, updates } from "../data/bandData";
+"use client";
 
-const openTaskList = tasks.filter((task) => task.status !== "Done");
-const topTasks = openTaskList.slice(0, 3);
-const topFiles = files.slice(0, 3);
-const recentUpdates = updates.slice(0, 2);
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import TopNav from "../components/TopNav";
+import { PageHeader, PageShell, Pill } from "../components/Layout";
+import { financeSummary, bills, creditCards, goals } from "../data/bandData";
+
+type ManualFinanceData = {
+  checkingBalance: string;
+  monthlyIncome: string;
+  savingsBalance: string;
+  nextPayday: string;
+};
+
+type ManualBill = {
+  name: string;
+  amount: string;
+  dueDate: string;
+  status: "Paid" | "Upcoming" | "Due Soon" | "Overdue";
+  paymentMethod: string;
+};
+
+type ManualCreditCard = {
+  name: string;
+  balance: string;
+  limit: string;
+  minimumPayment: string;
+  dueDate: string;
+  status: "Good" | "Watch" | "Pay Down";
+};
+
+const summaryStorageKey = "finance-tracker-manual-data";
+const billsStorageKey = "finance-tracker-manual-bills";
+const cardsStorageKey = "finance-tracker-manual-cards";
+
+const defaultManualData: ManualFinanceData = {
+  checkingBalance: String(financeSummary.checkingBalance),
+  monthlyIncome: String(financeSummary.monthlyIncome),
+  savingsBalance: String(financeSummary.savingsBalance),
+  nextPayday: financeSummary.nextPayday,
+};
+
+const defaultManualBills: ManualBill[] = bills.map((bill) => ({
+  name: bill.name,
+  amount: String(bill.amount),
+  dueDate: bill.dueDate,
+  status: bill.status,
+  paymentMethod: bill.paymentMethod,
+}));
+
+const defaultManualCards: ManualCreditCard[] = creditCards.map((card) => ({
+  name: card.name,
+  balance: String(card.balance),
+  limit: String(card.limit),
+  minimumPayment: String(card.minimumPayment),
+  dueDate: card.dueDate,
+  status: card.status,
+}));
+
+function formatMoney(amount: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(amount);
+}
+
+function parseMoney(value: string) {
+  const numberValue = Number(value);
+
+  if (Number.isNaN(numberValue)) {
+    return 0;
+  }
+
+  return numberValue;
+}
+
+function getUnpaidBillTotal(manualBills: ManualBill[]) {
+  return manualBills
+    .filter((bill) => bill.status !== "Paid")
+    .reduce((total, bill) => total + parseMoney(bill.amount), 0);
+}
+
+function getTotalCardBalance(manualCards: ManualCreditCard[]) {
+  return manualCards.reduce(
+    (total, card) => total + parseMoney(card.balance),
+    0
+  );
+}
+
+function getTotalCardLimit(manualCards: ManualCreditCard[]) {
+  return manualCards.reduce((total, card) => total + parseMoney(card.limit), 0);
+}
 
 export default function Home() {
+  const [manualData, setManualData] =
+    useState<ManualFinanceData>(defaultManualData);
+
+  const [manualBills, setManualBills] =
+    useState<ManualBill[]>(defaultManualBills);
+
+  const [manualCards, setManualCards] =
+    useState<ManualCreditCard[]>(defaultManualCards);
+
+  useEffect(() => {
+    const savedData = window.localStorage.getItem(summaryStorageKey);
+    const savedBills = window.localStorage.getItem(billsStorageKey);
+    const savedCards = window.localStorage.getItem(cardsStorageKey);
+
+    if (savedData) {
+      setManualData(JSON.parse(savedData));
+    }
+
+    if (savedBills) {
+      setManualBills(JSON.parse(savedBills));
+    }
+
+    if (savedCards) {
+      setManualCards(JSON.parse(savedCards));
+    }
+  }, []);
+
+  const checkingBalance = parseMoney(manualData.checkingBalance);
+  const savingsBalance = parseMoney(manualData.savingsBalance);
+  const totalUpcomingBills = getUnpaidBillTotal(manualBills);
+  const moneyLeftAfterBills = checkingBalance - totalUpcomingBills;
+
+  const totalCardBalance = getTotalCardBalance(manualCards);
+  const totalCardLimit = getTotalCardLimit(manualCards);
+  const totalCardUtilization =
+    totalCardLimit > 0
+      ? Math.round((totalCardBalance / totalCardLimit) * 100)
+      : 0;
+
+  const nextBills = manualBills
+    .filter((bill) => bill.status !== "Paid")
+    .slice(0, 3);
+
   return (
     <PageShell>
       <TopNav />
 
       <PageHeader
-        eyebrow="Beta"
-        title="Band Workspace"
-        description="Keep track of songs, files, tasks, mix notes, and recording progress in one private place."
-      >
-        <div className="hidden h-36 w-72 items-center justify-center md:flex">
-          <img
-            src="/hollows-logo-transparent.png"
-            alt="Hollows logo"
-            className="max-h-full max-w-full object-contain opacity-95"
-          />
-        </div>
-      </PageHeader>
+        eyebrow="Finance Tracker"
+        title="Money Dashboard"
+        description="A clean view of what matters most: available money, upcoming bills, card balances, and savings."
+      />
 
-      <section className="grid gap-6 xl:grid-cols-[1.35fr_0.85fr]">
-        <div className="space-y-6">
-          <Panel title="Recent Updates">
-            <div className="space-y-3">
-              {recentUpdates.map((update) => (
-                <UpdateCard key={update.title} update={update} />
-              ))}
-            </div>
-          </Panel>
+      <section className="mb-6 overflow-hidden rounded-[2rem] border border-stone-300/20 bg-[#23211d] p-6 shadow-xl shadow-black/10">
+        <div className="mb-5 flex items-center gap-3">
+          <span className="h-2 w-2 rounded-full bg-stone-100/70 shadow-[0_0_14px_rgba(245,240,232,0.22)]" />
 
-          <Panel title="Songs">
-            <div className="grid gap-4 md:grid-cols-2">
-              {songs.map((song) => (
-                <Link
-                  key={song.title}
-                  href={song.href}
-                  className="group block rounded-2xl transition hover:-translate-y-1"
-                >
-                  <div className="h-full rounded-2xl border border-stone-300/15 bg-[#1c1a17] p-5 transition group-hover:border-amber-100/25 group-hover:bg-[#211f1b]">
-                    <div className="mb-4 flex items-start justify-between gap-4">
-                      <div>
-                        <h3 className="text-xl font-semibold tracking-tight text-stone-100">
-                          {song.title}
-                        </h3>
-
-                        <p className="mt-1 text-sm text-amber-100/70">
-                          {song.status}
-                        </p>
-                      </div>
-
-                      <span className="shrink-0 rounded-full bg-stone-300/10 px-3 py-1 text-xs font-medium text-amber-100/80">
-                        {song.bpm} BPM
-                      </span>
-                    </div>
-
-                    <div className="space-y-2 text-sm text-stone-300">
-                      <p>
-                        <span className="text-stone-500">Tuning:</span>{" "}
-                        <span className="text-stone-200">{song.tuning}</span>
-                      </p>
-
-                      <p>
-                        <span className="text-stone-500">Next:</span>{" "}
-                        {song.nextStep}
-                      </p>
-                    </div>
-
-                    <div className="mt-5 border-t border-stone-300/10 pt-4">
-                      <span className="text-sm text-amber-100/70 transition group-hover:text-amber-50">
-                        Open workspace →
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </Panel>
+          <p className="text-xs uppercase tracking-[0.25em] text-stone-200/80">
+            Main Number
+          </p>
         </div>
 
-        <div className="space-y-6">
-          <Panel title="Tasks">
-            <div className="space-y-3">
-              {topTasks.map((task) => (
-                <TaskPreview key={`${task.person}-${task.task}`} task={task} />
-              ))}
-            </div>
+        <p className="text-sm text-stone-400">Money Left After Bills</p>
 
-            <Link
-              href="/tasks"
-              className="mt-4 inline-block rounded-full border border-stone-300/15 px-4 py-2 text-sm text-stone-300 transition hover:border-amber-100/30 hover:bg-amber-100/10 hover:text-amber-50"
-            >
-              View all tasks
-            </Link>
-          </Panel>
+        <h1 className="mt-3 break-words text-5xl font-bold tracking-tight text-[#f5f0e8] md:text-7xl">
+          {formatMoney(moneyLeftAfterBills)}
+        </h1>
 
-          <Panel title="Files">
-            <div className="space-y-3">
-              {topFiles.map((file) => (
-                <Card key={file.name}>
-                  <div className="flex items-center justify-between gap-4">
+        <p className="mt-4 max-w-2xl text-sm leading-6 text-stone-300">
+          Your saved checking balance minus unpaid bills.
+        </p>
+
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            href="/manual"
+            className="rounded-full border border-stone-100/20 bg-stone-100/10 px-4 py-2 text-sm font-medium text-stone-100 transition hover:bg-stone-100/15"
+          >
+            Update values
+          </Link>
+
+          <Link
+            href="/bills"
+            className="rounded-full border border-stone-300/20 px-4 py-2 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
+          >
+            View bills
+          </Link>
+        </div>
+      </section>
+
+      <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <SnapshotCard
+          label="Checking"
+          value={formatMoney(checkingBalance)}
+          detail="Current saved balance"
+        />
+
+        <SnapshotCard
+          label="Upcoming Bills"
+          value={formatMoney(totalUpcomingBills)}
+          detail="Unpaid bill total"
+        />
+
+        <SnapshotCard
+          label="Credit Cards"
+          value={formatMoney(totalCardBalance)}
+          detail={`${totalCardUtilization}% utilization`}
+        />
+
+        <SnapshotCard
+          label="Savings"
+          value={formatMoney(savingsBalance)}
+          detail="Current saved balance"
+        />
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-3">
+        <SectionPanel title="Next Bills">
+          <div className="space-y-3">
+            {nextBills.length > 0 ? (
+              nextBills.map((bill, index) => (
+                <CompactRow
+                  key={`${bill.name}-${index}`}
+                  title={bill.name}
+                  subtitle={`Due: ${bill.dueDate}`}
+                  value={formatMoney(parseMoney(bill.amount))}
+                  tag={bill.status}
+                />
+              ))
+            ) : (
+              <MiniCard>
+                <p className="text-sm text-stone-400">
+                  No unpaid bills right now.
+                </p>
+              </MiniCard>
+            )}
+          </div>
+
+          <Link
+            href="/bills"
+            className="mt-4 inline-block rounded-full border border-stone-300/20 px-4 py-2 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
+          >
+            See all bills
+          </Link>
+        </SectionPanel>
+
+        <SectionPanel title="Credit Cards">
+          <div className="space-y-3">
+            {manualCards.map((card, index) => {
+              const balance = parseMoney(card.balance);
+              const limit = parseMoney(card.limit);
+              const utilization =
+                limit > 0 ? Math.round((balance / limit) * 100) : 0;
+
+              return (
+                <CompactRow
+                  key={`${card.name}-${index}`}
+                  title={card.name}
+                  subtitle={`${utilization}% utilization`}
+                  value={formatMoney(balance)}
+                  tag={card.status}
+                />
+              );
+            })}
+          </div>
+
+          <Link
+            href="/cards"
+            className="mt-4 inline-block rounded-full border border-stone-300/20 px-4 py-2 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
+          >
+            See all cards
+          </Link>
+        </SectionPanel>
+
+        <SectionPanel title="Goals">
+          <div className="space-y-3">
+            {goals.slice(0, 2).map((goal) => {
+              const progress =
+                goal.target > 0
+                  ? Math.round((goal.saved / goal.target) * 100)
+                  : 0;
+
+              return (
+                <MiniCard key={goal.name}>
+                  <div className="mb-3 flex items-center justify-between gap-4">
                     <div>
-                      <p className="font-medium text-stone-100">{file.name}</p>
+                      <p className="font-semibold text-stone-100">
+                        {goal.name}
+                      </p>
+
                       <p className="mt-1 text-sm text-stone-400">
-                        {file.song} • {file.type}
+                        {formatMoney(goal.saved)} of {formatMoney(goal.target)}
                       </p>
                     </div>
 
-                    <Pill>{file.version}</Pill>
+                    <Pill>{progress}%</Pill>
                   </div>
-                </Card>
-              ))}
-            </div>
 
-            <Link
-              href="/files"
-              className="mt-4 inline-block rounded-full border border-stone-300/15 px-4 py-2 text-sm text-stone-300 transition hover:border-amber-100/30 hover:bg-amber-100/10 hover:text-amber-50"
-            >
-              View all files
-            </Link>
-          </Panel>
+                  <div className="h-2 overflow-hidden rounded-full bg-black/25">
+                    <div
+                      className="h-full rounded-full bg-stone-100/55"
+                      style={{ width: `${Math.min(progress, 100)}%` }}
+                    />
+                  </div>
+                </MiniCard>
+              );
+            })}
+          </div>
 
-          <Panel title="Notes">
-            <p className="text-sm leading-6 text-stone-300">
-              Keep mix notes, artwork concepts, reminders, and rough ideas here
-              so nothing gets lost between sessions.
-            </p>
-
-            <Link
-              href="/notes"
-              className="mt-4 inline-block rounded-full border border-stone-300/15 px-4 py-2 text-sm text-stone-300 transition hover:border-amber-100/30 hover:bg-amber-100/10 hover:text-amber-50"
-            >
-              View notes
-            </Link>
-          </Panel>
-        </div>
+          <Link
+            href="/goals"
+            className="mt-4 inline-block rounded-full border border-stone-300/20 px-4 py-2 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
+          >
+            See goals
+          </Link>
+        </SectionPanel>
       </section>
     </PageShell>
   );
 }
 
-function UpdateCard({
-  update,
+function SnapshotCard({
+  label,
+  value,
+  detail,
 }: {
-  update: {
-    title: string;
-    category: string;
-    date: string;
-    text: string;
-  };
+  label: string;
+  value: string;
+  detail: string;
 }) {
   return (
-    <Card>
-      <div className="mb-3 flex items-start justify-between gap-4">
-        <div>
-          <h3 className="font-semibold text-stone-100">{update.title}</h3>
+    <div className="rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10">
+      <div className="mb-4 flex items-center gap-3">
+        <span className="h-2 w-2 rounded-full bg-stone-100/65 shadow-[0_0_14px_rgba(245,240,232,0.18)]" />
 
-          <p className="mt-1 text-xs uppercase tracking-[0.2em] text-stone-500">
-            {update.date}
-          </p>
-        </div>
-
-        <Pill>{update.category}</Pill>
+        <p className="text-xs uppercase tracking-[0.22em] text-stone-300">
+          {label}
+        </p>
       </div>
 
-      <p className="text-sm leading-6 text-stone-300">{update.text}</p>
-    </Card>
+      <p className="break-words text-3xl font-bold tracking-tight text-[#f5f0e8]">
+        {value}
+      </p>
+
+      <p className="mt-2 text-sm text-stone-400">{detail}</p>
+    </div>
   );
 }
 
-function TaskPreview({
-  task,
+function SectionPanel({
+  title,
+  children,
 }: {
-  task: {
-    person: string;
-    task: string;
-    song: string;
-    status: string;
-  };
+  title: string;
+  children: React.ReactNode;
 }) {
   return (
-    <Card>
-      <div className="mb-2 flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-stone-500">
-            {task.song}
-          </p>
+    <section className="overflow-hidden rounded-[1.75rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10">
+      <div className="mb-5 flex items-center gap-3 border-b border-stone-300/15 pb-4">
+        <span className="h-2 w-2 rounded-full bg-stone-100/65 shadow-[0_0_14px_rgba(245,240,232,0.18)]" />
 
-          <p className="mt-2 text-sm leading-6 text-stone-300">
-            <span className="font-medium text-stone-100">{task.person}:</span>{" "}
-            {task.task}
-          </p>
+        <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-100">
+          {title}
+        </h2>
+      </div>
+
+      {children}
+    </section>
+  );
+}
+
+function MiniCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-[1.35rem] border border-stone-300/18 bg-[#2b2925] p-5 shadow-sm shadow-black/10 transition hover:border-stone-100/25 hover:bg-[#302e29]">
+      {children}
+    </div>
+  );
+}
+
+function CompactRow({
+  title,
+  subtitle,
+  value,
+  tag,
+}: {
+  title: string;
+  subtitle: string;
+  value: string;
+  tag: string;
+}) {
+  return (
+    <MiniCard>
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <div className="mb-2">
+            <Pill>{tag}</Pill>
+          </div>
+
+          <p className="truncate font-semibold text-stone-100">{title}</p>
+
+          <p className="mt-1 truncate text-sm text-stone-400">{subtitle}</p>
         </div>
 
-        <Pill>{task.status}</Pill>
+        <p className="shrink-0 text-lg font-bold text-[#f5f0e8]">{value}</p>
       </div>
-    </Card>
+    </MiniCard>
   );
 }

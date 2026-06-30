@@ -1,56 +1,43 @@
-export type SongStatus =
-  | "Writing"
-  | "Pre-Production"
-  | "Recording"
-  | "Mixing"
-  | "Mastering"
-  | "Finished";
+export type BillStatus = "Paid" | "Upcoming" | "Due Soon" | "Overdue";
 
-export type TaskStatus = "To Do" | "In Progress" | "Done";
+export type CardStatus = "Good" | "Watch" | "Pay Down";
 
-export type Priority = "Low" | "Normal" | "High";
-
-export type Song = {
+export type MoneyNote = {
   title: string;
-  status: SongStatus | string;
-  bpm: string;
-  tuning: string;
-  key: string;
-  latestVersion: string;
-  nextStep: string;
-  href: string;
+  category: string;
+  text: string;
 };
 
-export type Task = {
-  person: string;
-  task: string;
-  song: string;
-  status: TaskStatus;
-  priority?: Priority;
-  dueDate?: string;
-};
-
-export type FileItem = {
+export type Bill = {
   name: string;
-  song: string;
-  type: string;
-  version: string;
-  uploadedBy: string;
+  amount: number;
+  dueDate: string;
+  status: BillStatus;
+  paymentMethod: string;
+};
+
+export type CreditCard = {
+  name: string;
+  balance: number;
+  limit: number;
+  minimumPayment: number;
+  dueDate: string;
+  status: CardStatus;
+};
+
+export type Goal = {
+  name: string;
+  target: number;
+  saved: number;
   note: string;
-  link: string;
 };
 
-export type Note = {
-  title: string;
+export type Transaction = {
+  name: string;
   category: string;
-  text: string;
-};
-
-export type Update = {
-  title: string;
-  category: string;
+  amount: number;
   date: string;
-  text: string;
+  account: string;
 };
 
 export type Resource = {
@@ -61,155 +48,174 @@ export type Resource = {
   examples?: string[];
 };
 
-export const songs: Song[] = [
+export const financeSummary = {
+  checkingBalance: 1588.99,
+  monthlyIncome: 2000,
+  nextPayday: "TBD",
+  savingsBalance: 0,
+};
+
+export const bills: Bill[] = [
   {
-    title: "Anomaly",
-    status: "Mixing/Mastering",
-    bpm: "137",
-    tuning: "Drop C#",
-    key: "C#",
-    latestVersion: "v1",
-    nextStep: "Start final mastering on Anomaly",
-    href: "/songs/anomaly",
+    name: "Car Payment",
+    amount: 377.91,
+    dueDate: "TBD",
+    status: "Upcoming",
+    paymentMethod: "Checking",
   },
   {
-    title: "Event, Horizon",
-    status: "Writing",
-    bpm: "TBD",
-    tuning: "TBD",
-    key: "TBD",
-    latestVersion: "v1",
-    nextStep: "TBD",
-    href: "/songs",
+    name: "Insurance",
+    amount: 150.98,
+    dueDate: "TBD",
+    status: "Upcoming",
+    paymentMethod: "Checking",
   },
   {
-    title: "The Vigilante",
-    status: "Writing",
-    bpm: "TBD",
-    tuning: "TBD",
-    key: "TBD",
-    latestVersion: "v1",
-    nextStep: "TBD",
-    href: "/songs",
+    name: "Storage Unit",
+    amount: 86.87,
+    dueDate: "TBD",
+    status: "Upcoming",
+    paymentMethod: "Credit Card",
+  },
+  {
+    name: "Phone",
+    amount: 47.44,
+    dueDate: "TBD",
+    status: "Upcoming",
+    paymentMethod: "Checking",
+  },
+  {
+    name: "Spotify",
+    amount: 13.93,
+    dueDate: "TBD",
+    status: "Upcoming",
+    paymentMethod: "Checking",
+  },
+  {
+    name: "Snapchat+",
+    amount: 4.28,
+    dueDate: "TBD",
+    status: "Upcoming",
+    paymentMethod: "Checking",
   },
 ];
 
-export const tasks: Task[] = [];
-
-export const files: FileItem[] = [
+export const creditCards: CreditCard[] = [
   {
-    name: "Anomaly Project ZIP",
-    song: "Anomaly",
-    type: "Ableton Project",
-    version: "v1",
-    uploadedBy: "Dylan",
-    note: "Latest full project folder.",
-    link: "#",
+    name: "Amex",
+    balance: 0,
+    limit: 1000,
+    minimumPayment: 0,
+    dueDate: "TBD",
+    status: "Good",
   },
   {
-    name: "Anomaly Bass DI",
-    song: "Anomaly",
-    type: "Raw Mono WAV",
-    version: "v1",
-    uploadedBy: "Bassist",
-    note: "Clean mono bass recording.",
-    link: "#",
-  },
-  {
-    name: "Anomaly Reference Mix",
-    song: "Anomaly",
-    type: "MP3",
-    version: "v1",
-    uploadedBy: "Dylan",
-    note: "Current mix reference.",
-    link: "#",
+    name: "Freedom",
+    balance: 29.21,
+    limit: 1000,
+    minimumPayment: 0,
+    dueDate: "TBD",
+    status: "Good",
   },
 ];
 
-export const notes: Note[] = [
+export const goals: Goal[] = [
   {
-    title: "Anomaly Mix Notes",
-    category: "Mixing",
-    text: "Check the bass and kick relationship, then make sure the chorus does not overload the limiter.",
+    name: "Emergency Buffer",
+    target: 500,
+    saved: 0,
+    note: "Build a small cushion before aggressively paying down extra debt.",
   },
   {
-    title: "Artwork Direction",
-    category: "Visuals",
-    text: "Keep the Hollows visual style clean, dark, memorable, and professional without looking corny.",
+    name: "Debt Paydown",
+    target: 1000,
+    saved: 0,
+    note: "Track progress toward lowering credit card balances.",
   },
 ];
 
-export const updates: Update[] = [
+export const transactions: Transaction[] = [
   {
-    title: "Hollows Hub theme updated",
+    name: "Gas Station",
+    category: "Gas / Drinks",
+    amount: 29.21,
+    date: "Recent",
+    account: "Freedom",
+  },
+];
+
+export const notes: MoneyNote[] = [
+  {
+    title: "Main Priority",
+    category: "Planning",
+    text: "Keep bills covered first, then use extra money to build a small buffer and pay down card balances.",
+  },
+  {
+    title: "Credit Reporting",
+    category: "Credit",
+    text: "Try to keep reported credit card balances low before statement/reporting dates when possible.",
+  },
+  {
+    title: "Spending Watch",
+    category: "Habits",
+    text: "Watch gas, food, and small convenience purchases because they add up quickly across paychecks.",
+  },
+];
+
+export const updates = [
+  {
+    title: "Finance tracker started",
     category: "Website",
     date: "Recent",
-    text: "The site now uses a darker charcoal and cream visual style that matches the Hollows logo.",
+    text: "Converted the workspace into a simple finance dashboard structure.",
   },
   {
-    title: "Resources page added",
-    category: "Workflow",
+    title: "Manual data setup",
+    category: "Tracking",
     date: "Recent",
-    text: "Added a resources section for project upload steps, freezing tracks, raw DI exports, and file naming rules.",
+    text: "Balances, bills, cards, and goals can be updated manually in the data file for now.",
   },
-  {
-    title: "Anomaly workspace cleaned up",
-    category: "Song",
-    date: "Recent",
-    text: "The Anomaly page now focuses on files, mix notes, tasks, quick info, and practice export reminders.",
-  },
-];
-
-export const anomalyMixNotes: string[] = [
-  "Check that the bass supports the kick without masking it.",
-  "Make sure rhythm guitars do not overpower the chorus vocal space.",
-  "Compare the loudest chorus against the current reference mix.",
-  "Watch true peak and limiter behavior during the loudest chorus.",
-  "Make sure the backing track export does not include the muted guitar part.",
 ];
 
 export const resources: Resource[] = [
   {
-    title: "Freeze Tracks in Ableton",
-    category: "Ableton",
+    title: "Monthly Reset",
+    category: "Budgeting",
     description:
-      "Use this when a project has plugins or processing that other members may not have.",
+      "Use this at the start of each month to make sure the tracker is accurate.",
     steps: [
-      "Open the Ableton project.",
-      "Make sure all tracks are named clearly.",
-      "Right-click any track that uses plugins or heavy processing.",
-      "Select Freeze Track.",
-      "Wait for Ableton to finish freezing the audio.",
+      "Update checking balance.",
+      "Update savings balance.",
+      "Update every credit card balance.",
+      "Confirm upcoming bill amounts.",
+      "Mark any paid bills as Paid.",
+      "Review money left after bills.",
     ],
   },
   {
-    title: "Prepare a Project for Upload",
-    category: "Project Sharing",
+    title: "Before Payday",
+    category: "Planning",
     description:
-      "Use this before sending an Ableton project folder to the band through Google Drive.",
+      "Use this before each paycheck so the money has a plan before it gets spent.",
     steps: [
-      "Freeze any tracks that use plugins other members may not have.",
-      "Open the File menu in Ableton.",
-      "Select Collect All and Save.",
-      "Choose Yes for each file type Ableton asks to collect.",
-      "Close Ableton and locate the project folder on your computer.",
-      "Compress the full project folder into a ZIP file.",
-      "Upload the ZIP file to Google Drive.",
+      "Check current account balance.",
+      "List bills due before the next payday.",
+      "Subtract those bills from available money.",
+      "Decide what amount can safely go toward savings or debt.",
+      "Leave a small cushion for gas, food, and unexpected spending.",
     ],
   },
   {
-    title: "Naming The File",
-    category: "Organization",
+    title: "Credit Card Check",
+    category: "Credit",
     description:
-      "Use clear file names so everyone knows exactly what each file is.",
+      "Use this to keep credit card balances under control and avoid surprises.",
     steps: [
-      "Use the song name first.",
-      "Include the date of the file.",
-      "Include the time of the file.",
-    ],
-    examples: [
-      "Anomaly (6.30.26) (4.32PM)",
-      "Anomaly (6.30) (4.32PM)",
+      "Update current card balances.",
+      "Check due dates.",
+      "Check minimum payments.",
+      "Pay down cards before reporting dates when possible.",
+      "Avoid adding new spending unless it fits the plan.",
     ],
   },
 ];
