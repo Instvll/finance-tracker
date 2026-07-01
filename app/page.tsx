@@ -211,75 +211,79 @@ export default function Home() {
           Finance Tracker
         </p>
 
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
-              Dashboard
-            </h1>
+        <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
+          Dashboard
+        </h1>
 
-            <p className="mt-3 max-w-xl text-sm leading-6 text-stone-300 sm:text-base">
-              Your quick view of money, bills, cards, and paycheck planning.
-            </p>
-          </div>
-
-          <Link
-            href="/manual"
-            className="hidden rounded-full border border-stone-100/20 bg-stone-100/10 px-5 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15 sm:block"
-          >
-            Update
-          </Link>
-        </div>
+        <p className="mt-3 max-w-xl text-sm leading-6 text-stone-300">
+          Your quick view of money, bills, cards, and paycheck planning.
+        </p>
       </header>
 
-      <section className="mb-5 overflow-hidden rounded-[2rem] border border-stone-300/20 bg-[#23211d] shadow-xl shadow-black/10">
-        <div className="p-6">
-          <div className="mb-5 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+      <section className="mb-5 rounded-[2rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10 sm:p-6">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <div className="mb-3 flex items-center gap-3">
               <span className="h-2 w-2 rounded-full bg-stone-100/70 shadow-[0_0_14px_rgba(245,240,232,0.2)]" />
 
-              <p className="text-xs uppercase tracking-[0.25em] text-stone-300">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-300">
                 Money Left
               </p>
             </div>
 
-            <Pill>{formatSavedTime(lastSaved)}</Pill>
+            <p className="text-sm leading-6 text-stone-400">
+              After unpaid bills
+            </p>
           </div>
 
-          <p className="break-words text-6xl font-bold tracking-tight text-[#f5f0e8] sm:text-7xl">
-            {formatMoney(moneyLeftAfterBills)}
-          </p>
-
-          <p className="mt-4 max-w-xl text-sm leading-6 text-stone-300">
-            Checking balance minus unpaid bills.
-          </p>
-
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <Link
-              href="/manual"
-              className="rounded-2xl border border-stone-100/20 bg-stone-100/10 px-4 py-3 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
-            >
-              Update Values
-            </Link>
-
-            <Link
-              href="/plan"
-              className="rounded-2xl border border-stone-300/20 px-4 py-3 text-center text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
-            >
-              Plan Paycheck
-            </Link>
-          </div>
+          <Pill>{formatSavedTime(lastSaved)}</Pill>
         </div>
 
-        <div className="grid grid-cols-2 border-t border-stone-300/10">
-          <OverviewStat label="Checking" value={formatMoney(checkingBalance)} />
-          <OverviewStat label="Bills" value={formatMoney(totalUpcomingBills)} />
-          <OverviewStat
-            label="Credit"
-            value={formatMoney(totalCardBalance)}
-            detail={`${totalCardUtilization}% used`}
-          />
-          <OverviewStat label="Savings" value={formatMoney(savingsBalance)} />
+        <p className="break-words text-5xl font-bold tracking-tight text-[#f5f0e8] sm:text-7xl">
+          {formatMoney(moneyLeftAfterBills)}
+        </p>
+
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <Link
+            href="/manual"
+            className="rounded-2xl border border-stone-100/20 bg-stone-100/10 px-4 py-3 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
+          >
+            Update
+          </Link>
+
+          <Link
+            href="/plan"
+            className="rounded-2xl border border-stone-300/20 px-4 py-3 text-center text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
+          >
+            Plan
+          </Link>
         </div>
+      </section>
+
+      <section className="mb-5 grid gap-3">
+        <MobileStat
+          label="Checking"
+          value={formatMoney(checkingBalance)}
+          detail="Current saved balance"
+        />
+
+        <MobileStat
+          label="Bills"
+          value={formatMoney(totalUpcomingBills)}
+          detail="Unpaid bills remaining"
+        />
+
+        <MobileStat
+          label="Credit Cards"
+          value={formatMoney(totalCardBalance)}
+          detail={`${totalCardUtilization}% utilization`}
+        />
+
+        <MobileStat
+          label="Savings"
+          value={formatMoney(savingsBalance)}
+          detail="Saved balance"
+        />
       </section>
 
       <section className="mb-5 rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10">
@@ -313,16 +317,12 @@ export default function Home() {
             value={formatMoney(parseMoney(paycheckPlan.paycheckAmount))}
           />
 
-          <MiniStat label="Safe Leftover" value={formatMoney(planLeftover)} />
+          <MiniStat label="Leftover" value={formatMoney(planLeftover)} />
         </div>
       </section>
 
       <section className="grid gap-5 xl:grid-cols-2">
-        <DashboardSection
-          title="Next Bills"
-          actionLabel="See all"
-          href="/bills"
-        >
+        <DashboardSection title="Next Bills" actionLabel="See all" href="/bills">
           <div className="divide-y divide-stone-300/10">
             {nextBills.length > 0 ? (
               nextBills.map((bill, index) => (
@@ -371,26 +371,26 @@ export default function Home() {
   );
 }
 
-function OverviewStat({
+function MobileStat({
   label,
   value,
   detail,
 }: {
   label: string;
   value: string;
-  detail?: string;
+  detail: string;
 }) {
   return (
-    <div className="border-b border-r border-stone-300/10 p-5 even:border-r-0">
-      <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
-        {label}
-      </p>
+    <div className="flex items-center justify-between gap-4 rounded-[1.4rem] border border-stone-300/20 bg-[#23211d] p-4 shadow-xl shadow-black/10">
+      <div className="min-w-0">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
+          {label}
+        </p>
 
-      <p className="mt-3 break-words text-2xl font-bold tracking-tight text-[#f5f0e8]">
-        {value}
-      </p>
+        <p className="mt-1 truncate text-sm text-stone-400">{detail}</p>
+      </div>
 
-      {detail && <p className="mt-2 text-sm text-stone-400">{detail}</p>}
+      <p className="shrink-0 text-xl font-bold text-[#f5f0e8]">{value}</p>
     </div>
   );
 }
