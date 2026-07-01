@@ -34,6 +34,7 @@ type ManualSection = "overview" | "bills" | "cards" | "preview";
 const summaryStorageKey = "finance-tracker-manual-data";
 const billsStorageKey = "finance-tracker-manual-bills";
 const cardsStorageKey = "finance-tracker-manual-cards";
+const lastSavedStorageKey = "finance-tracker-last-saved";
 
 const defaultData: ManualFinanceData = {
   checkingBalance: String(financeSummary.checkingBalance),
@@ -59,27 +60,11 @@ const defaultCards: ManualCreditCard[] = creditCards.map((card) => ({
   status: card.status,
 }));
 
-const sections: { id: ManualSection; label: string; description: string }[] = [
-  {
-    id: "overview",
-    label: "Overview",
-    description: "Update your main balances and payday info.",
-  },
-  {
-    id: "bills",
-    label: "Bills",
-    description: "Add, remove, or edit monthly bills.",
-  },
-  {
-    id: "cards",
-    label: "Credit Cards",
-    description: "Update card balances, limits, and due dates.",
-  },
-  {
-    id: "preview",
-    label: "Preview",
-    description: "Check the numbers before saving.",
-  },
+const sections: { id: ManualSection; label: string }[] = [
+  { id: "overview", label: "Overview" },
+  { id: "bills", label: "Bills" },
+  { id: "cards", label: "Cards" },
+  { id: "preview", label: "Preview" },
 ];
 
 function formatMoney(value: string | number) {
@@ -122,6 +107,19 @@ function getTotalCardLimit(manualCards: ManualCreditCard[]) {
   return manualCards.reduce((total, card) => total + parseMoney(card.limit), 0);
 }
 
+function formatSavedTime(value: string) {
+  if (!value) {
+    return "Not saved yet";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
 export default function ManualPage() {
   const [activeSection, setActiveSection] =
     useState<ManualSection>("overview");
@@ -130,12 +128,15 @@ export default function ManualPage() {
   const [manualBills, setManualBills] = useState<ManualBill[]>(defaultBills);
   const [manualCards, setManualCards] =
     useState<ManualCreditCard[]>(defaultCards);
+
   const [savedMessage, setSavedMessage] = useState("");
+  const [lastSaved, setLastSaved] = useState("");
 
   useEffect(() => {
     const savedData = window.localStorage.getItem(summaryStorageKey);
     const savedBills = window.localStorage.getItem(billsStorageKey);
     const savedCards = window.localStorage.getItem(cardsStorageKey);
+    const savedTime = window.localStorage.getItem(lastSavedStorageKey);
 
     if (savedData) {
       setFormData(JSON.parse(savedData));
@@ -148,7 +149,15 @@ export default function ManualPage() {
     if (savedCards) {
       setManualCards(JSON.parse(savedCards));
     }
+
+    if (savedTime) {
+      setLastSaved(savedTime);
+    }
   }, []);
+
+  function markUnsaved() {
+    setSavedMessage("");
+  }
 
   function updateField(field: keyof ManualFinanceData, value: string) {
     setFormData((current) => ({
@@ -156,7 +165,7 @@ export default function ManualPage() {
       [field]: value,
     }));
 
-    setSavedMessage("");
+    markUnsaved();
   }
 
   function updateBill(index: number, field: keyof ManualBill, value: string) {
@@ -171,7 +180,7 @@ export default function ManualPage() {
       )
     );
 
-    setSavedMessage("");
+    markUnsaved();
   }
 
   function updateCard(
@@ -190,7 +199,7 @@ export default function ManualPage() {
       )
     );
 
-    setSavedMessage("");
+    markUnsaved();
   }
 
   function addBill() {
@@ -205,7 +214,8 @@ export default function ManualPage() {
       },
     ]);
 
-    setSavedMessage("");
+    setActiveSection("bills");
+    markUnsaved();
   }
 
   function addCard() {
@@ -221,7 +231,8 @@ export default function ManualPage() {
       },
     ]);
 
-    setSavedMessage("");
+    setActiveSection("cards");
+    markUnsaved();
   }
 
   function removeBill(index: number) {
@@ -229,7 +240,7 @@ export default function ManualPage() {
       currentBills.filter((_, billIndex) => billIndex !== index)
     );
 
-    setSavedMessage("");
+    markUnsaved();
   }
 
   function removeCard(index: number) {
@@ -237,23 +248,39 @@ export default function ManualPage() {
       currentCards.filter((_, cardIndex) => cardIndex !== index)
     );
 
-    setSavedMessage("");
+    markUnsaved();
   }
 
   function saveData() {
+    const savedAt = new Date().toISOString();
+
     window.localStorage.setItem(summaryStorageKey, JSON.stringify(formData));
     window.localStorage.setItem(billsStorageKey, JSON.stringify(manualBills));
     window.localStorage.setItem(cardsStorageKey, JSON.stringify(manualCards));
-    setSavedMessage("Saved on this device.");
+    window.localStorage.setItem(lastSavedStorageKey, savedAt);
+
+    setLastSaved(savedAt);
+    setSavedMessage("Saved.");
   }
 
   function resetData() {
+    const confirmed = window.confirm(
+      "Reset all manual finance values on this device?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
     window.localStorage.removeItem(summaryStorageKey);
     window.localStorage.removeItem(billsStorageKey);
     window.localStorage.removeItem(cardsStorageKey);
+    window.localStorage.removeItem(lastSavedStorageKey);
+
     setFormData(defaultData);
     setManualBills(defaultBills);
     setManualCards(defaultCards);
+    setLastSaved("");
     setSavedMessage("Reset to default data.");
   }
 
@@ -263,7 +290,9 @@ export default function ManualPage() {
   const totalCardBalance = getTotalCardBalance(manualCards);
   const totalCardLimit = getTotalCardLimit(manualCards);
   const totalCardUtilization =
-    totalCardLimit > 0 ? Math.round((totalCardBalance / totalCardLimit) * 100) : 0;
+    totalCardLimit > 0
+      ? Math.round((totalCardBalance / totalCardLimit) * 100)
+      : 0;
 
   return (
     <PageShell>
@@ -272,11 +301,27 @@ export default function ManualPage() {
       <PageHeader
         eyebrow="Manual Entry"
         title="Update Values"
-        description="Edit one section at a time so the tracker stays clean, simple, and easy to manage."
+        description="Edit one section at a time. Save when you're done, then check the dashboard."
       />
 
-      <section className="mb-6 rounded-[1.75rem] border border-stone-300/20 bg-[#23211d] p-3 shadow-xl shadow-black/10">
-        <div className="grid gap-2 md:grid-cols-4">
+      <section className="mb-6 grid gap-3 md:grid-cols-4">
+        <QuickStat
+          label="Left After Bills"
+          value={formatMoney(moneyLeftAfterBills)}
+        />
+
+        <QuickStat label="Unpaid Bills" value={formatMoney(unpaidBillTotal)} />
+
+        <QuickStat
+          label="Card Balance"
+          value={formatMoney(totalCardBalance)}
+        />
+
+        <QuickStat label="Last Saved" value={formatSavedTime(lastSaved)} small />
+      </section>
+
+      <section className="sticky top-3 z-20 mb-6 rounded-[1.5rem] border border-stone-300/20 bg-[#1f1e1b]/95 p-2 shadow-xl shadow-black/20 backdrop-blur">
+        <div className="grid grid-cols-4 gap-1">
           {sections.map((section) => {
             const isActive = activeSection === section.id;
 
@@ -285,91 +330,203 @@ export default function ManualPage() {
                 key={section.id}
                 type="button"
                 onClick={() => setActiveSection(section.id)}
-                className={`rounded-[1.25rem] border px-4 py-4 text-left transition ${
+                className={`rounded-[1rem] px-2 py-3 text-center text-xs font-semibold transition sm:text-sm ${
                   isActive
-                    ? "border-stone-100/30 bg-stone-100/12 text-stone-100"
-                    : "border-transparent bg-transparent text-stone-400 hover:border-stone-300/20 hover:bg-stone-100/6 hover:text-stone-200"
+                    ? "bg-stone-100/12 text-[#f5f0e8]"
+                    : "text-stone-400 hover:bg-stone-100/8 hover:text-stone-200"
                 }`}
               >
-                <p className="font-semibold">{section.label}</p>
-                <p className="mt-1 text-xs leading-5 text-stone-400">
-                  {section.description}
-                </p>
+                {section.label}
               </button>
             );
           })}
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1fr_0.45fr]">
-        <div className="space-y-6">
-          {activeSection === "overview" && (
-            <Panel title="Overview">
-              <div className="grid gap-4 md:grid-cols-2">
-                <InputField
-                  label="Checking Balance"
-                  value={formData.checkingBalance}
-                  type="number"
-                  onChange={(value) => updateField("checkingBalance", value)}
-                />
+      <section className="pb-28">
+        {activeSection === "overview" && (
+          <Panel title="Overview">
+            <div className="mb-5">
+              <h2 className="text-2xl font-bold text-[#f5f0e8]">
+                Main Numbers
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-stone-400">
+                These numbers control the main dashboard view.
+              </p>
+            </div>
 
-                <InputField
-                  label="Monthly Income"
-                  value={formData.monthlyIncome}
-                  type="number"
-                  onChange={(value) => updateField("monthlyIncome", value)}
-                />
+            <div className="grid gap-4 md:grid-cols-2">
+              <InputField
+                label="Checking Balance"
+                value={formData.checkingBalance}
+                type="number"
+                inputMode="decimal"
+                onChange={(value) => updateField("checkingBalance", value)}
+              />
 
-                <InputField
-                  label="Savings Balance"
-                  value={formData.savingsBalance}
-                  type="number"
-                  onChange={(value) => updateField("savingsBalance", value)}
-                />
+              <InputField
+                label="Monthly Income"
+                value={formData.monthlyIncome}
+                type="number"
+                inputMode="decimal"
+                onChange={(value) => updateField("monthlyIncome", value)}
+              />
 
-                <InputField
-                  label="Next Payday"
-                  value={formData.nextPayday}
-                  type="text"
-                  onChange={(value) => updateField("nextPayday", value)}
-                />
-              </div>
-            </Panel>
-          )}
+              <InputField
+                label="Savings Balance"
+                value={formData.savingsBalance}
+                type="number"
+                inputMode="decimal"
+                onChange={(value) => updateField("savingsBalance", value)}
+              />
 
-          {activeSection === "bills" && (
-            <Panel title="Bills">
-              <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm leading-6 text-stone-400">
-                  Edit bills that should subtract from your money-left-after-bills number.
+              <InputField
+                label="Next Payday"
+                value={formData.nextPayday}
+                type="text"
+                onChange={(value) => updateField("nextPayday", value)}
+              />
+            </div>
+          </Panel>
+        )}
+
+        {activeSection === "bills" && (
+          <Panel title="Bills">
+            <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-[#f5f0e8]">
+                  Bills
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-stone-400">
+                  Bills marked paid will not subtract from your money left after bills.
                 </p>
-
-                <button
-                  type="button"
-                  onClick={addBill}
-                  className="w-fit rounded-full border border-stone-300/20 px-5 py-2 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
-                >
-                  Add Bill
-                </button>
               </div>
 
-              <div className="space-y-4">
-                {manualBills.map((bill, index) => (
-                  <Card key={`${bill.name}-${index}`}>
+              <button
+                type="button"
+                onClick={addBill}
+                className="w-full rounded-full border border-stone-100/20 bg-stone-100/10 px-5 py-3 text-sm font-medium text-stone-100 transition hover:bg-stone-100/15 sm:w-fit"
+              >
+                Add Bill
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {manualBills.map((bill, index) => (
+                <Card key={`${bill.name}-${index}`}>
+                  <div className="mb-4 flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.25em] text-stone-500">
+                        Bill #{index + 1}
+                      </p>
+
+                      <h3 className="mt-2 text-xl font-semibold text-[#f5f0e8]">
+                        {bill.name || "Unnamed Bill"}
+                      </h3>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => removeBill(index)}
+                      className="rounded-full border border-stone-300/20 px-3 py-1 text-xs text-stone-400 transition hover:border-red-300/30 hover:bg-red-300/10 hover:text-red-200"
+                    >
+                      Remove
+                    </button>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <InputField
+                      label="Bill Name"
+                      value={bill.name}
+                      type="text"
+                      onChange={(value) => updateBill(index, "name", value)}
+                    />
+
+                    <InputField
+                      label="Amount"
+                      value={bill.amount}
+                      type="number"
+                      inputMode="decimal"
+                      onChange={(value) => updateBill(index, "amount", value)}
+                    />
+
+                    <InputField
+                      label="Due Date"
+                      value={bill.dueDate}
+                      type="text"
+                      onChange={(value) => updateBill(index, "dueDate", value)}
+                    />
+
+                    <SelectField
+                      label="Status"
+                      value={bill.status}
+                      options={["Upcoming", "Due Soon", "Paid", "Overdue"]}
+                      onChange={(value) => updateBill(index, "status", value)}
+                    />
+
+                    <InputField
+                      label="Payment Method"
+                      value={bill.paymentMethod}
+                      type="text"
+                      onChange={(value) =>
+                        updateBill(index, "paymentMethod", value)
+                      }
+                    />
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </Panel>
+        )}
+
+        {activeSection === "cards" && (
+          <Panel title="Credit Cards">
+            <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-[#f5f0e8]">
+                  Credit Cards
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-stone-400">
+                  Update balances, limits, minimums, due dates, and status.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={addCard}
+                className="w-full rounded-full border border-stone-100/20 bg-stone-100/10 px-5 py-3 text-sm font-medium text-stone-100 transition hover:bg-stone-100/15 sm:w-fit"
+              >
+                Add Card
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {manualCards.map((card, index) => {
+                const balance = parseMoney(card.balance);
+                const limit = parseMoney(card.limit);
+                const utilization =
+                  limit > 0 ? Math.round((balance / limit) * 100) : 0;
+
+                return (
+                  <Card key={`${card.name}-${index}`}>
                     <div className="mb-4 flex items-start justify-between gap-4">
                       <div>
                         <p className="text-xs uppercase tracking-[0.25em] text-stone-500">
-                          Bill #{index + 1}
+                          Card #{index + 1}
                         </p>
 
-                        <h3 className="mt-2 text-lg font-semibold text-stone-100">
-                          {bill.name || "Unnamed Bill"}
+                        <h3 className="mt-2 text-xl font-semibold text-[#f5f0e8]">
+                          {card.name || "Unnamed Card"}
                         </h3>
+
+                        <p className="mt-1 text-sm text-stone-400">
+                          {utilization}% utilization
+                        </p>
                       </div>
 
                       <button
                         type="button"
-                        onClick={() => removeBill(index)}
+                        onClick={() => removeCard(index)}
                         className="rounded-full border border-stone-300/20 px-3 py-1 text-xs text-stone-400 transition hover:border-red-300/30 hover:bg-red-300/10 hover:text-red-200"
                       >
                         Remove
@@ -378,261 +535,175 @@ export default function ManualPage() {
 
                     <div className="grid gap-4 md:grid-cols-2">
                       <InputField
-                        label="Bill Name"
-                        value={bill.name}
+                        label="Card Name"
+                        value={card.name}
                         type="text"
-                        onChange={(value) => updateBill(index, "name", value)}
+                        onChange={(value) => updateCard(index, "name", value)}
                       />
 
                       <InputField
-                        label="Amount"
-                        value={bill.amount}
+                        label="Balance"
+                        value={card.balance}
                         type="number"
-                        onChange={(value) => updateBill(index, "amount", value)}
+                        inputMode="decimal"
+                        onChange={(value) =>
+                          updateCard(index, "balance", value)
+                        }
+                      />
+
+                      <InputField
+                        label="Credit Limit"
+                        value={card.limit}
+                        type="number"
+                        inputMode="decimal"
+                        onChange={(value) => updateCard(index, "limit", value)}
+                      />
+
+                      <InputField
+                        label="Minimum Payment"
+                        value={card.minimumPayment}
+                        type="number"
+                        inputMode="decimal"
+                        onChange={(value) =>
+                          updateCard(index, "minimumPayment", value)
+                        }
                       />
 
                       <InputField
                         label="Due Date"
-                        value={bill.dueDate}
+                        value={card.dueDate}
                         type="text"
-                        onChange={(value) => updateBill(index, "dueDate", value)}
+                        onChange={(value) =>
+                          updateCard(index, "dueDate", value)
+                        }
                       />
 
                       <SelectField
                         label="Status"
-                        value={bill.status}
-                        options={["Upcoming", "Due Soon", "Paid", "Overdue"]}
-                        onChange={(value) => updateBill(index, "status", value)}
-                      />
-
-                      <InputField
-                        label="Payment Method"
-                        value={bill.paymentMethod}
-                        type="text"
-                        onChange={(value) =>
-                          updateBill(index, "paymentMethod", value)
-                        }
+                        value={card.status}
+                        options={["Good", "Watch", "Pay Down"]}
+                        onChange={(value) => updateCard(index, "status", value)}
                       />
                     </div>
                   </Card>
-                ))}
-              </div>
-            </Panel>
-          )}
+                );
+              })}
+            </div>
+          </Panel>
+        )}
 
-          {activeSection === "cards" && (
-            <Panel title="Credit Cards">
-              <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm leading-6 text-stone-400">
-                  Update credit card balances, limits, due dates, and minimum payments.
-                </p>
+        {activeSection === "preview" && (
+          <Panel title="Preview">
+            <div className="mb-5">
+              <h2 className="text-2xl font-bold text-[#f5f0e8]">
+                Quick Check
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-stone-400">
+                Review the numbers before saving.
+              </p>
+            </div>
 
-                <button
-                  type="button"
-                  onClick={addCard}
-                  className="w-fit rounded-full border border-stone-300/20 px-5 py-2 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
-                >
-                  Add Card
-                </button>
-              </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <PreviewCard
+                label="Money Left After Bills"
+                value={formatMoney(moneyLeftAfterBills)}
+              />
 
-              <div className="space-y-4">
-                {manualCards.map((card, index) => {
-                  const balance = parseMoney(card.balance);
-                  const limit = parseMoney(card.limit);
-                  const utilization =
-                    limit > 0 ? Math.round((balance / limit) * 100) : 0;
+              <PreviewCard
+                label="Checking Balance"
+                value={formatMoney(formData.checkingBalance)}
+              />
 
-                  return (
-                    <Card key={`${card.name}-${index}`}>
-                      <div className="mb-4 flex items-start justify-between gap-4">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.25em] text-stone-500">
-                            Card #{index + 1}
-                          </p>
+              <PreviewCard
+                label="Unpaid Bills"
+                value={formatMoney(unpaidBillTotal)}
+              />
 
-                          <h3 className="mt-2 text-lg font-semibold text-stone-100">
-                            {card.name || "Unnamed Card"}
-                          </h3>
+              <PreviewCard
+                label="Credit Card Balance"
+                value={formatMoney(totalCardBalance)}
+              />
 
-                          <p className="mt-1 text-sm text-stone-400">
-                            {utilization}% utilization
-                          </p>
-                        </div>
+              <PreviewCard
+                label="Credit Limit"
+                value={formatMoney(totalCardLimit)}
+              />
 
-                        <button
-                          type="button"
-                          onClick={() => removeCard(index)}
-                          className="rounded-full border border-stone-300/20 px-3 py-1 text-xs text-stone-400 transition hover:border-red-300/30 hover:bg-red-300/10 hover:text-red-200"
-                        >
-                          Remove
-                        </button>
-                      </div>
+              <PreviewCard
+                label="Card Utilization"
+                value={`${totalCardUtilization}%`}
+              />
 
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <InputField
-                          label="Card Name"
-                          value={card.name}
-                          type="text"
-                          onChange={(value) => updateCard(index, "name", value)}
-                        />
+              <PreviewCard
+                label="Savings Balance"
+                value={formatMoney(formData.savingsBalance)}
+              />
 
-                        <InputField
-                          label="Balance"
-                          value={card.balance}
-                          type="number"
-                          onChange={(value) =>
-                            updateCard(index, "balance", value)
-                          }
-                        />
+              <PreviewCard
+                label="Next Payday"
+                value={formData.nextPayday || "TBD"}
+              />
+            </div>
+          </Panel>
+        )}
+      </section>
 
-                        <InputField
-                          label="Credit Limit"
-                          value={card.limit}
-                          type="number"
-                          onChange={(value) => updateCard(index, "limit", value)}
-                        />
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-stone-300/20 bg-[#171614]/95 px-4 py-3 shadow-[0_-12px_30px_rgba(0,0,0,0.25)] backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs text-stone-400">
+              {savedMessage || `Last saved: ${formatSavedTime(lastSaved)}`}
+            </p>
 
-                        <InputField
-                          label="Minimum Payment"
-                          value={card.minimumPayment}
-                          type="number"
-                          onChange={(value) =>
-                            updateCard(index, "minimumPayment", value)
-                          }
-                        />
-
-                        <InputField
-                          label="Due Date"
-                          value={card.dueDate}
-                          type="text"
-                          onChange={(value) =>
-                            updateCard(index, "dueDate", value)
-                          }
-                        />
-
-                        <SelectField
-                          label="Status"
-                          value={card.status}
-                          options={["Good", "Watch", "Pay Down"]}
-                          onChange={(value) => updateCard(index, "status", value)}
-                        />
-                      </div>
-                    </Card>
-                  );
-                })}
-              </div>
-            </Panel>
-          )}
-
-          {activeSection === "preview" && (
-            <Panel title="Preview">
-              <div className="grid gap-4 md:grid-cols-2">
-                <PreviewCard
-                  label="Money Left After Bills"
-                  value={formatMoney(moneyLeftAfterBills)}
-                />
-
-                <PreviewCard
-                  label="Checking Balance"
-                  value={formatMoney(formData.checkingBalance)}
-                />
-
-                <PreviewCard
-                  label="Unpaid Bills"
-                  value={formatMoney(unpaidBillTotal)}
-                />
-
-                <PreviewCard
-                  label="Credit Card Balance"
-                  value={formatMoney(totalCardBalance)}
-                />
-
-                <PreviewCard
-                  label="Credit Limit"
-                  value={formatMoney(totalCardLimit)}
-                />
-
-                <PreviewCard
-                  label="Card Utilization"
-                  value={`${totalCardUtilization}%`}
-                />
-
-                <PreviewCard
-                  label="Savings Balance"
-                  value={formatMoney(formData.savingsBalance)}
-                />
-
-                <PreviewCard
-                  label="Next Payday"
-                  value={formData.nextPayday || "TBD"}
-                />
-              </div>
-            </Panel>
-          )}
-
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={saveData}
-              className="rounded-full border border-stone-100/20 bg-stone-100/10 px-5 py-2 text-sm font-medium text-stone-100 transition hover:bg-stone-100/15"
-            >
-              Save Values
-            </button>
-
-            <button
-              type="button"
-              onClick={resetData}
-              className="rounded-full border border-stone-300/20 px-5 py-2 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
-            >
-              Reset
-            </button>
+            <p className="truncate text-sm font-semibold text-[#f5f0e8]">
+              Left after bills: {formatMoney(moneyLeftAfterBills)}
+            </p>
           </div>
 
-          {savedMessage && (
-            <p className="text-sm text-stone-300">{savedMessage}</p>
-          )}
+          <button
+            type="button"
+            onClick={resetData}
+            className="hidden rounded-full border border-stone-300/20 px-4 py-2 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100 sm:block"
+          >
+            Reset
+          </button>
+
+          <button
+            type="button"
+            onClick={saveData}
+            className="rounded-full border border-stone-100/20 bg-stone-100/12 px-5 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/18"
+          >
+            Save
+          </button>
         </div>
-
-        <aside className="space-y-4">
-          <Card>
-            <p className="text-sm text-stone-400">Money Left After Bills</p>
-            <p className="mt-2 break-words text-3xl font-bold text-[#f5f0e8]">
-              {formatMoney(moneyLeftAfterBills)}
-            </p>
-          </Card>
-
-          <Card>
-            <p className="text-sm text-stone-400">Unpaid Bills</p>
-            <p className="mt-2 text-2xl font-bold text-[#f5f0e8]">
-              {formatMoney(unpaidBillTotal)}
-            </p>
-          </Card>
-
-          <Card>
-            <p className="text-sm text-stone-400">Credit Cards</p>
-            <p className="mt-2 text-2xl font-bold text-[#f5f0e8]">
-              {formatMoney(totalCardBalance)}
-            </p>
-            <p className="mt-1 text-sm text-stone-400">
-              {totalCardUtilization}% utilization
-            </p>
-          </Card>
-
-          <Card>
-            <div className="mb-3 flex items-center justify-between gap-4">
-              <p className="text-sm text-stone-400">Saved Items</p>
-              <Pill>{manualBills.length + manualCards.length}</Pill>
-            </div>
-
-            <div className="space-y-2 text-sm text-stone-300">
-              <p>{manualBills.length} bills tracked</p>
-              <p>{manualCards.length} cards tracked</p>
-            </div>
-          </Card>
-        </aside>
-      </section>
+      </div>
     </PageShell>
+  );
+}
+
+function QuickStat({
+  label,
+  value,
+  small = false,
+}: {
+  label: string;
+  value: string;
+  small?: boolean;
+}) {
+  return (
+    <Card>
+      <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
+        {label}
+      </p>
+
+      <p
+        className={`mt-2 break-words font-bold text-[#f5f0e8] ${
+          small ? "text-lg" : "text-2xl"
+        }`}
+      >
+        {value}
+      </p>
+    </Card>
   );
 }
 
@@ -640,11 +711,13 @@ function InputField({
   label,
   value,
   type,
+  inputMode,
   onChange,
 }: {
   label: string;
   value: string;
   type: "text" | "number";
+  inputMode?: "decimal" | "numeric";
   onChange: (value: string) => void;
 }) {
   return (
@@ -655,9 +728,10 @@ function InputField({
 
       <input
         type={type}
+        inputMode={inputMode}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-2xl border border-stone-300/20 bg-[#171614] px-4 py-3 text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-stone-100/35 focus:bg-[#1d1b18]"
+        className="w-full rounded-2xl border border-stone-300/20 bg-[#171614] px-4 py-4 text-lg text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-stone-100/35 focus:bg-[#1d1b18]"
       />
     </label>
   );
@@ -683,7 +757,7 @@ function SelectField({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-2xl border border-stone-300/20 bg-[#171614] px-4 py-3 text-[#f5f0e8] outline-none transition focus:border-stone-100/35 focus:bg-[#1d1b18]"
+        className="w-full rounded-2xl border border-stone-300/20 bg-[#171614] px-4 py-4 text-lg text-[#f5f0e8] outline-none transition focus:border-stone-100/35 focus:bg-[#1d1b18]"
       >
         {options.map((option) => (
           <option key={option} value={option}>
