@@ -30,10 +30,23 @@ type ManualCreditCard = {
   status: "Good" | "Watch" | "Pay Down";
 };
 
+type PaycheckPlan = {
+  name: string;
+  payday: string;
+  paycheckAmount: string;
+  bills: string;
+  gasFood: string;
+  savings: string;
+  debtPayment: string;
+  extraSpending: string;
+  notes: string;
+};
+
 const summaryStorageKey = "finance-tracker-manual-data";
 const billsStorageKey = "finance-tracker-manual-bills";
 const cardsStorageKey = "finance-tracker-manual-cards";
 const lastSavedStorageKey = "finance-tracker-last-saved";
+const planStorageKey = "finance-tracker-paycheck-plan";
 
 const defaultManualData: ManualFinanceData = {
   checkingBalance: String(financeSummary.checkingBalance),
@@ -58,6 +71,18 @@ const defaultManualCards: ManualCreditCard[] = creditCards.map((card) => ({
   dueDate: card.dueDate,
   status: card.status,
 }));
+
+const defaultPlan: PaycheckPlan = {
+  name: "Next Paycheck",
+  payday: "TBD",
+  paycheckAmount: "0",
+  bills: "0",
+  gasFood: "0",
+  savings: "0",
+  debtPayment: "0",
+  extraSpending: "0",
+  notes: "",
+};
 
 function formatMoney(amount: number) {
   return new Intl.NumberFormat("en-US", {
@@ -106,6 +131,18 @@ function getTotalCardLimit(manualCards: ManualCreditCard[]) {
   return manualCards.reduce((total, card) => total + parseMoney(card.limit), 0);
 }
 
+function getPlanLeftover(plan: PaycheckPlan) {
+  const paycheckAmount = parseMoney(plan.paycheckAmount);
+  const plannedTotal =
+    parseMoney(plan.bills) +
+    parseMoney(plan.gasFood) +
+    parseMoney(plan.savings) +
+    parseMoney(plan.debtPayment) +
+    parseMoney(plan.extraSpending);
+
+  return paycheckAmount - plannedTotal;
+}
+
 export default function Home() {
   const [manualData, setManualData] =
     useState<ManualFinanceData>(defaultManualData);
@@ -116,6 +153,7 @@ export default function Home() {
   const [manualCards, setManualCards] =
     useState<ManualCreditCard[]>(defaultManualCards);
 
+  const [paycheckPlan, setPaycheckPlan] = useState<PaycheckPlan>(defaultPlan);
   const [lastSaved, setLastSaved] = useState("");
 
   useEffect(() => {
@@ -123,6 +161,7 @@ export default function Home() {
     const savedBills = window.localStorage.getItem(billsStorageKey);
     const savedCards = window.localStorage.getItem(cardsStorageKey);
     const savedTime = window.localStorage.getItem(lastSavedStorageKey);
+    const savedPlan = window.localStorage.getItem(planStorageKey);
 
     if (savedData) {
       setManualData(JSON.parse(savedData));
@@ -138,6 +177,10 @@ export default function Home() {
 
     if (savedTime) {
       setLastSaved(savedTime);
+    }
+
+    if (savedPlan) {
+      setPaycheckPlan(JSON.parse(savedPlan));
     }
   }, []);
 
@@ -157,111 +200,127 @@ export default function Home() {
     .filter((bill) => bill.status !== "Paid")
     .slice(0, 3);
 
+  const planLeftover = getPlanLeftover(paycheckPlan);
+
   return (
     <PageShell>
       <TopNav />
 
-      <header className="mb-6">
+      <header className="mb-5">
         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.35em] text-stone-400">
           Finance Tracker
         </p>
 
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8] md:text-5xl">
+            <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
               Dashboard
             </h1>
 
-            <p className="mt-3 max-w-2xl text-base leading-7 text-stone-300">
-              A clean view of your available money, bills, cards, and savings.
+            <p className="mt-3 max-w-xl text-sm leading-6 text-stone-300 sm:text-base">
+              Your quick view of money, bills, cards, and paycheck planning.
             </p>
-
-            <div className="mt-4 flex w-fit items-center gap-2 rounded-full border border-stone-300/20 bg-stone-100/5 px-4 py-2">
-              <span className="h-2 w-2 rounded-full bg-stone-100/60" />
-
-              <p className="text-sm text-stone-300">
-                Last updated:{" "}
-                <span className="font-semibold text-[#f5f0e8]">
-                  {formatSavedTime(lastSaved)}
-                </span>
-              </p>
-            </div>
           </div>
 
           <Link
             href="/manual"
-            className="w-fit rounded-full border border-stone-100/20 bg-stone-100/10 px-5 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
+            className="hidden rounded-full border border-stone-100/20 bg-stone-100/10 px-5 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15 sm:block"
           >
-            Update values
+            Update
           </Link>
         </div>
       </header>
 
-      <section className="mb-6 overflow-hidden rounded-[2rem] border border-stone-300/20 bg-[#23211d] shadow-xl shadow-black/10">
-        <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="border-b border-stone-300/15 p-6 lg:border-b-0 lg:border-r">
-            <div className="mb-5 flex items-center gap-3">
+      <section className="mb-5 overflow-hidden rounded-[2rem] border border-stone-300/20 bg-[#23211d] shadow-xl shadow-black/10">
+        <div className="p-6">
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
               <span className="h-2 w-2 rounded-full bg-stone-100/70 shadow-[0_0_14px_rgba(245,240,232,0.2)]" />
 
               <p className="text-xs uppercase tracking-[0.25em] text-stone-300">
-                Money Left After Bills
+                Money Left
               </p>
             </div>
 
-            <p className="break-words text-6xl font-bold tracking-tight text-[#f5f0e8] md:text-7xl">
-              {formatMoney(moneyLeftAfterBills)}
-            </p>
+            <Pill>{formatSavedTime(lastSaved)}</Pill>
+          </div>
 
-            <p className="mt-4 max-w-xl text-sm leading-6 text-stone-300">
-              Your saved checking balance minus unpaid bills.
-            </p>
+          <p className="break-words text-6xl font-bold tracking-tight text-[#f5f0e8] sm:text-7xl">
+            {formatMoney(moneyLeftAfterBills)}
+          </p>
 
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                href="/bills"
-                className="rounded-full border border-stone-300/20 px-4 py-2 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
-              >
-                View bills
-              </Link>
+          <p className="mt-4 max-w-xl text-sm leading-6 text-stone-300">
+            Checking balance minus unpaid bills.
+          </p>
 
-              <Link
-                href="/cards"
-                className="rounded-full border border-stone-300/20 px-4 py-2 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
-              >
-                View credit cards
-              </Link>
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <Link
+              href="/manual"
+              className="rounded-2xl border border-stone-100/20 bg-stone-100/10 px-4 py-3 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
+            >
+              Update Values
+            </Link>
+
+            <Link
+              href="/plan"
+              className="rounded-2xl border border-stone-300/20 px-4 py-3 text-center text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
+            >
+              Plan Paycheck
+            </Link>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 border-t border-stone-300/10">
+          <OverviewStat label="Checking" value={formatMoney(checkingBalance)} />
+          <OverviewStat label="Bills" value={formatMoney(totalUpcomingBills)} />
+          <OverviewStat
+            label="Credit"
+            value={formatMoney(totalCardBalance)}
+            detail={`${totalCardUtilization}% used`}
+          />
+          <OverviewStat label="Savings" value={formatMoney(savingsBalance)} />
+        </div>
+      </section>
+
+      <section className="mb-5 rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10">
+        <div className="mb-4 flex items-center justify-between gap-4 border-b border-stone-300/15 pb-4">
+          <div>
+            <div className="mb-2 flex items-center gap-3">
+              <span className="h-2 w-2 rounded-full bg-stone-100/60" />
+
+              <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-100">
+                Paycheck Planner
+              </h2>
             </div>
+
+            <p className="text-sm text-stone-400">
+              {paycheckPlan.name || "Next Paycheck"} •{" "}
+              {paycheckPlan.payday || "TBD"}
+            </p>
           </div>
 
-          <div className="grid grid-cols-2">
-            <OverviewStat
-              label="Checking"
-              value={formatMoney(checkingBalance)}
-            />
+          <Link
+            href="/plan"
+            className="shrink-0 text-sm text-stone-400 transition hover:text-stone-100"
+          >
+            Open
+          </Link>
+        </div>
 
-            <OverviewStat
-              label="Bills"
-              value={formatMoney(totalUpcomingBills)}
-            />
+        <div className="grid grid-cols-2 gap-3">
+          <MiniStat
+            label="Paycheck"
+            value={formatMoney(parseMoney(paycheckPlan.paycheckAmount))}
+          />
 
-            <OverviewStat
-              label="Credit"
-              value={formatMoney(totalCardBalance)}
-              detail={`${totalCardUtilization}% used`}
-            />
-
-            <OverviewStat
-              label="Savings"
-              value={formatMoney(savingsBalance)}
-            />
-          </div>
+          <MiniStat label="Safe Leftover" value={formatMoney(planLeftover)} />
         </div>
       </section>
 
       <section className="grid gap-5 xl:grid-cols-2">
         <DashboardSection
           title="Next Bills"
-          actionLabel="See all bills"
+          actionLabel="See all"
           href="/bills"
         >
           <div className="divide-y divide-stone-300/10">
@@ -285,7 +344,7 @@ export default function Home() {
 
         <DashboardSection
           title="Credit Cards"
-          actionLabel="See all cards"
+          actionLabel="See all"
           href="/cards"
         >
           <div className="divide-y divide-stone-300/10">
@@ -322,7 +381,7 @@ function OverviewStat({
   detail?: string;
 }) {
   return (
-    <div className="min-h-32 border-b border-r border-stone-300/10 p-5 even:border-r-0 lg:min-h-0">
+    <div className="border-b border-r border-stone-300/10 p-5 even:border-r-0">
       <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
         {label}
       </p>
@@ -332,6 +391,20 @@ function OverviewStat({
       </p>
 
       {detail && <p className="mt-2 text-sm text-stone-400">{detail}</p>}
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1.25rem] border border-stone-300/15 bg-[#2b2925] p-4">
+      <p className="text-xs uppercase tracking-[0.2em] text-stone-500">
+        {label}
+      </p>
+
+      <p className="mt-2 break-words text-xl font-bold text-[#f5f0e8]">
+        {value}
+      </p>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import TopNav from "../../components/TopNav";
-import { Card, PageHeader, PageShell, Panel, Pill } from "../../components/Layout";
+import { PageShell, Pill } from "../../components/Layout";
 
 type PaycheckPlan = {
   name: string;
@@ -126,23 +126,47 @@ export default function PlanPage() {
   const debtPayment = parseMoney(plan.debtPayment);
   const extraSpending = parseMoney(plan.extraSpending);
 
-  const plannedTotal = bills + gasFood + savings + debtPayment + extraSpending;
+  const needsTotal = bills + gasFood;
+  const futureTotal = savings + debtPayment;
+  const flexibleTotal = extraSpending;
+  const plannedTotal = needsTotal + futureTotal + flexibleTotal;
   const safeLeftover = paycheckAmount - plannedTotal;
 
   return (
     <PageShell>
       <TopNav />
 
-      <PageHeader
-        eyebrow="Paycheck Plan"
-        title="Plan Ahead"
-        description="Map out your next paycheck before it hits so every dollar already has a job."
-      />
+      <header className="mb-5">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.35em] text-stone-400">
+          Paycheck Planner
+        </p>
 
-      <section className="mb-6 overflow-hidden rounded-[2rem] border border-stone-300/20 bg-[#23211d] shadow-xl shadow-black/10">
-        <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="border-b border-stone-300/15 p-6 lg:border-b-0 lg:border-r">
-            <div className="mb-5 flex items-center gap-3">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
+              Plan Ahead
+            </h1>
+
+            <p className="mt-3 max-w-xl text-sm leading-6 text-stone-300 sm:text-base">
+              Plan your next paycheck before it hits so your money already has
+              a job.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={savePlan}
+            className="hidden rounded-full border border-stone-100/20 bg-stone-100/10 px-5 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15 sm:block"
+          >
+            Save
+          </button>
+        </div>
+      </header>
+
+      <section className="mb-5 overflow-hidden rounded-[2rem] border border-stone-300/20 bg-[#23211d] shadow-xl shadow-black/10">
+        <div className="p-6">
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
               <span className="h-2 w-2 rounded-full bg-stone-100/70 shadow-[0_0_14px_rgba(245,240,232,0.2)]" />
 
               <p className="text-xs uppercase tracking-[0.25em] text-stone-300">
@@ -150,50 +174,37 @@ export default function PlanPage() {
               </p>
             </div>
 
-            <p className="break-words text-6xl font-bold tracking-tight text-[#f5f0e8] md:text-7xl">
-              {formatMoney(safeLeftover)}
-            </p>
-
-            <p className="mt-4 max-w-xl text-sm leading-6 text-stone-300">
-              This is what is left after your planned bills, gas/food, savings,
-              debt payment, and extra spending.
-            </p>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={savePlan}
-                className="rounded-full border border-stone-100/20 bg-stone-100/10 px-5 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
-              >
-                Save Plan
-              </button>
-
-              <button
-                type="button"
-                onClick={resetPlan}
-                className="rounded-full border border-stone-300/20 px-5 py-3 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
-              >
-                Reset
-              </button>
-            </div>
-
-            <p className="mt-4 text-sm text-stone-400">
-              {savedMessage || `Last saved: ${formatSavedTime(lastSaved)}`}
-            </p>
+            <Pill>{savedMessage || formatSavedTime(lastSaved)}</Pill>
           </div>
 
-          <div className="grid grid-cols-2">
-            <OverviewStat label="Paycheck" value={formatMoney(paycheckAmount)} />
-            <OverviewStat label="Planned" value={formatMoney(plannedTotal)} />
-            <OverviewStat label="Bills" value={formatMoney(bills)} />
-            <OverviewStat label="Payday" value={plan.payday || "TBD"} />
+          <p className="break-words text-6xl font-bold tracking-tight text-[#f5f0e8] sm:text-7xl">
+            {formatMoney(safeLeftover)}
+          </p>
+
+          <p className="mt-4 max-w-xl text-sm leading-6 text-stone-300">
+            Paycheck amount minus bills, gas/food, savings, debt payment, and
+            extra spending.
+          </p>
+
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <MiniStat label="Paycheck" value={formatMoney(paycheckAmount)} />
+            <MiniStat label="Planned" value={formatMoney(plannedTotal)} />
           </div>
+        </div>
+
+        <div className="grid grid-cols-3 border-t border-stone-300/10">
+          <SummaryStat label="Needs" value={formatMoney(needsTotal)} />
+          <SummaryStat label="Future" value={formatMoney(futureTotal)} />
+          <SummaryStat label="Flexible" value={formatMoney(flexibleTotal)} />
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1fr_0.75fr]">
-        <Panel title="Paycheck Details">
-          <div className="grid gap-4 md:grid-cols-2">
+      <section className="grid gap-5 xl:grid-cols-[1fr_0.8fr]">
+        <div className="space-y-5">
+          <PlannerGroup
+            title="Paycheck"
+            description="Start with what is coming in and when."
+          >
             <InputField
               label="Plan Name"
               value={plan.name}
@@ -215,7 +226,12 @@ export default function PlanPage() {
               inputMode="decimal"
               onChange={(value) => updateField("paycheckAmount", value)}
             />
+          </PlannerGroup>
 
+          <PlannerGroup
+            title="Must Cover"
+            description="Bills and basics that need handled before anything extra."
+          >
             <InputField
               label="Bills Before Next Paycheck"
               value={plan.bills}
@@ -231,7 +247,12 @@ export default function PlanPage() {
               inputMode="decimal"
               onChange={(value) => updateField("gasFood", value)}
             />
+          </PlannerGroup>
 
+          <PlannerGroup
+            title="Move Forward"
+            description="Money going toward savings or knocking down debt."
+          >
             <InputField
               label="Savings"
               value={plan.savings}
@@ -247,7 +268,12 @@ export default function PlanPage() {
               inputMode="decimal"
               onChange={(value) => updateField("debtPayment", value)}
             />
+          </PlannerGroup>
 
+          <PlannerGroup
+            title="Flexible"
+            description="Anything you want to leave room for without wrecking the plan."
+          >
             <InputField
               label="Extra Spending"
               value={plan.extraSpending}
@@ -255,66 +281,175 @@ export default function PlanPage() {
               inputMode="decimal"
               onChange={(value) => updateField("extraSpending", value)}
             />
-          </div>
 
-          <div className="mt-4">
             <TextAreaField
               label="Notes"
               value={plan.notes}
               onChange={(value) => updateField("notes", value)}
             />
-          </div>
-        </Panel>
+          </PlannerGroup>
+        </div>
 
-        <Panel title="Breakdown">
-          <div className="space-y-3">
-            <BreakdownRow label="Paycheck Amount" value={paycheckAmount} positive />
-            <BreakdownRow label="Bills" value={bills} />
-            <BreakdownRow label="Gas / Food" value={gasFood} />
-            <BreakdownRow label="Savings" value={savings} />
-            <BreakdownRow label="Debt Payment" value={debtPayment} />
-            <BreakdownRow label="Extra Spending" value={extraSpending} />
+        <aside className="space-y-5">
+          <section className="rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10">
+            <div className="mb-4 border-b border-stone-300/15 pb-4">
+              <div className="flex items-center gap-3">
+                <span className="h-2 w-2 rounded-full bg-stone-100/60" />
 
-            <div className="border-t border-stone-300/15 pt-4">
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-400">
-                  Safe Leftover
-                </span>
+                <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-100">
+                  Breakdown
+                </h2>
+              </div>
 
-                <span className="text-2xl font-bold text-[#f5f0e8]">
-                  {formatMoney(safeLeftover)}
-                </span>
+              <p className="mt-3 text-sm leading-6 text-stone-400">
+                Quick check of where this paycheck is going.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <BreakdownRow
+                label="Paycheck Amount"
+                value={paycheckAmount}
+                positive
+              />
+              <BreakdownRow label="Bills" value={bills} />
+              <BreakdownRow label="Gas / Food" value={gasFood} />
+              <BreakdownRow label="Savings" value={savings} />
+              <BreakdownRow label="Debt Payment" value={debtPayment} />
+              <BreakdownRow label="Extra Spending" value={extraSpending} />
+
+              <div className="border-t border-stone-300/15 pt-4">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-400">
+                    Leftover
+                  </span>
+
+                  <span className="text-2xl font-bold text-[#f5f0e8]">
+                    {formatMoney(safeLeftover)}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
+          </section>
 
-          <Card>
-            <div className="mb-3 flex items-center justify-between gap-4">
-              <p className="text-sm text-stone-400">Plan</p>
-              <Pill>{plan.name || "Untitled"}</Pill>
+          <section className="rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
+                  Current Plan
+                </p>
+
+                <h2 className="mt-2 text-xl font-bold text-[#f5f0e8]">
+                  {plan.name || "Untitled"}
+                </h2>
+              </div>
+
+              <Pill>{plan.payday || "TBD"}</Pill>
             </div>
 
             <p className="text-sm leading-6 text-stone-300">
               {plan.notes || "No notes added yet."}
             </p>
-          </Card>
-        </Panel>
+
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={savePlan}
+                className="flex-1 rounded-2xl border border-stone-100/20 bg-stone-100/10 px-4 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
+              >
+                Save
+              </button>
+
+              <button
+                type="button"
+                onClick={resetPlan}
+                className="rounded-2xl border border-stone-300/20 px-4 py-3 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
+              >
+                Reset
+              </button>
+            </div>
+          </section>
+        </aside>
       </section>
+
+      <div className="sticky bottom-4 z-20 mt-6 rounded-[1.5rem] border border-stone-300/20 bg-[#1f1e1b]/95 p-3 shadow-2xl shadow-black/30 backdrop-blur sm:hidden">
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs uppercase tracking-[0.2em] text-stone-500">
+              Safe Leftover
+            </p>
+
+            <p className="truncate text-xl font-bold text-[#f5f0e8]">
+              {formatMoney(safeLeftover)}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={savePlan}
+            className="rounded-2xl border border-stone-100/20 bg-stone-100/10 px-5 py-3 text-sm font-semibold text-[#f5f0e8]"
+          >
+            Save
+          </button>
+        </div>
+      </div>
     </PageShell>
   );
 }
 
-function OverviewStat({ label, value }: { label: string; value: string }) {
+function SummaryStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-h-32 border-b border-r border-stone-300/10 p-5 even:border-r-0 lg:min-h-0">
-      <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
+    <div className="border-r border-stone-300/10 p-4 last:border-r-0">
+      <p className="text-xs uppercase tracking-[0.2em] text-stone-500">
         {label}
       </p>
 
-      <p className="mt-3 break-words text-2xl font-bold tracking-tight text-[#f5f0e8]">
+      <p className="mt-2 break-words text-lg font-bold text-[#f5f0e8]">
         {value}
       </p>
     </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1.25rem] border border-stone-300/15 bg-[#2b2925] p-4">
+      <p className="text-xs uppercase tracking-[0.2em] text-stone-500">
+        {label}
+      </p>
+
+      <p className="mt-2 break-words text-xl font-bold text-[#f5f0e8]">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function PlannerGroup({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10">
+      <div className="mb-4 border-b border-stone-300/15 pb-4">
+        <div className="flex items-center gap-3">
+          <span className="h-2 w-2 rounded-full bg-stone-100/60" />
+
+          <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-100">
+            {title}
+          </h2>
+        </div>
+
+        <p className="mt-3 text-sm leading-6 text-stone-400">{description}</p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">{children}</div>
+    </section>
   );
 }
 
@@ -330,6 +465,7 @@ function BreakdownRow({
   return (
     <div className="flex items-center justify-between gap-4 rounded-[1.25rem] border border-stone-300/15 bg-[#2b2925] px-4 py-3">
       <span className="text-sm text-stone-400">{label}</span>
+
       <span className="font-semibold text-[#f5f0e8]">
         {positive ? "+" : "-"}
         {formatMoney(value)}
@@ -378,7 +514,7 @@ function TextAreaField({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="block">
+    <label className="block md:col-span-2">
       <span className="mb-2 block text-sm font-medium text-stone-300">
         {label}
       </span>
