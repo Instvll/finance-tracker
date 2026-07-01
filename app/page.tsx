@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import TopNav from "../components/TopNav";
 import { PageShell, Pill } from "../components/Layout";
-import { financeSummary, bills, creditCards, goals } from "../data/bandData";
+import { financeSummary, bills, creditCards } from "../data/bandData";
 
 type ManualFinanceData = {
   checkingBalance: string;
@@ -228,15 +228,21 @@ export default function Home() {
                 href="/cards"
                 className="rounded-full border border-stone-300/20 px-4 py-2 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
               >
-                View cards
+                View credit cards
               </Link>
             </div>
           </div>
 
           <div className="grid grid-cols-2">
-            <OverviewStat label="Checking" value={formatMoney(checkingBalance)} />
+            <OverviewStat
+              label="Checking"
+              value={formatMoney(checkingBalance)}
+            />
 
-            <OverviewStat label="Bills" value={formatMoney(totalUpcomingBills)} />
+            <OverviewStat
+              label="Bills"
+              value={formatMoney(totalUpcomingBills)}
+            />
 
             <OverviewStat
               label="Credit"
@@ -244,12 +250,15 @@ export default function Home() {
               detail={`${totalCardUtilization}% used`}
             />
 
-            <OverviewStat label="Savings" value={formatMoney(savingsBalance)} />
+            <OverviewStat
+              label="Savings"
+              value={formatMoney(savingsBalance)}
+            />
           </div>
         </div>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-3">
+      <section className="grid gap-5 xl:grid-cols-2">
         <DashboardSection
           title="Next Bills"
           actionLabel="See all bills"
@@ -294,42 +303,6 @@ export default function Home() {
                   value={formatMoney(balance)}
                   tag={card.status}
                 />
-              );
-            })}
-          </div>
-        </DashboardSection>
-
-        <DashboardSection title="Goals" actionLabel="See goals" href="/goals">
-          <div className="space-y-4">
-            {goals.slice(0, 2).map((goal) => {
-              const progress =
-                goal.target > 0
-                  ? Math.round((goal.saved / goal.target) * 100)
-                  : 0;
-
-              return (
-                <div key={goal.name}>
-                  <div className="mb-2 flex items-center justify-between gap-4">
-                    <div>
-                      <p className="font-semibold text-[#f5f0e8]">
-                        {goal.name}
-                      </p>
-
-                      <p className="mt-1 text-sm text-stone-400">
-                        {formatMoney(goal.saved)} of {formatMoney(goal.target)}
-                      </p>
-                    </div>
-
-                    <Pill>{progress}%</Pill>
-                  </div>
-
-                  <div className="h-2 overflow-hidden rounded-full bg-black/25">
-                    <div
-                      className="h-full rounded-full bg-stone-100/55"
-                      style={{ width: `${Math.min(progress, 100)}%` }}
-                    />
-                  </div>
-                </div>
               );
             })}
           </div>

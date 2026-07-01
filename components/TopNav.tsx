@@ -6,11 +6,10 @@ import { useState } from "react";
 const navItems = [
   { label: "Dashboard", href: "/" },
   { label: "Bills", href: "/bills" },
-  { label: "Cards", href: "/cards" },
-  { label: "Plan", href: "/plan" },
-  { label: "Goals", href: "/goals" },
-  { label: "Manual", href: "/manual" },
+  { label: "Credit Cards", href: "/cards" },
+  { label: "Paycheck Planner", href: "/plan" },
   { label: "Notes", href: "/notes" },
+  { label: "Editor", href: "/manual" },
 ];
 
 export default function TopNav() {
