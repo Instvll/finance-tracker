@@ -33,6 +33,7 @@ type ManualCreditCard = {
 const summaryStorageKey = "finance-tracker-manual-data";
 const billsStorageKey = "finance-tracker-manual-bills";
 const cardsStorageKey = "finance-tracker-manual-cards";
+const lastSavedStorageKey = "finance-tracker-last-saved";
 
 const defaultManualData: ManualFinanceData = {
   checkingBalance: String(financeSummary.checkingBalance),
@@ -75,6 +76,19 @@ function parseMoney(value: string) {
   return numberValue;
 }
 
+function formatSavedTime(value: string) {
+  if (!value) {
+    return "Not saved yet";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
 function getUnpaidBillTotal(manualBills: ManualBill[]) {
   return manualBills
     .filter((bill) => bill.status !== "Paid")
@@ -102,10 +116,13 @@ export default function Home() {
   const [manualCards, setManualCards] =
     useState<ManualCreditCard[]>(defaultManualCards);
 
+  const [lastSaved, setLastSaved] = useState("");
+
   useEffect(() => {
     const savedData = window.localStorage.getItem(summaryStorageKey);
     const savedBills = window.localStorage.getItem(billsStorageKey);
     const savedCards = window.localStorage.getItem(cardsStorageKey);
+    const savedTime = window.localStorage.getItem(lastSavedStorageKey);
 
     if (savedData) {
       setManualData(JSON.parse(savedData));
@@ -117,6 +134,10 @@ export default function Home() {
 
     if (savedCards) {
       setManualCards(JSON.parse(savedCards));
+    }
+
+    if (savedTime) {
+      setLastSaved(savedTime);
     }
   }, []);
 
@@ -145,7 +166,7 @@ export default function Home() {
           Finance Tracker
         </p>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8] md:text-5xl">
               Dashboard
@@ -154,6 +175,17 @@ export default function Home() {
             <p className="mt-3 max-w-2xl text-base leading-7 text-stone-300">
               A clean view of your available money, bills, cards, and savings.
             </p>
+
+            <div className="mt-4 flex w-fit items-center gap-2 rounded-full border border-stone-300/20 bg-stone-100/5 px-4 py-2">
+              <span className="h-2 w-2 rounded-full bg-stone-100/60" />
+
+              <p className="text-sm text-stone-300">
+                Last updated:{" "}
+                <span className="font-semibold text-[#f5f0e8]">
+                  {formatSavedTime(lastSaved)}
+                </span>
+              </p>
+            </div>
           </div>
 
           <Link
@@ -202,15 +234,9 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-2">
-            <OverviewStat
-              label="Checking"
-              value={formatMoney(checkingBalance)}
-            />
+            <OverviewStat label="Checking" value={formatMoney(checkingBalance)} />
 
-            <OverviewStat
-              label="Bills"
-              value={formatMoney(totalUpcomingBills)}
-            />
+            <OverviewStat label="Bills" value={formatMoney(totalUpcomingBills)} />
 
             <OverviewStat
               label="Credit"
@@ -218,10 +244,7 @@ export default function Home() {
               detail={`${totalCardUtilization}% used`}
             />
 
-            <OverviewStat
-              label="Savings"
-              value={formatMoney(savingsBalance)}
-            />
+            <OverviewStat label="Savings" value={formatMoney(savingsBalance)} />
           </div>
         </div>
       </section>
