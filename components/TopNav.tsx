@@ -8,7 +8,7 @@ const navItems = [
   { label: "Bills", href: "/bills" },
   { label: "Cards", href: "/cards" },
   { label: "Goals", href: "/goals" },
-  { label: "Manual", href: "/manual" },
+  { label: "manual", href: "/manual" },
   { label: "Notes", href: "/notes" },
 ];
 
@@ -24,7 +24,7 @@ export default function TopNav() {
           onClick={() => setIsOpen(false)}
         >
           <span className="h-2 w-2 rounded-full bg-stone-100/70 shadow-[0_0_14px_rgba(245,240,232,0.2)] transition group-hover:bg-[#f5f0e8]" />
-          FINANCE
+          COHL
         </Link>
 
         <div className="hidden items-center gap-1 rounded-full border border-stone-300/15 bg-black/10 p-1 md:flex">

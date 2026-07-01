@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import TopNav from "../components/TopNav";
-import { PageHeader, PageShell, Pill } from "../components/Layout";
+import { PageShell, Pill } from "../components/Layout";
 import { financeSummary, bills, creditCards, goals } from "../data/bandData";
 
 type ManualFinanceData = {
@@ -140,77 +140,99 @@ export default function Home() {
     <PageShell>
       <TopNav />
 
-      <PageHeader
-        eyebrow="Finance Tracker"
-        title="Money Dashboard"
-        description="A clean view of what matters most: available money, upcoming bills, card balances, and savings."
-      />
-
-      <section className="mb-6 overflow-hidden rounded-[2rem] border border-stone-300/20 bg-[#23211d] p-6 shadow-xl shadow-black/10">
-        <div className="mb-5 flex items-center gap-3">
-          <span className="h-2 w-2 rounded-full bg-stone-100/70 shadow-[0_0_14px_rgba(245,240,232,0.22)]" />
-
-          <p className="text-xs uppercase tracking-[0.25em] text-stone-200/80">
-            Main Number
-          </p>
-        </div>
-
-        <p className="text-sm text-stone-400">Money Left After Bills</p>
-
-        <h1 className="mt-3 break-words text-5xl font-bold tracking-tight text-[#f5f0e8] md:text-7xl">
-          {formatMoney(moneyLeftAfterBills)}
-        </h1>
-
-        <p className="mt-4 max-w-2xl text-sm leading-6 text-stone-300">
-          Your saved checking balance minus unpaid bills.
+      <header className="mb-6">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.35em] text-stone-400">
+          Finance Tracker
         </p>
 
-        <div className="mt-6 flex flex-wrap gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8] md:text-5xl">
+              Dashboard
+            </h1>
+
+            <p className="mt-3 max-w-2xl text-base leading-7 text-stone-300">
+              A clean view of your available money, bills, cards, and savings.
+            </p>
+          </div>
+
           <Link
             href="/manual"
-            className="rounded-full border border-stone-100/20 bg-stone-100/10 px-4 py-2 text-sm font-medium text-stone-100 transition hover:bg-stone-100/15"
+            className="w-fit rounded-full border border-stone-100/20 bg-stone-100/10 px-5 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
           >
             Update values
           </Link>
+        </div>
+      </header>
 
-          <Link
-            href="/bills"
-            className="rounded-full border border-stone-300/20 px-4 py-2 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
-          >
-            View bills
-          </Link>
+      <section className="mb-6 overflow-hidden rounded-[2rem] border border-stone-300/20 bg-[#23211d] shadow-xl shadow-black/10">
+        <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
+          <div className="border-b border-stone-300/15 p-6 lg:border-b-0 lg:border-r">
+            <div className="mb-5 flex items-center gap-3">
+              <span className="h-2 w-2 rounded-full bg-stone-100/70 shadow-[0_0_14px_rgba(245,240,232,0.2)]" />
+
+              <p className="text-xs uppercase tracking-[0.25em] text-stone-300">
+                Money Left After Bills
+              </p>
+            </div>
+
+            <p className="break-words text-6xl font-bold tracking-tight text-[#f5f0e8] md:text-7xl">
+              {formatMoney(moneyLeftAfterBills)}
+            </p>
+
+            <p className="mt-4 max-w-xl text-sm leading-6 text-stone-300">
+              Your saved checking balance minus unpaid bills.
+            </p>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link
+                href="/bills"
+                className="rounded-full border border-stone-300/20 px-4 py-2 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
+              >
+                View bills
+              </Link>
+
+              <Link
+                href="/cards"
+                className="rounded-full border border-stone-300/20 px-4 py-2 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
+              >
+                View cards
+              </Link>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2">
+            <OverviewStat
+              label="Checking"
+              value={formatMoney(checkingBalance)}
+            />
+
+            <OverviewStat
+              label="Bills"
+              value={formatMoney(totalUpcomingBills)}
+            />
+
+            <OverviewStat
+              label="Credit"
+              value={formatMoney(totalCardBalance)}
+              detail={`${totalCardUtilization}% used`}
+            />
+
+            <OverviewStat
+              label="Savings"
+              value={formatMoney(savingsBalance)}
+            />
+          </div>
         </div>
       </section>
 
-      <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <SnapshotCard
-          label="Checking"
-          value={formatMoney(checkingBalance)}
-          detail="Current saved balance"
-        />
-
-        <SnapshotCard
-          label="Upcoming Bills"
-          value={formatMoney(totalUpcomingBills)}
-          detail="Unpaid bill total"
-        />
-
-        <SnapshotCard
-          label="Credit Cards"
-          value={formatMoney(totalCardBalance)}
-          detail={`${totalCardUtilization}% utilization`}
-        />
-
-        <SnapshotCard
-          label="Savings"
-          value={formatMoney(savingsBalance)}
-          detail="Current saved balance"
-        />
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-3">
-        <SectionPanel title="Next Bills">
-          <div className="space-y-3">
+      <section className="grid gap-5 xl:grid-cols-3">
+        <DashboardSection
+          title="Next Bills"
+          actionLabel="See all bills"
+          href="/bills"
+        >
+          <div className="divide-y divide-stone-300/10">
             {nextBills.length > 0 ? (
               nextBills.map((bill, index) => (
                 <CompactRow
@@ -222,24 +244,19 @@ export default function Home() {
                 />
               ))
             ) : (
-              <MiniCard>
-                <p className="text-sm text-stone-400">
-                  No unpaid bills right now.
-                </p>
-              </MiniCard>
+              <p className="py-4 text-sm text-stone-400">
+                No unpaid bills right now.
+              </p>
             )}
           </div>
+        </DashboardSection>
 
-          <Link
-            href="/bills"
-            className="mt-4 inline-block rounded-full border border-stone-300/20 px-4 py-2 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
-          >
-            See all bills
-          </Link>
-        </SectionPanel>
-
-        <SectionPanel title="Credit Cards">
-          <div className="space-y-3">
+        <DashboardSection
+          title="Credit Cards"
+          actionLabel="See all cards"
+          href="/cards"
+        >
+          <div className="divide-y divide-stone-300/10">
             {manualCards.map((card, index) => {
               const balance = parseMoney(card.balance);
               const limit = parseMoney(card.limit);
@@ -257,17 +274,10 @@ export default function Home() {
               );
             })}
           </div>
+        </DashboardSection>
 
-          <Link
-            href="/cards"
-            className="mt-4 inline-block rounded-full border border-stone-300/20 px-4 py-2 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
-          >
-            See all cards
-          </Link>
-        </SectionPanel>
-
-        <SectionPanel title="Goals">
-          <div className="space-y-3">
+        <DashboardSection title="Goals" actionLabel="See goals" href="/goals">
+          <div className="space-y-4">
             {goals.slice(0, 2).map((goal) => {
               const progress =
                 goal.target > 0
@@ -275,10 +285,10 @@ export default function Home() {
                   : 0;
 
               return (
-                <MiniCard key={goal.name}>
-                  <div className="mb-3 flex items-center justify-between gap-4">
+                <div key={goal.name}>
+                  <div className="mb-2 flex items-center justify-between gap-4">
                     <div>
-                      <p className="font-semibold text-stone-100">
+                      <p className="font-semibold text-[#f5f0e8]">
                         {goal.name}
                       </p>
 
@@ -296,78 +306,72 @@ export default function Home() {
                       style={{ width: `${Math.min(progress, 100)}%` }}
                     />
                   </div>
-                </MiniCard>
+                </div>
               );
             })}
           </div>
-
-          <Link
-            href="/goals"
-            className="mt-4 inline-block rounded-full border border-stone-300/20 px-4 py-2 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
-          >
-            See goals
-          </Link>
-        </SectionPanel>
+        </DashboardSection>
       </section>
     </PageShell>
   );
 }
 
-function SnapshotCard({
+function OverviewStat({
   label,
   value,
   detail,
 }: {
   label: string;
   value: string;
-  detail: string;
+  detail?: string;
 }) {
   return (
-    <div className="rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10">
-      <div className="mb-4 flex items-center gap-3">
-        <span className="h-2 w-2 rounded-full bg-stone-100/65 shadow-[0_0_14px_rgba(245,240,232,0.18)]" />
+    <div className="min-h-32 border-b border-r border-stone-300/10 p-5 even:border-r-0 lg:min-h-0">
+      <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
+        {label}
+      </p>
 
-        <p className="text-xs uppercase tracking-[0.22em] text-stone-300">
-          {label}
-        </p>
-      </div>
-
-      <p className="break-words text-3xl font-bold tracking-tight text-[#f5f0e8]">
+      <p className="mt-3 break-words text-2xl font-bold tracking-tight text-[#f5f0e8]">
         {value}
       </p>
 
-      <p className="mt-2 text-sm text-stone-400">{detail}</p>
+      {detail && <p className="mt-2 text-sm text-stone-400">{detail}</p>}
     </div>
   );
 }
 
-function SectionPanel({
+function DashboardSection({
   title,
+  actionLabel,
+  href,
   children,
 }: {
   title: string;
+  actionLabel: string;
+  href: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-[1.75rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10">
-      <div className="mb-5 flex items-center gap-3 border-b border-stone-300/15 pb-4">
-        <span className="h-2 w-2 rounded-full bg-stone-100/65 shadow-[0_0_14px_rgba(245,240,232,0.18)]" />
+    <section className="rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10">
+      <div className="mb-4 flex items-center justify-between gap-4 border-b border-stone-300/15 pb-4">
+        <div className="flex items-center gap-3">
+          <span className="h-2 w-2 rounded-full bg-stone-100/60" />
 
-        <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-100">
-          {title}
-        </h2>
+          <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-100">
+            {title}
+          </h2>
+        </div>
+
+        <Link
+          href={href}
+          className="shrink-0 text-sm text-stone-400 transition hover:text-stone-100"
+        >
+          {actionLabel}
+        </Link>
       </div>
 
       {children}
     </section>
-  );
-}
-
-function MiniCard({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-[1.35rem] border border-stone-300/18 bg-[#2b2925] p-5 shadow-sm shadow-black/10 transition hover:border-stone-100/25 hover:bg-[#302e29]">
-      {children}
-    </div>
   );
 }
 
@@ -383,20 +387,18 @@ function CompactRow({
   tag: string;
 }) {
   return (
-    <MiniCard>
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <div className="mb-2">
-            <Pill>{tag}</Pill>
-          </div>
-
-          <p className="truncate font-semibold text-stone-100">{title}</p>
-
-          <p className="mt-1 truncate text-sm text-stone-400">{subtitle}</p>
+    <div className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0">
+      <div className="min-w-0">
+        <div className="mb-2">
+          <Pill>{tag}</Pill>
         </div>
 
-        <p className="shrink-0 text-lg font-bold text-[#f5f0e8]">{value}</p>
+        <p className="truncate font-semibold text-[#f5f0e8]">{title}</p>
+
+        <p className="mt-1 truncate text-sm text-stone-400">{subtitle}</p>
       </div>
-    </MiniCard>
+
+      <p className="shrink-0 text-lg font-bold text-[#f5f0e8]">{value}</p>
+    </div>
   );
 }
