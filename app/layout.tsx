@@ -7,8 +7,8 @@ export const metadata: Metadata = {
   description: "A simple personal finance tracker.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/icon.svg",
-    apple: "/icon.svg",
+    icon: "/icon-512.png",
+    apple: "/apple-touch-icon.png",
   },
   appleWebApp: {
     capable: true,
