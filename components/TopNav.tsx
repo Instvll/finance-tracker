@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import LogoMark from "./LogoMark";
 
@@ -13,38 +14,61 @@ const navItems = [
 ];
 
 export default function TopNav() {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
 
+  function isActiveRoute(href: string) {
+    if (href === "/") {
+      return pathname === "/";
+    }
+
+    return pathname.startsWith(href);
+  }
+
   return (
-    <nav className="mb-8 rounded-[1.75rem] border border-stone-300/20 bg-[#1f1e1b]/90 px-4 py-3 shadow-xl shadow-black/10 backdrop-blur">
-      <div className="flex items-center justify-between gap-4">
+    <nav className="mb-8 rounded-[1.65rem] border border-stone-300/15 bg-[#1c1b18]/90 p-2 shadow-2xl shadow-black/15 backdrop-blur-xl">
+      <div className="flex items-center justify-between gap-3">
         <Link
           href="/"
-          className="group flex items-center gap-3 rounded-full px-1 py-1 transition"
+          className="group flex min-w-0 items-center gap-3 rounded-[1.25rem] px-2 py-2 transition hover:bg-stone-100/5"
           onClick={() => setIsOpen(false)}
         >
           <LogoMark small />
 
-          <span className="text-sm font-semibold lowercase tracking-[0.28em] text-stone-100 transition group-hover:text-[#f5f0e8]">
-            leftovr
-          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold lowercase tracking-[0.24em] text-[#f5f0e8]">
+              leftovr
+            </p>
+
+            <p className="hidden text-[0.65rem] uppercase tracking-[0.22em] text-stone-500 sm:block">
+              Personal finance
+            </p>
+          </div>
         </Link>
 
-        <div className="hidden items-center gap-1 rounded-full border border-stone-300/15 bg-black/10 p-1 md:flex">
-          {navItems.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className="rounded-full px-4 py-2 text-sm text-stone-300 transition hover:bg-stone-100/10 hover:text-stone-100"
-            >
-              {item.label}
-            </Link>
-          ))}
+        <div className="hidden items-center rounded-[1.2rem] border border-stone-300/10 bg-black/15 p-1 md:flex">
+          {navItems.map((item) => {
+            const active = isActiveRoute(item.href);
+
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`rounded-[0.95rem] px-4 py-2 text-sm font-medium transition ${
+                  active
+                    ? "bg-stone-100/12 text-[#f5f0e8] shadow-sm shadow-black/10"
+                    : "text-stone-400 hover:bg-stone-100/7 hover:text-stone-100"
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
         </div>
 
         <button
           type="button"
-          className="rounded-full border border-stone-300/20 bg-stone-100/5 px-4 py-2 text-sm text-stone-200 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100 md:hidden"
+          className="rounded-[1.15rem] border border-stone-300/15 bg-stone-100/5 px-4 py-3 text-sm font-semibold text-stone-200 transition hover:border-stone-100/25 hover:bg-stone-100/10 hover:text-stone-100 md:hidden"
           onClick={() => setIsOpen((current) => !current)}
           aria-label="Toggle navigation menu"
         >
@@ -53,18 +77,26 @@ export default function TopNav() {
       </div>
 
       {isOpen && (
-        <div className="mt-4 rounded-[1.25rem] border border-stone-300/15 bg-[#171614] p-2 md:hidden">
+        <div className="mt-2 rounded-[1.25rem] border border-stone-300/10 bg-[#151411] p-2 md:hidden">
           <div className="grid gap-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="rounded-2xl px-4 py-3 text-sm text-stone-300 transition hover:bg-stone-100/10 hover:text-stone-100"
-                onClick={() => setIsOpen(false)}
-              >
-                {item.label}
-              </Link>
-            ))}
+            {navItems.map((item) => {
+              const active = isActiveRoute(item.href);
+
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className={`rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                    active
+                      ? "bg-stone-100/12 text-[#f5f0e8]"
+                      : "text-stone-400 hover:bg-stone-100/8 hover:text-stone-100"
+                  }`}
+                  onClick={() => setIsOpen(false)}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}

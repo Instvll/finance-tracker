@@ -5,6 +5,9 @@ import AuthGate from "../components/AuthGate";
 export const metadata: Metadata = {
   title: "leftovr",
   description: "A simple personal finance tracker.",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
