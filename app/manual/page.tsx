@@ -720,6 +720,15 @@ function CardEditor({
 
       <div className="rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#11100d] p-4">
         <div className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <InputField
+              label="Card Name"
+              value={card.name}
+              type="text"
+              onChange={(value) => onChange(index, "name", value)}
+            />
+          </div>
+
           <InputField
             label="Balance"
             value={card.balance}
