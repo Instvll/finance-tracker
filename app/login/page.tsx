@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import TopNav from "../../components/TopNav";
-import { PageShell } from "../../components/Layout";
+import { PageShell, Pill } from "../../components/Layout";
 import { supabase } from "../../lib/supabase/client";
 
 export default function LoginPage() {
@@ -51,53 +51,53 @@ export default function LoginPage() {
         </h1>
 
         <p className="mt-3 max-w-xl text-sm leading-6 text-stone-300">
-          Log in to access your account tools and eventually sync your finance
-          tracker between devices.
+          Access your account, backup tools, and saved finance tracker data.
         </p>
       </header>
 
-      <section className="rounded-[2rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10 sm:p-6">
-        <div className="mb-5 rounded-2xl border border-stone-300/20 bg-[#2b2925] p-4">
-          <p className="text-sm font-semibold text-[#f5f0e8]">
-            Already have an account?
-          </p>
+      <section className="mb-5 rounded-[2rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10 sm:p-6">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <div className="mb-3 flex items-center gap-3">
+              <span className="h-2 w-2 rounded-full bg-stone-100/70 shadow-[0_0_14px_rgba(245,240,232,0.2)]" />
 
-          <p className="mt-2 text-sm leading-6 text-stone-300">
-            Use this page to sign in. New users should create an account first.
-          </p>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-300">
+                Welcome Back
+              </p>
+            </div>
+
+            <h2 className="text-3xl font-bold tracking-tight text-[#f5f0e8]">
+              Sign in to continue
+            </h2>
+
+            <p className="mt-3 text-sm leading-6 text-stone-400">
+              Use the email and password you created for your finance tracker
+              account.
+            </p>
+          </div>
+
+          <Pill>Login</Pill>
         </div>
 
         <div className="space-y-4">
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-stone-300">
-              Email
-            </span>
+          <InputField
+            label="Email"
+            value={email}
+            type="email"
+            placeholder="you@example.com"
+            onChange={setEmail}
+          />
 
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className="w-full rounded-2xl border border-stone-300/20 bg-[#171614] px-4 py-4 text-lg text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-stone-100/35 focus:bg-[#1d1b18]"
-              placeholder="you@example.com"
-            />
-          </label>
-
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-stone-300">
-              Password
-            </span>
-
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="w-full rounded-2xl border border-stone-300/20 bg-[#171614] px-4 py-4 text-lg text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-stone-100/35 focus:bg-[#1d1b18]"
-              placeholder="Enter password"
-            />
-          </label>
+          <InputField
+            label="Password"
+            value={password}
+            type="password"
+            placeholder="Enter password"
+            onChange={setPassword}
+          />
 
           {message && (
-            <div className="rounded-2xl border border-stone-300/20 bg-[#2b2925] p-4">
+            <div className="rounded-2xl border border-stone-300/20 bg-[#171614] p-4">
               <p className="text-sm leading-6 text-stone-300">{message}</p>
             </div>
           )}
@@ -110,22 +110,60 @@ export default function LoginPage() {
           >
             {isWorking ? "Logging in..." : "Log In"}
           </button>
-
-          <Link
-            href="/signup"
-            className="block rounded-2xl border border-stone-300/20 px-5 py-4 text-center text-sm font-semibold text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
-          >
-            Create a New Account
-          </Link>
-
-          <Link
-            href="/"
-            className="block rounded-2xl border border-stone-300/20 px-5 py-4 text-center text-sm text-stone-400 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
-          >
-            Back to Dashboard
-          </Link>
         </div>
       </section>
+
+      <section className="grid gap-3">
+        <Link
+          href="/signup"
+          className="rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10 transition hover:border-stone-100/30 hover:bg-[#2b2925]"
+        >
+          <p className="text-sm font-semibold text-[#f5f0e8]">
+            Need an account?
+          </p>
+
+          <p className="mt-2 text-sm leading-6 text-stone-400">
+            Create one first, then come back here to log in.
+          </p>
+        </Link>
+
+        <Link
+          href="/"
+          className="rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-5 text-center text-sm text-stone-300 shadow-xl shadow-black/10 transition hover:border-stone-100/30 hover:bg-[#2b2925] hover:text-stone-100"
+        >
+          Back to Dashboard
+        </Link>
+      </section>
     </PageShell>
+  );
+}
+
+function InputField({
+  label,
+  value,
+  type,
+  placeholder,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  type: "email" | "password";
+  placeholder: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium text-stone-300">
+        {label}
+      </span>
+
+      <input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-2xl border border-stone-300/20 bg-[#171614] px-4 py-4 text-lg text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-stone-100/35 focus:bg-[#1d1b18]"
+        placeholder={placeholder}
+      />
+    </label>
   );
 }
