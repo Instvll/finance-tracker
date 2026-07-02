@@ -83,24 +83,24 @@ export default function CardsPage() {
       <header className="mb-4">
         <div className="mb-3 flex items-center justify-between gap-4">
           <p className="text-lg font-semibold uppercase tracking-[0.24em] text-stone-300">
-  Card Tracker
-</p>
+            Card Tracker
+          </p>
 
           <Pill>v1.0 Beta</Pill>
         </div>
 
         <p className="max-w-xl text-sm leading-6 text-stone-300">
-          Track balances, limits, utilization, and upcoming payments.
+          Track balances, limits, utilization, and available credit.
         </p>
       </header>
 
-      <section className="mb-5 rounded-[2rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/10 sm:p-6">
+      <section className="mb-5 rounded-[2rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15 sm:p-6">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <div className="mb-3 flex items-center gap-3">
-              <span className="h-2 w-2 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(245,240,232,0.2)]" />
+              <span className="h-2 w-2 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.25)]" />
 
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-300">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f5f0e8]">
                 Total Card Balance
               </p>
             </div>
@@ -119,7 +119,7 @@ export default function CardsPage() {
           {formatMoney(totalBalance)}
         </p>
 
-        <div className="mt-5 h-2 overflow-hidden rounded-full bg-black/25">
+        <div className="mt-5 h-2 overflow-hidden rounded-full bg-black/30">
           <div
             className="h-full rounded-full bg-[#c7ad75]"
             style={{ width: `${Math.min(utilization, 100)}%` }}
@@ -134,14 +134,14 @@ export default function CardsPage() {
 
             <p className="mt-2 text-sm leading-6 text-stone-400">
               Add a card when you want to track balances, limits, utilization,
-              and upcoming payments.
+              and available credit.
             </p>
           </div>
         )}
 
         <div className="mt-5 grid grid-cols-2 gap-3">
           <Link
-            href="/manual"
+            href="/manual?tab=cards"
             className="rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-3 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
           >
             Open Editor
@@ -149,7 +149,7 @@ export default function CardsPage() {
 
           <Link
             href="/"
-            className="rounded-2xl border border-[#f5f0e8]/12 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/14 hover:text-stone-100"
+            className="rounded-2xl border border-[#f5f0e8]/12 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
           >
             Dashboard
           </Link>
@@ -195,7 +195,7 @@ export default function CardsPage() {
               title="No credit cards added"
               text="Add your first card in the Editor to start tracking balances, limits, and utilization."
               actionLabel="Add Card"
-              actionHref="/manual"
+              actionHref="/manual?tab=cards"
             />
           )}
         </CardSection>
@@ -214,13 +214,13 @@ function MobileStat({
   detail: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-[1.4rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-4 shadow-xl shadow-black/10">
+    <div className="flex items-center justify-between gap-4 rounded-[1.4rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-4 shadow-xl shadow-black/15">
       <div className="min-w-0">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
           {label}
         </p>
 
-        <p className="mt-1 truncate text-sm text-stone-400">{detail}</p>
+        <p className="mt-1 truncate text-sm text-stone-300">{detail}</p>
       </div>
 
       <p className="shrink-0 text-xl font-bold text-[#f5f0e8]">{value}</p>
@@ -238,12 +238,12 @@ function CardSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/10">
+    <section className="rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15">
       <div className="mb-4 border-b border-[#f5f0e8]/10 pb-4">
         <div className="flex items-center gap-3">
-          <span className="h-2 w-2 rounded-full bg-[#c7ad75]/80" />
+          <span className="h-2 w-2 rounded-full bg-[#c7ad75]" />
 
-          <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-100">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
             {title}
           </h2>
         </div>
@@ -263,13 +263,13 @@ function CreditCardRow({ card }: { card: ManualCreditCard }) {
   const utilization = limit > 0 ? Math.round((balance / limit) * 100) : 0;
 
   return (
-    <div className="rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4">
+    <div className="rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4 shadow-lg shadow-black/10">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap gap-2">
             <Pill>{utilization}% used</Pill>
 
-            <span className="rounded-full border border-stone-100/10 bg-stone-100/5 px-3 py-1 text-xs font-semibold text-stone-200/85">
+            <span className="rounded-full border border-[#f5f0e8]/10 bg-[#11100d] px-3 py-1 text-xs font-semibold text-stone-200/85">
               Due {card.dueDate || "TBD"}
             </span>
           </div>
@@ -288,7 +288,7 @@ function CreditCardRow({ card }: { card: ManualCreditCard }) {
         </p>
       </div>
 
-      <div className="mb-4 h-2 overflow-hidden rounded-full bg-black/25">
+      <div className="mb-4 h-2 overflow-hidden rounded-full bg-black/30">
         <div
           className="h-full rounded-full bg-[#c7ad75]"
           style={{ width: `${Math.min(utilization, 100)}%` }}
@@ -333,8 +333,8 @@ function EmptyState({
 }) {
   return (
     <div className="rounded-[1.35rem] border border-dashed border-[#f5f0e8]/12 bg-[#25231e] p-5">
-      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-[#c7ad75]/20 bg-stone-100/8">
-        <span className="h-2 w-2 rounded-full bg-[#c7ad75]/80" />
+      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-[#c7ad75]/20 bg-[#c7ad75]/10">
+        <span className="h-2 w-2 rounded-full bg-[#c7ad75]" />
       </div>
 
       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">

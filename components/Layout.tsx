@@ -21,9 +21,12 @@ export function PageShell({ children }: { children: React.ReactNode }) {
                 v1.0 Beta
               </p>
 
-              <p className="mt-2 text-xs leading-5 text-stone-500">
-                Private testing build
-              </p>
+              <a
+  href="/whats-new"
+  className="mt-2 inline-flex text-xs leading-5 text-stone-500 transition hover:text-[#f5f0e8]"
+>
+  View what&apos;s new
+</a>
             </div>
           </div>
         </footer>

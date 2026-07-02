@@ -199,22 +199,6 @@ export default function DashboardPage() {
         <p className="break-words text-5xl font-bold tracking-tight text-[#f5f0e8] sm:text-7xl">
           {formatMoney(moneyLeftAfterBills)}
         </p>
-
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <Link
-            href="/manual"
-            className="rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-3 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
-          >
-            Open Editor
-          </Link>
-
-          <Link
-            href="/bills"
-            className="rounded-2xl border border-[#f5f0e8]/12 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
-          >
-            Review Bills
-          </Link>
-        </div>
       </section>
 
       <section className="mb-5 grid gap-3">

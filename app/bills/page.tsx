@@ -88,7 +88,7 @@ export default function BillsPage() {
         </div>
 
         <p className="max-w-xl text-sm leading-6 text-stone-300">
-          *Bills automatically become upcoming when they are due within 7 days*
+          Bills automatically become upcoming when they are due within 7 days.
         </p>
       </header>
 
@@ -132,7 +132,7 @@ export default function BillsPage() {
 
         <div className="mt-5 grid grid-cols-2 gap-3">
           <Link
-            href="/manual"
+            href="/manual?tab=bills"
             className="rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-3 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
           >
             Open Editor
@@ -192,7 +192,7 @@ export default function BillsPage() {
                   : "Add your first bill in the Editor to start tracking upcoming expenses."
               }
               actionLabel="Add Bill"
-              actionHref="/manual"
+              actionHref="/manual?tab=bills"
             />
           )}
         </BillSection>
@@ -217,7 +217,7 @@ export default function BillsPage() {
                   : "After you add bills, anything outside the 7-day pay window will show here."
               }
               actionLabel="Open Editor"
-              actionHref="/manual"
+              actionHref="/manual?tab=bills"
             />
           )}
         </BillSection>

@@ -126,6 +126,17 @@ export default function ManualPage() {
     if (savedTime) {
       setLastSaved(savedTime);
     }
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const requestedTab = searchParams.get("tab");
+
+    if (
+      requestedTab === "overview" ||
+      requestedTab === "bills" ||
+      requestedTab === "cards"
+    ) {
+      setActiveTab(requestedTab);
+    }
   }, []);
 
   const unpaidBillTotal = manualBills
@@ -444,7 +455,10 @@ export default function ManualPage() {
             }
           >
             <div className="mb-4 grid grid-cols-2 gap-3">
-              <PreviewStat label="Upcoming" value={formatMoney(unpaidBillTotal)} />
+              <PreviewStat
+                label="Upcoming"
+                value={formatMoney(unpaidBillTotal)}
+              />
               <PreviewStat label="Paid" value={formatMoney(paidBillTotal)} />
             </div>
 
