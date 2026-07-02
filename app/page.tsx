@@ -112,6 +112,8 @@ export default function DashboardPage() {
   const [manualCards, setManualCards] =
     useState<ManualCreditCard[]>(defaultManualCards);
   const [lastSaved, setLastSaved] = useState("");
+  const [showCards, setShowCards] = useState(false);
+  const [showAllBills, setShowAllBills] = useState(false);
 
   useEffect(() => {
     setManualData(readJsonStorage(summaryStorageKey, defaultManualData));
@@ -132,6 +134,10 @@ export default function DashboardPage() {
     (bill) => getAutoBillStatus(bill.dueDate) === "Upcoming"
   );
 
+  const otherBills = manualBills.filter(
+    (bill) => getAutoBillStatus(bill.dueDate) === "Paid"
+  );
+
   const upcomingBillTotal = upcomingBills.reduce(
     (total, bill) => total + parseMoney(bill.amount),
     0
@@ -146,6 +152,8 @@ export default function DashboardPage() {
     (total, card) => total + parseMoney(card.limit),
     0
   );
+
+  const availableCredit = cardLimitTotal - cardBalanceTotal;
 
   const cardUtilization =
     cardLimitTotal > 0
@@ -170,217 +178,301 @@ export default function DashboardPage() {
         <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
           Dashboard
         </h1>
-
-        <p className="mt-3 max-w-xl text-sm leading-6 text-stone-300">
-          A quick snapshot of available money, upcoming bills, credit cards,
-          and savings.
-        </p>
       </header>
 
-      <section className="mb-5 rounded-[2rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15 sm:p-6">
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <div className="mb-3 flex items-center gap-3">
-              <span className="h-2 w-2 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.25)]" />
+      <section className="mb-5 overflow-hidden rounded-[2.25rem] border border-[#c7ad75]/20 bg-[#1d1b17] shadow-2xl shadow-black/25">
+        <div className="relative p-5 sm:p-7">
+          <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#c7ad75]/10 blur-3xl" />
+          <div className="absolute -bottom-20 left-10 h-44 w-44 rounded-full bg-[#f5f0e8]/5 blur-3xl" />
 
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f5f0e8]">
-                Available After Bills
+          <div className="relative mb-7 flex items-start justify-between gap-4">
+            <div>
+              <div className="mb-3 flex items-center gap-3">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.35)]" />
+
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f5f0e8]">
+                  Available After Bills
+                </p>
+              </div>
+
+              <p className="text-sm text-stone-400">
+                What&apos;s left after upcoming bills.
               </p>
             </div>
 
-            <p className="text-sm leading-6 text-stone-400">
-              Checking balance minus bills due within 7 days
-            </p>
+            <Pill>{formatSavedTime(lastSaved)}</Pill>
           </div>
 
-          <Pill>{formatSavedTime(lastSaved)}</Pill>
+          <p className="relative break-words text-6xl font-bold tracking-tight text-[#f5f0e8] sm:text-7xl">
+            {formatMoney(moneyLeftAfterBills)}
+          </p>
+
+          <div className="relative mt-7 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <MiniHeroStat
+              label="Checking"
+              value={formatMoney(checkingBalance)}
+            />
+
+            <MiniHeroStat
+              label="Savings"
+              value={formatMoney(savingsBalance)}
+            />
+
+            <MiniHeroStat
+              label="Bills Due Soon"
+              value={String(upcomingBills.length)}
+              subtext="Within 7 days"
+            />
+          </div>
         </div>
-
-        <p className="break-words text-5xl font-bold tracking-tight text-[#f5f0e8] sm:text-7xl">
-          {formatMoney(moneyLeftAfterBills)}
-        </p>
-      </section>
-
-      <section className="mb-5 grid gap-3">
-        <MobileStat
-          label="Checking"
-          detail="Current saved balance"
-          value={formatMoney(checkingBalance)}
-        />
-
-        <MobileStat
-          label="Upcoming Bills"
-          detail={`${upcomingBills.length} bill${
-            upcomingBills.length === 1 ? "" : "s"
-          } due within 7 days`}
-          value={formatMoney(upcomingBillTotal)}
-        />
-
-        <MobileStat
-          label="Credit Cards"
-          detail={`${cardUtilization}% utilization`}
-          value={formatMoney(cardBalanceTotal)}
-        />
-
-        <MobileStat
-          label="Savings"
-          detail="Current saved balance"
-          value={formatMoney(savingsBalance)}
-        />
       </section>
 
       <section className="grid gap-5">
-        <DashboardPanel title="Next Bills" href="/bills">
+        <section className="rounded-[1.65rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75]" />
+
+              <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
+                Next Bills
+              </h2>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowAllBills((current) => !current)}
+              className="rounded-full border border-[#f5f0e8]/10 px-3 py-1 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+            >
+              {showAllBills ? "Hide" : "See all"}
+            </button>
+          </div>
+
           {upcomingBills.length > 0 ? (
-            <div className="divide-y divide-[#f5f0e8]/10">
-              {upcomingBills.slice(0, 3).map((bill, index) => (
-                <div
-                  key={`dashboard-bill-${index}`}
-                  className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold text-[#f5f0e8]">
-                      {bill.name || "Untitled Bill"}
-                    </p>
-
-                    <p className="mt-1 text-sm text-stone-400">
-                      Due {bill.dueDate || "TBD"}
-                    </p>
-                  </div>
-
-                  <p className="shrink-0 font-bold text-[#f5f0e8]">
-                    {formatMoney(parseMoney(bill.amount))}
-                  </p>
-                </div>
+            <div className="grid gap-3">
+              {upcomingBills.map((bill, index) => (
+                <BillPreviewRow
+                  key={`dashboard-upcoming-bill-${index}`}
+                  bill={bill}
+                />
               ))}
             </div>
           ) : (
-            <p className="text-sm leading-6 text-stone-400">
-              No bills due within the next 7 days.
-            </p>
+            <EmptyPreview
+              title="No bills due soon"
+              text="You have nothing due within the next 7 days."
+            />
           )}
-        </DashboardPanel>
 
-        <DashboardPanel title="Credit Cards" href="/cards">
-          {manualCards.length > 0 ? (
-            <div className="divide-y divide-[#f5f0e8]/10">
-              {manualCards.slice(0, 3).map((card, index) => {
-                const balance = parseMoney(card.balance);
-                const limit = parseMoney(card.limit);
-                const utilization =
-                  limit > 0 ? Math.round((balance / limit) * 100) : 0;
+          {showAllBills && (
+            <div className="mt-4 border-t border-[#f5f0e8]/10 pt-4">
+              <div className="mb-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c7ad75]/75">
+                  Other Bills
+                </p>
+              </div>
 
-                return (
-                  <div
-                    key={`dashboard-card-${index}`}
-                    className="py-4 first:pt-0 last:pb-0"
-                  >
-                    <div className="mb-3 flex items-center justify-between gap-4">
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-[#f5f0e8]">
-                          {card.name || "Untitled Card"}
-                        </p>
+              {otherBills.length > 0 ? (
+                <div className="grid gap-3">
+                  {otherBills.map((bill, index) => (
+                    <BillPreviewRow
+                      key={`dashboard-other-bill-${index}`}
+                      bill={bill}
+                      muted
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-stone-400">
+                  No other bills to show yet.
+                </p>
+              )}
 
-                        <p className="mt-1 text-sm text-stone-400">
-                          {utilization}% utilization
+              <Link
+                href="/bills"
+                className="mt-3 flex rounded-2xl border border-[#f5f0e8]/10 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+              >
+                <span className="w-full">Open Bills</span>
+              </Link>
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-[1.65rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15">
+          <button
+            type="button"
+            onClick={() => setShowCards((current) => !current)}
+            className="flex w-full items-center justify-between gap-4 text-left"
+          >
+            <div className="min-w-0">
+              <div className="mb-3 flex items-center gap-3">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75]" />
+
+                <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
+                  Credit Cards
+                </h2>
+              </div>
+
+              <p className="text-sm text-stone-400">
+                {manualCards.length} card{manualCards.length === 1 ? "" : "s"}{" "}
+                tracked • {cardUtilization}% used
+              </p>
+            </div>
+
+            <span className="rounded-full border border-[#f5f0e8]/10 px-3 py-1 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]">
+              {showCards ? "Hide" : "View"}
+            </span>
+          </button>
+
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <CompactStat
+              label="Balance"
+              value={formatMoney(cardBalanceTotal)}
+            />
+
+            <CompactStat
+              label="Credit Left"
+              value={formatMoney(availableCredit)}
+            />
+          </div>
+
+          {showCards && (
+            <div className="mt-4 grid gap-3 border-t border-[#f5f0e8]/10 pt-4">
+              {manualCards.length > 0 ? (
+                manualCards.map((card, index) => {
+                  const balance = parseMoney(card.balance);
+                  const limit = parseMoney(card.limit);
+                  const utilization =
+                    limit > 0 ? Math.round((balance / limit) * 100) : 0;
+
+                  return (
+                    <div
+                      key={`dashboard-card-${index}`}
+                      className="rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4"
+                    >
+                      <div className="mb-3 flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="truncate text-base font-semibold text-[#f5f0e8]">
+                            {card.name || "Untitled Card"}
+                          </p>
+
+                          <p className="mt-1 text-sm text-stone-400">
+                            {utilization}% used
+                          </p>
+                        </div>
+
+                        <p className="shrink-0 text-lg font-bold text-[#f5f0e8]">
+                          {formatMoney(balance)}
                         </p>
                       </div>
 
-                      <p className="shrink-0 font-bold text-[#f5f0e8]">
-                        {formatMoney(balance)}
-                      </p>
+                      <div className="h-2 overflow-hidden rounded-full bg-black/30">
+                        <div
+                          className="h-full rounded-full bg-[#c7ad75]"
+                          style={{ width: `${Math.min(utilization, 100)}%` }}
+                        />
+                      </div>
                     </div>
+                  );
+                })
+              ) : (
+                <EmptyPreview
+                  title="No credit cards yet"
+                  text="Add a card in the Editor to track utilization."
+                />
+              )}
 
-                    <div className="h-2 overflow-hidden rounded-full bg-black/30">
-                      <div
-                        className="h-full rounded-full bg-[#c7ad75]"
-                        style={{ width: `${Math.min(utilization, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+              <Link
+                href="/cards"
+                className="rounded-2xl border border-[#f5f0e8]/10 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+              >
+                Open Credit Cards
+              </Link>
             </div>
-          ) : (
-            <p className="text-sm leading-6 text-stone-400">
-              No credit cards added yet.
-            </p>
           )}
-        </DashboardPanel>
-
-        <section className="rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15">
-          <div className="mb-4 flex items-center gap-3">
-            <span className="h-2 w-2 rounded-full bg-[#c7ad75]" />
-
-            <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
-              Beta Reminder
-            </h2>
-          </div>
-
-          <p className="text-sm leading-6 text-stone-300">
-            This version is built for testing the tracking experience. Use
-            bills, balances, and due dates only. Avoid entering full card
-            numbers, passwords, or sensitive account details.
-          </p>
         </section>
       </section>
     </PageShell>
   );
 }
 
-function MobileStat({
+function MiniHeroStat({
   label,
-  detail,
   value,
+  subtext,
 }: {
   label: string;
-  detail: string;
   value: string;
+  subtext?: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-[1.4rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-4 shadow-xl shadow-black/15">
-      <div className="min-w-0">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
-          {label}
-        </p>
+    <div className="rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#11100d]/75 p-4 backdrop-blur">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
+        {label}
+      </p>
 
-        <p className="mt-1 truncate text-sm text-stone-300">{detail}</p>
-      </div>
+      <p className="mt-2 truncate text-lg font-bold text-[#f5f0e8]">{value}</p>
 
-      <p className="shrink-0 text-xl font-bold text-[#f5f0e8]">{value}</p>
+      {subtext ? (
+        <p className="mt-1 text-sm text-stone-400">{subtext}</p>
+      ) : null}
     </div>
   );
 }
 
-function DashboardPanel({
-  title,
-  href,
-  children,
+function BillPreviewRow({
+  bill,
+  muted = false,
 }: {
-  title: string;
-  href: string;
-  children: React.ReactNode;
+  bill: ManualBill;
+  muted?: boolean;
 }) {
   return (
-    <section className="rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15">
-      <div className="mb-4 flex items-center justify-between gap-4 border-b border-[#f5f0e8]/10 pb-4">
-        <div className="flex items-center gap-3">
-          <span className="h-2 w-2 rounded-full bg-[#c7ad75]" />
+    <div className="rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4">
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p
+            className={`truncate text-base font-semibold ${
+              muted ? "text-stone-300" : "text-[#f5f0e8]"
+            }`}
+          >
+            {bill.name || "Untitled Bill"}
+          </p>
 
-          <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
-            {title}
-          </h2>
+          <p className="mt-1 text-sm text-stone-400">
+            Due {bill.dueDate || "TBD"}
+          </p>
         </div>
 
-        <Link
-          href={href}
-          className="text-sm text-stone-300 transition hover:text-[#f5f0e8]"
+        <p
+          className={`shrink-0 text-lg font-bold ${
+            muted ? "text-stone-300" : "text-[#f5f0e8]"
+          }`}
         >
-          See all
-        </Link>
+          {formatMoney(parseMoney(bill.amount))}
+        </p>
       </div>
+    </div>
+  );
+}
 
-      {children}
-    </section>
+function CompactStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1.15rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/70">
+        {label}
+      </p>
+
+      <p className="mt-2 truncate text-lg font-bold text-[#f5f0e8]">{value}</p>
+    </div>
+  );
+}
+
+function EmptyPreview({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="rounded-[1.25rem] border border-dashed border-[#f5f0e8]/12 bg-[#25231e] p-4">
+      <p className="font-semibold text-[#f5f0e8]">{title}</p>
+
+      <p className="mt-2 text-sm leading-6 text-stone-400">{text}</p>
+    </div>
   );
 }
