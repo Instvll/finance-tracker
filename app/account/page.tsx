@@ -27,7 +27,7 @@ const planLastSavedStorageKey = "finance-tracker-paycheck-plan-last-saved";
 
 function formatSavedTime(value?: string | null) {
   if (!value) {
-    return "Not saved yet";
+    return "No backup yet";
   }
 
   return new Intl.DateTimeFormat("en-US", {
@@ -69,7 +69,7 @@ export default function AccountPage() {
       const { data, error } = await supabase.auth.getUser();
 
       if (error || !data.user) {
-        setStatus("You are not logged in.");
+        setStatus("Signed out");
         setEmail("");
         setUserId("");
         return;
@@ -77,7 +77,7 @@ export default function AccountPage() {
 
       setEmail(data.user.email || "");
       setUserId(data.user.id);
-      setStatus("Logged in");
+      setStatus("Signed in");
 
       const { data: cloudData } = await supabase
         .from("finance_data")
@@ -99,9 +99,9 @@ export default function AccountPage() {
     window.location.href = "/login";
   }
 
-  async function saveToCloud() {
+  async function backupThisDevice() {
     if (!userId) {
-      setMessage("You need to log in before saving to cloud.");
+      setMessage("Log in before backing up this device.");
       return;
     }
 
@@ -137,18 +137,18 @@ export default function AccountPage() {
     }
 
     setCloudUpdatedAt(data.updated_at);
-    setMessage("Saved your current browser data to cloud.");
+    setMessage("Backup complete. This device's saved data is now backed up.");
     setIsWorking(false);
   }
 
-  async function loadFromCloud() {
+  async function restoreBackup() {
     if (!userId) {
-      setMessage("You need to log in before loading cloud data.");
+      setMessage("Log in before restoring a backup.");
       return;
     }
 
     const confirmed = window.confirm(
-      "Load cloud data onto this browser? This will replace the saved finance data on this device."
+      "Restore your backup onto this device? This will replace the saved finance data currently on this browser."
     );
 
     if (!confirmed) {
@@ -171,7 +171,7 @@ export default function AccountPage() {
     }
 
     if (!data) {
-      setMessage("No cloud data found yet. Save to cloud first.");
+      setMessage("No backup found yet. Back up a device first.");
       setIsWorking(false);
       return;
     }
@@ -193,9 +193,7 @@ export default function AccountPage() {
     }
 
     setCloudUpdatedAt(data.updated_at || null);
-    setMessage(
-      "Loaded cloud data onto this browser. Refresh the dashboard to see it."
-    );
+    setMessage("Backup restored. Refresh the dashboard to see your data.");
     setIsWorking(false);
   }
 
@@ -209,47 +207,43 @@ export default function AccountPage() {
         </p>
 
         <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
-          Your Account
+          Account
         </h1>
 
         <p className="mt-3 max-w-xl text-sm leading-6 text-stone-300">
-          Save your finance tracker data to the cloud and load it on another
-          device.
+          Manage your sign-in and keep a backup of your finance tracker data.
         </p>
       </header>
 
       <section className="mb-5 rounded-[2rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10 sm:p-6">
-        <div className="mb-5 flex items-center justify-between gap-4">
+        <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">
-              Status
-            </p>
+            <div className="mb-3 flex items-center gap-3">
+              <span className="h-2 w-2 rounded-full bg-stone-100/70 shadow-[0_0_14px_rgba(245,240,232,0.2)]" />
 
-            <h2 className="mt-2 text-2xl font-bold text-[#f5f0e8]">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-300">
+                Account Status
+              </p>
+            </div>
+
+            <h2 className="text-3xl font-bold tracking-tight text-[#f5f0e8]">
               {status}
             </h2>
+
+            <p className="mt-3 text-sm leading-6 text-stone-400">
+              {email
+                ? "Your account is connected on this device."
+                : "Log in when you are ready to use backup and restore."}
+            </p>
           </div>
 
-          <Pill>{email ? "Active" : "Guest"}</Pill>
+          <Pill>{email ? "Connected" : "Guest"}</Pill>
         </div>
 
         {email ? (
           <div className="space-y-4">
-            <div className="rounded-2xl border border-stone-300/20 bg-[#2b2925] p-4">
-              <p className="text-sm text-stone-400">Email</p>
-
-              <p className="mt-1 break-words text-lg font-semibold text-[#f5f0e8]">
-                {email}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-stone-300/20 bg-[#2b2925] p-4">
-              <p className="text-sm text-stone-400">Cloud backup</p>
-
-              <p className="mt-1 text-lg font-semibold text-[#f5f0e8]">
-                {formatSavedTime(cloudUpdatedAt)}
-              </p>
-            </div>
+            <InfoCard label="Signed in as" value={email} />
+            <InfoCard label="Last backup" value={formatSavedTime(cloudUpdatedAt)} />
 
             {message && (
               <div className="rounded-2xl border border-stone-300/20 bg-[#171614] p-4">
@@ -260,20 +254,20 @@ export default function AccountPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               <button
                 type="button"
-                onClick={saveToCloud}
+                onClick={backupThisDevice}
                 disabled={isWorking}
                 className="rounded-2xl border border-stone-100/20 bg-stone-100/10 px-5 py-4 text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isWorking ? "Working..." : "Save to Cloud"}
+                {isWorking ? "Working..." : "Back Up This Device"}
               </button>
 
               <button
                 type="button"
-                onClick={loadFromCloud}
+                onClick={restoreBackup}
                 disabled={isWorking}
                 className="rounded-2xl border border-stone-300/20 px-5 py-4 text-sm font-semibold text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Load from Cloud
+                Restore Backup
               </button>
             </div>
 
@@ -283,30 +277,70 @@ export default function AccountPage() {
               disabled={isWorking}
               className="w-full rounded-2xl border border-stone-300/20 px-5 py-4 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isWorking ? "Logging out..." : "Logout"}
+              {isWorking ? "Signing out..." : "Sign Out"}
             </button>
           </div>
         ) : (
-          <Link
-            href="/login"
-            className="block rounded-2xl border border-stone-100/20 bg-stone-100/10 px-5 py-4 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
-          >
-            Go to login
-          </Link>
+          <div className="grid gap-3">
+            <Link
+              href="/login"
+              className="block rounded-2xl border border-stone-100/20 bg-stone-100/10 px-5 py-4 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
+            >
+              Log In
+            </Link>
+
+            <Link
+              href="/signup"
+              className="block rounded-2xl border border-stone-300/20 px-5 py-4 text-center text-sm font-semibold text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
+            >
+              Create Account
+            </Link>
+          </div>
         )}
       </section>
 
       <section className="rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-100">
-          How this works
-        </h2>
+        <div className="mb-4 flex items-center gap-3">
+          <span className="h-2 w-2 rounded-full bg-stone-100/60" />
 
-        <p className="mt-4 text-sm leading-6 text-stone-300">
-          Save to Cloud uploads the finance data currently saved in this
-          browser. Load from Cloud downloads your saved account data onto the
-          device you are using.
-        </p>
+          <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-100">
+            Backup
+          </h2>
+        </div>
+
+        <div className="space-y-3 text-sm leading-6 text-stone-300">
+          <p>
+            <span className="font-semibold text-[#f5f0e8]">
+              Back Up This Device
+            </span>{" "}
+            saves the finance data currently stored on this browser.
+          </p>
+
+          <p>
+            <span className="font-semibold text-[#f5f0e8]">
+              Restore Backup
+            </span>{" "}
+            brings your saved backup onto the device you are using.
+          </p>
+
+          <p className="text-stone-400">
+            For now, backup is manual so you stay in control of when data moves
+            between devices.
+          </p>
+        </div>
       </section>
     </PageShell>
+  );
+}
+
+function InfoCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-stone-300/20 bg-[#2b2925] p-4">
+      <p className="text-sm text-stone-400">{label}</p>
+
+      <p className="mt-1 break-words text-lg font-semibold text-[#f5f0e8]">
+        {value}
+      </p>
+    </div>
   );
 }
