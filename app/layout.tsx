@@ -1,13 +1,24 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import AuthGate from "../components/AuthGate";
 
 export const metadata: Metadata = {
   title: "leftovr",
   description: "A simple personal finance tracker.",
+  manifest: "/manifest.json",
   icons: {
     icon: "/icon.svg",
+    apple: "/icon.svg",
   },
+  appleWebApp: {
+    capable: true,
+    title: "leftovr",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#11100d",
 };
 
 export default function RootLayout({
