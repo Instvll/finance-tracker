@@ -60,7 +60,7 @@ function readCardsStorage() {
 export default function CardsPage() {
   const [manualCards, setManualCards] =
     useState<ManualCreditCard[]>(defaultManualCards);
-  const [showCardList, setShowCardList] = useState(true);
+  const [showCardList, setShowCardList] = useState(false);
 
   useEffect(() => {
     setManualCards(readCardsStorage());
@@ -87,121 +87,126 @@ export default function CardsPage() {
     <PageShell>
       <TopNav />
 
-      <header className="mb-5">
-        <div className="mb-3 flex items-center justify-between gap-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
-            Card Tracker
-          </p>
+      <div className="min-h-[70vh]">
+        <header className="mb-5">
+          <div className="mb-3 flex items-center justify-between gap-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
+              Card Tracker
+            </p>
 
-          <Pill>v1.0 Beta</Pill>
-        </div>
+            <Pill>v1.0 Beta</Pill>
+          </div>
 
-        <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
-          Credit Cards
-        </h1>
-      </header>
+          <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
+            Credit Cards
+          </h1>
+        </header>
 
-      <section className="mb-5 overflow-hidden rounded-[2.25rem] border border-[#c7ad75]/20 bg-[#1d1b17] shadow-2xl shadow-black/25">
-        <div className="relative p-5 sm:p-7">
-          <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#c7ad75]/10 blur-3xl" />
-          <div className="absolute -bottom-20 left-10 h-44 w-44 rounded-full bg-[#f5f0e8]/5 blur-3xl" />
+        <section className="mb-5 overflow-hidden rounded-[2.25rem] border border-[#c7ad75]/20 bg-[#1d1b17] shadow-2xl shadow-black/25">
+          <div className="relative p-5 sm:p-7">
+            <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#c7ad75]/10 blur-3xl" />
+            <div className="absolute -bottom-20 left-10 h-44 w-44 rounded-full bg-[#f5f0e8]/5 blur-3xl" />
 
-          <div className="relative mb-7 flex items-start justify-between gap-4">
-            <div>
-              <div className="mb-3 flex items-center gap-3">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.35)]" />
+            <div className="relative mb-7 flex items-start justify-between gap-4">
+              <div>
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.35)]" />
 
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f5f0e8]">
-                  Card Balance
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f5f0e8]">
+                    Card Balance
+                  </p>
+                </div>
+
+                <p className="text-sm text-stone-400">
+                  Total balance across tracked cards.
                 </p>
               </div>
 
-              <p className="text-sm text-stone-400">
-                Total balance across tracked cards.
-              </p>
+              <Pill>{utilization}% used</Pill>
             </div>
 
-            <Pill>{utilization}% used</Pill>
+            <p className="relative break-words text-6xl font-bold tracking-tight text-[#f5f0e8] sm:text-7xl">
+              {formatMoney(totalBalance)}
+            </p>
+
+            <div className="relative mt-7 h-2 overflow-hidden rounded-full bg-black/30">
+              <div
+                className="h-full rounded-full bg-[#c7ad75]"
+                style={{ width: `${Math.min(utilization, 100)}%` }}
+              />
+            </div>
+
+            <div className="relative mt-7 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <MiniStat
+                label="Credit Left"
+                value={formatMoney(availableCredit)}
+              />
+              <MiniStat label="Total Limit" value={formatMoney(totalLimit)} />
+              <MiniStat label="Cards" value={String(manualCards.length)} />
+            </div>
           </div>
+        </section>
 
-          <p className="relative break-words text-6xl font-bold tracking-tight text-[#f5f0e8] sm:text-7xl">
-            {formatMoney(totalBalance)}
-          </p>
+        <section className="grid gap-5">
+          <section className="rounded-[1.65rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15">
+            <button
+              type="button"
+              onClick={() => setShowCardList((current) => !current)}
+              className="flex w-full items-center justify-between gap-4 text-left"
+            >
+              <div className="min-w-0">
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75]" />
 
-          <div className="relative mt-7 h-2 overflow-hidden rounded-full bg-black/30">
-            <div
-              className="h-full rounded-full bg-[#c7ad75]"
-              style={{ width: `${Math.min(utilization, 100)}%` }}
-            />
-          </div>
+                  <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
+                    Card List
+                  </h2>
+                </div>
 
-          <div className="relative mt-7 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <MiniStat label="Credit Left" value={formatMoney(availableCredit)} />
-            <MiniStat label="Total Limit" value={formatMoney(totalLimit)} />
-            <MiniStat label="Cards" value={String(manualCards.length)} />
-          </div>
-        </div>
-      </section>
-
-      <section className="grid gap-5">
-        <section className="rounded-[1.65rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15">
-          <button
-            type="button"
-            onClick={() => setShowCardList((current) => !current)}
-            className="flex w-full items-center justify-between gap-4 text-left"
-          >
-            <div className="min-w-0">
-              <div className="mb-3 flex items-center gap-3">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75]" />
-
-                <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
-                  Card List
-                </h2>
+                <p className="text-sm text-stone-400">
+                  {hasCards
+                    ? `${manualCards.length} card${
+                        manualCards.length === 1 ? "" : "s"
+                      } tracked.`
+                    : "No cards added yet."}
+                </p>
               </div>
 
-              <p className="text-sm text-stone-400">
-                {hasCards
-                  ? `${manualCards.length} card${
-                      manualCards.length === 1 ? "" : "s"
-                    } tracked.`
-                  : "No cards added yet."}
-              </p>
-            </div>
+              <span className="shrink-0 rounded-full border border-[#f5f0e8]/10 px-3 py-1 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]">
+                {showCardList ? "Hide" : "View"}
+              </span>
+            </button>
 
-            <span className="shrink-0 rounded-full border border-[#f5f0e8]/10 px-3 py-1 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]">
-              {showCardList ? "Hide" : "View"}
-            </span>
-          </button>
+            {showCardList && (
+              <div className="mt-4 border-t border-[#f5f0e8]/10 pt-4">
+                {manualCards.length > 0 ? (
+                  <div className="grid gap-3">
+                    {manualCards.map((card, index) => (
+                      <CreditCardRow key={`card-${index}`} card={card} />
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState
+                    title="No credit cards yet"
+                    text="Add your first card in the Editor to start tracking balances, limits, and utilization."
+                    actionLabel="Add Card"
+                    actionHref="/manual?tab=cards"
+                  />
+                )}
 
-          {showCardList && (
-            <div className="mt-4 border-t border-[#f5f0e8]/10 pt-4">
-              {manualCards.length > 0 ? (
-                <div className="grid gap-3">
-                  {manualCards.map((card, index) => (
-                    <CreditCardRow key={`card-${index}`} card={card} />
-                  ))}
-                </div>
-              ) : (
-                <EmptyState
-                  title="No credit cards yet"
-                  text="Add your first card in the Editor to start tracking balances, limits, and utilization."
-                  actionLabel="Add Card"
-                  actionHref="/manual?tab=cards"
-                />
-              )}
-
-              {manualCards.length > 0 && (
-                <Link
-                  href="/manual?tab=cards"
-                  className="mt-4 flex rounded-2xl border border-[#f5f0e8]/10 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
-                >
-                  <span className="w-full">Edit Credit Cards</span>
-                </Link>
-              )}
-            </div>
-          )}
+                {manualCards.length > 0 && (
+                  <Link
+                    href="/manual?tab=cards"
+                    className="mt-4 flex rounded-2xl border border-[#f5f0e8]/10 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+                  >
+                    <span className="w-full">Edit Credit Cards</span>
+                  </Link>
+                )}
+              </div>
+            )}
+          </section>
         </section>
-      </section>
+      </div>
     </PageShell>
   );
 }
