@@ -315,54 +315,37 @@ export default function ManualPage() {
         </p>
       </header>
 
-      <section className="mb-5 rounded-[2rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10 sm:p-6">
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <div className="mb-3 flex items-center gap-3">
-              <span className="h-2 w-2 rounded-full bg-stone-100/70 shadow-[0_0_14px_rgba(245,240,232,0.2)]" />
+      <section className="mb-5 rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-4 shadow-xl shadow-black/10">
+  <div className="flex items-center justify-between gap-3">
+    <div className="min-w-0">
+      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
+        Editor Status
+      </p>
 
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-300">
-                Live Preview
-              </p>
-            </div>
+      <p className="mt-1 truncate text-sm text-stone-300">
+        {saveMessage || formatSavedTime(lastSaved)}
+      </p>
+    </div>
 
-            <p className="text-sm leading-6 text-stone-400">
-              Money left after unpaid bills
-            </p>
-          </div>
+    <div className="flex shrink-0 gap-2">
+      <button
+        type="button"
+        onClick={resetEditor}
+        className="rounded-2xl border border-stone-300/20 px-4 py-3 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
+      >
+        Reset
+      </button>
 
-          <Pill>{saveMessage || formatSavedTime(lastSaved)}</Pill>
-        </div>
-
-        <p className="break-words text-5xl font-bold tracking-tight text-[#f5f0e8] sm:text-7xl">
-          {formatMoney(moneyLeftAfterBills)}
-        </p>
-
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <PreviewStat label="Checking" value={formatMoney(checkingBalance)} />
-          <PreviewStat label="Bills" value={formatMoney(unpaidBillTotal)} />
-          <PreviewStat label="Credit" value={formatMoney(cardBalanceTotal)} />
-          <PreviewStat label="Savings" value={formatMoney(savingsBalance)} />
-        </div>
-
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={saveAll}
-            className="rounded-2xl border border-stone-100/20 bg-stone-100/10 px-4 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
-          >
-            Save Everything
-          </button>
-
-          <button
-            type="button"
-            onClick={resetEditor}
-            className="rounded-2xl border border-stone-300/20 px-4 py-3 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
-          >
-            Reset
-          </button>
-        </div>
-      </section>
+      <button
+        type="button"
+        onClick={saveAll}
+        className="rounded-2xl border border-stone-100/20 bg-stone-100/10 px-4 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
+      >
+        Save
+      </button>
+    </div>
+  </div>
+</section>
 
       <section className="sticky top-3 z-20 mb-5 rounded-[1.5rem] border border-stone-300/20 bg-[#1f1e1b]/95 p-2 shadow-xl shadow-black/20 backdrop-blur">
         <div className="grid grid-cols-3 gap-2">
@@ -523,26 +506,26 @@ export default function ManualPage() {
       )}
 
       <div className="sticky bottom-4 z-30 mt-6 rounded-[1.5rem] border border-stone-300/20 bg-[#1f1e1b]/95 p-3 shadow-2xl shadow-black/30 backdrop-blur">
-        <div className="flex items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs uppercase tracking-[0.2em] text-stone-500">
-              Money Left
-            </p>
+  <div className="flex items-center gap-3">
+    <div className="min-w-0 flex-1">
+      <p className="truncate text-xs uppercase tracking-[0.2em] text-stone-500">
+        Changes
+      </p>
 
-            <p className="truncate text-xl font-bold text-[#f5f0e8]">
-              {formatMoney(moneyLeftAfterBills)}
-            </p>
-          </div>
+      <p className="truncate text-sm font-medium text-stone-300">
+        {saveMessage || "Save when you are done editing."}
+      </p>
+    </div>
 
-          <button
-            type="button"
-            onClick={saveAll}
-            className="rounded-2xl border border-stone-100/20 bg-stone-100/10 px-5 py-3 text-sm font-semibold text-[#f5f0e8]"
-          >
-            Save
-          </button>
-        </div>
-      </div>
+    <button
+      type="button"
+      onClick={saveAll}
+      className="rounded-2xl border border-stone-100/20 bg-stone-100/10 px-5 py-3 text-sm font-semibold text-[#f5f0e8]"
+    >
+      Save
+    </button>
+  </div>
+</div>
     </PageShell>
   );
 }
