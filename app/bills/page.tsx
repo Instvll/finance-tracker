@@ -75,9 +75,13 @@ export default function BillsPage() {
       <TopNav />
 
       <header className="mb-5">
-  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.35em] text-stone-400">
-    Finance Tracker
-  </p>
+  <div className="mb-3 flex items-center justify-between gap-4">
+    <p className="text-xs font-semibold uppercase tracking-[0.35em] text-stone-400">
+      Bill Tracker
+    </p>
+
+    <Pill>v1.0 Beta</Pill>
+  </div>
 
   <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
     Bills

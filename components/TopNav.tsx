@@ -26,22 +26,16 @@ export default function TopNav() {
           COHL
         </Link>
 
-        <div className="hidden items-center gap-2 md:flex">
-          <span className="rounded-full border border-stone-100/15 bg-stone-100/8 px-3 py-1 text-xs font-semibold text-stone-100/80">
-            v1.0 Beta
-          </span>
-
-          <div className="flex items-center gap-1 rounded-full border border-stone-300/15 bg-black/10 p-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="rounded-full px-4 py-2 text-sm text-stone-300 transition hover:bg-stone-100/10 hover:text-stone-100"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
+        <div className="hidden items-center gap-1 rounded-full border border-stone-300/15 bg-black/10 p-1 md:flex">
+          {navItems.map((item) => (
+            <Link
+              key={item.label}
+              href={item.href}
+              className="rounded-full px-4 py-2 text-sm text-stone-300 transition hover:bg-stone-100/10 hover:text-stone-100"
+            >
+              {item.label}
+            </Link>
+          ))}
         </div>
 
         <button
@@ -56,10 +50,6 @@ export default function TopNav() {
 
       {isOpen && (
         <div className="mt-4 rounded-[1.25rem] border border-stone-300/15 bg-[#171614] p-2 md:hidden">
-          <div className="mb-2 rounded-2xl border border-stone-300/15 bg-stone-100/5 px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-stone-400">
-            v1.0 Beta
-          </div>
-
           <div className="grid gap-1">
             {navItems.map((item) => (
               <Link
