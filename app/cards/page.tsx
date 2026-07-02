@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import TopNav from "@/components/TopNav";
-import { Card, PageHeader, PageShell, Pill } from "@/components/Layout";
+import Link from "next/link";
+import TopNav from "../../components/TopNav";
+import { PageShell, Pill } from "../../components/Layout";
 import { creditCards } from "../../data/bandData";
 
 type ManualCreditCard = {
@@ -27,7 +28,12 @@ const defaultManualCards: ManualCreditCard[] = creditCards.map((card) => ({
 
 function parseMoney(value: string) {
   const numberValue = Number(value);
-  return Number.isNaN(numberValue) ? 0 : numberValue;
+
+  if (Number.isNaN(numberValue)) {
+    return 0;
+  }
+
+  return numberValue;
 }
 
 function formatMoney(amount: number) {
@@ -59,124 +65,245 @@ export default function CardsPage() {
     0
   );
 
-  const overallUtilization =
+  const availableCredit = totalLimit - totalBalance;
+
+  const utilization =
     totalLimit > 0 ? Math.round((totalBalance / totalLimit) * 100) : 0;
+
+  const watchCards = manualCards.filter(
+    (card) => card.status === "Watch" || card.status === "Pay Down"
+  );
 
   return (
     <PageShell>
       <TopNav />
 
-      <PageHeader
-        eyebrow="Credit"
-        title="Credit Cards"
-        description="Track card balances, limits, due dates, minimum payments, and utilization."
-      />
+      <header className="mb-4">
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-stone-400">
+            Card Tracker
+          </p>
 
-      <section className="mb-8 grid gap-4 md:grid-cols-3">
-        <SummaryCard
-          label="Total Balance"
-          value={formatMoney(totalBalance)}
+          <Pill>v1.0 Beta</Pill>
+        </div>
+
+        <p className="max-w-xl text-sm leading-6 text-stone-300">
+          Track balances, limits, utilization, and upcoming payments.
+        </p>
+      </header>
+
+      <section className="mb-5 rounded-[2rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10 sm:p-6">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <div className="mb-3 flex items-center gap-3">
+              <span className="h-2 w-2 rounded-full bg-stone-100/70 shadow-[0_0_14px_rgba(245,240,232,0.2)]" />
+
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-300">
+                Total Card Balance
+              </p>
+            </div>
+
+            <p className="text-sm leading-6 text-stone-400">
+              Combined balance across tracked cards
+            </p>
+          </div>
+
+          <Pill>{utilization}% used</Pill>
+        </div>
+
+        <p className="break-words text-5xl font-bold tracking-tight text-[#f5f0e8] sm:text-7xl">
+          {formatMoney(totalBalance)}
+        </p>
+
+        <div className="mt-5 h-2 overflow-hidden rounded-full bg-black/25">
+          <div
+            className="h-full rounded-full bg-stone-100/55"
+            style={{ width: `${Math.min(utilization, 100)}%` }}
+          />
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <Link
+            href="/manual"
+            className="rounded-2xl border border-stone-100/20 bg-stone-100/10 px-4 py-3 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
+          >
+            Edit Cards
+          </Link>
+
+          <Link
+            href="/"
+            className="rounded-2xl border border-stone-300/20 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
+          >
+            Dashboard
+          </Link>
+        </div>
+      </section>
+
+      <section className="mb-5 grid gap-3">
+        <MobileStat
+          label="Available Credit"
+          value={formatMoney(availableCredit)}
+          detail="Limit minus current balance"
         />
-        <SummaryCard label="Total Limit" value={formatMoney(totalLimit)} />
-        <SummaryCard
-          label="Utilization"
-          value={`${overallUtilization}%`}
+
+        <MobileStat
+          label="Total Limit"
+          value={formatMoney(totalLimit)}
+          detail={`${manualCards.length} card${
+            manualCards.length === 1 ? "" : "s"
+          } tracked`}
+        />
+
+        <MobileStat
+          label="Watch"
+          value={String(watchCards.length)}
+          detail="Cards marked watch or pay down"
         />
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-2">
-        {manualCards.map((card) => {
-          const balance = parseMoney(card.balance);
-          const limit = parseMoney(card.limit);
-          const minimumPayment = parseMoney(card.minimumPayment);
-
-          const utilization =
-            limit > 0 ? Math.round((balance / limit) * 100) : 0;
-
-          return (
-            <Card key={card.name}>
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex flex-wrap gap-2">
-                  <Pill>{`Due: ${card.dueDate || "TBD"}`}</Pill>
-                </div>
-
-                <p className="text-3xl font-bold tracking-tight text-stone-100">
-                  {formatMoney(balance)}
-                </p>
-              </div>
-
-              <h2 className="mt-4 text-2xl font-bold tracking-tight text-stone-100">
-                {card.name}
-              </h2>
-
-              <div className="mt-6 space-y-4 border-t border-stone-300/10 pt-5">
-                <InfoRow
-                  label="Credit Limit"
-                  value={formatMoney(limit)}
-                />
-                <InfoRow
-                  label="Minimum Payment"
-                  value={formatMoney(minimumPayment)}
-                />
-                <InfoRow
-                  label="Utilization"
-                  value={`${utilization}%`}
-                />
-                <InfoRow
-                  label="Balance Used"
-                  value={`${utilization}%`}
-                />
-              </div>
-
-              <div className="mt-5">
-                <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.2em] text-stone-500">
-                  <span>Balance Used</span>
-                  <span>{utilization}%</span>
-                </div>
-
-                <div className="h-2 overflow-hidden rounded-full bg-black/25">
-                  <div
-                    className="h-full rounded-full bg-stone-300/70"
-                    style={{ width: `${Math.min(utilization, 100)}%` }}
-                  />
-                </div>
-              </div>
-            </Card>
-          );
-        })}
+      <section className="grid gap-5">
+        <CardSection
+          title="Credit Cards"
+          description="These cards are included in your dashboard balance and utilization."
+        >
+          {manualCards.length > 0 ? (
+            <div className="space-y-4">
+              {manualCards.map((card, index) => (
+                <CreditCardRow key={`card-${index}`} card={card} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              title="No cards yet"
+              text="Add a card in the Editor to start tracking credit balances."
+            />
+          )}
+        </CardSection>
       </section>
     </PageShell>
   );
 }
 
-function SummaryCard({
+function MobileStat({
   label,
   value,
+  detail,
 }: {
   label: string;
   value: string;
+  detail: string;
 }) {
   return (
-    <section className="rounded-[1.5rem] border border-stone-300/15 bg-[#161412] p-5 shadow-lg shadow-black/10">
-      <p className="text-sm text-stone-400">{label}</p>
-      <p className="mt-3 text-3xl font-bold tracking-tight text-stone-100">
-        {value}
-      </p>
+    <div className="flex items-center justify-between gap-4 rounded-[1.4rem] border border-stone-300/20 bg-[#23211d] p-4 shadow-xl shadow-black/10">
+      <div className="min-w-0">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
+          {label}
+        </p>
+
+        <p className="mt-1 truncate text-sm text-stone-400">{detail}</p>
+      </div>
+
+      <p className="shrink-0 text-xl font-bold text-[#f5f0e8]">{value}</p>
+    </div>
+  );
+}
+
+function CardSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10">
+      <div className="mb-4 border-b border-stone-300/15 pb-4">
+        <div className="flex items-center gap-3">
+          <span className="h-2 w-2 rounded-full bg-stone-100/60" />
+
+          <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-100">
+            {title}
+          </h2>
+        </div>
+
+        <p className="mt-3 text-sm leading-6 text-stone-400">{description}</p>
+      </div>
+
+      {children}
     </section>
   );
 }
 
-function InfoRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function CreditCardRow({ card }: { card: ManualCreditCard }) {
+  const balance = parseMoney(card.balance);
+  const limit = parseMoney(card.limit);
+  const minimumPayment = parseMoney(card.minimumPayment);
+  const utilization = limit > 0 ? Math.round((balance / limit) * 100) : 0;
+
   return (
-    <div className="flex items-center justify-between gap-4">
-      <span className="text-base text-stone-400">{label}</span>
-      <span className="text-base font-semibold text-stone-100">{value}</span>
+    <div className="rounded-[1.35rem] border border-stone-300/15 bg-[#2b2925] p-4">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="mb-2 flex flex-wrap gap-2">
+            <Pill>{utilization}% used</Pill>
+
+            <span className="rounded-full border border-stone-100/10 bg-stone-100/5 px-3 py-1 text-xs font-semibold text-stone-200/85">
+              Due {card.dueDate || "TBD"}
+            </span>
+          </div>
+
+          <p className="truncate text-lg font-semibold text-[#f5f0e8]">
+            {card.name || "Untitled Card"}
+          </p>
+
+          <p className="mt-1 truncate text-sm text-stone-400">
+            {card.status}
+          </p>
+        </div>
+
+        <p className="shrink-0 text-xl font-bold text-[#f5f0e8]">
+          {formatMoney(balance)}
+        </p>
+      </div>
+
+      <div className="mb-4 h-2 overflow-hidden rounded-full bg-black/25">
+        <div
+          className="h-full rounded-full bg-stone-100/55"
+          style={{ width: `${Math.min(utilization, 100)}%` }}
+        />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <InfoBox label="Limit" value={formatMoney(limit)} />
+        <InfoBox label="Minimum" value={formatMoney(minimumPayment)} />
+        <InfoBox label="Available" value={formatMoney(limit - balance)} />
+      </div>
+    </div>
+  );
+}
+
+function InfoBox({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-stone-300/15 bg-[#171614] p-4">
+      <p className="text-xs uppercase tracking-[0.2em] text-stone-500">
+        {label}
+      </p>
+
+      <p className="mt-2 break-words text-lg font-bold text-[#f5f0e8]">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function EmptyState({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="rounded-[1.25rem] border border-stone-300/15 bg-[#2b2925] p-5">
+      <p className="font-semibold text-[#f5f0e8]">{title}</p>
+
+      <p className="mt-2 text-sm leading-6 text-stone-400">{text}</p>
     </div>
   );
 }
