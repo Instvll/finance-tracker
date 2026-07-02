@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import TopNav from "../../components/TopNav";
-import { PageHeader, PageShell, Pill } from "../../components/Layout";
+import { PageShell, Pill } from "../../components/Layout";
 import { bills } from "../../data/bandData";
 
 type ManualBill = {
@@ -66,99 +66,127 @@ export default function BillsPage() {
     0
   );
 
-  const allBillsTotal = manualBills.reduce(
-    (total, bill) => total + parseMoney(bill.amount),
-    0
-  );
-
-  const dueSoonCount = manualBills.filter(
+  const attentionBills = unpaidBills.filter(
     (bill) => bill.status === "Due Soon" || bill.status === "Overdue"
-  ).length;
+  );
 
   return (
     <PageShell>
       <TopNav />
 
-      <PageHeader
-        eyebrow="Bills"
-        title="Bills"
-        description="See what still needs paid, what is already handled, and how much is coming out."
-      />
+      <header className="mb-5">
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-stone-400">
+            Bills
+          </p>
 
-      <section className="mb-6 overflow-hidden rounded-[2rem] border border-stone-300/20 bg-[#23211d] shadow-xl shadow-black/10">
-        <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="border-b border-stone-300/15 p-6 lg:border-b-0 lg:border-r">
-            <div className="mb-5 flex items-center gap-3">
+          <Pill>{unpaidBills.length} unpaid</Pill>
+        </div>
+
+        <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
+          Bills
+        </h1>
+
+        <p className="mt-3 max-w-xl text-sm leading-6 text-stone-300">
+          Track what still needs paid, what is already handled, and what needs
+          attention.
+        </p>
+      </header>
+
+      <section className="mb-5 rounded-[2rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10 sm:p-6">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <div className="mb-3 flex items-center gap-3">
               <span className="h-2 w-2 rounded-full bg-stone-100/70 shadow-[0_0_14px_rgba(245,240,232,0.2)]" />
 
-              <p className="text-xs uppercase tracking-[0.25em] text-stone-300">
-                Unpaid Bills
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-300">
+                Still To Pay
               </p>
             </div>
 
-            <p className="break-words text-6xl font-bold tracking-tight text-[#f5f0e8] md:text-7xl">
-              {formatMoney(unpaidTotal)}
+            <p className="text-sm leading-6 text-stone-400">
+              Unpaid bills counted against your dashboard total
             </p>
-
-            <p className="mt-4 max-w-xl text-sm leading-6 text-stone-300">
-              This is the total still subtracting from your money left after
-              bills.
-            </p>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                href="/manual"
-                className="rounded-full border border-stone-100/20 bg-stone-100/10 px-4 py-2 text-sm font-medium text-stone-100 transition hover:bg-stone-100/15"
-              >
-                Update bills
-              </Link>
-
-              <Link
-                href="/"
-                className="rounded-full border border-stone-300/20 px-4 py-2 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
-              >
-                Dashboard
-              </Link>
-            </div>
           </div>
 
-          <div className="grid grid-cols-2">
-            <OverviewStat label="All Bills" value={formatMoney(allBillsTotal)} />
-            <OverviewStat label="Paid" value={formatMoney(paidTotal)} />
-            <OverviewStat label="Unpaid Count" value={String(unpaidBills.length)} />
-            <OverviewStat label="Needs Attention" value={String(dueSoonCount)} />
-          </div>
+          <Pill>{attentionBills.length} need attention</Pill>
+        </div>
+
+        <p className="break-words text-5xl font-bold tracking-tight text-[#f5f0e8] sm:text-7xl">
+          {formatMoney(unpaidTotal)}
+        </p>
+
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <Link
+            href="/manual"
+            className="rounded-2xl border border-stone-100/20 bg-stone-100/10 px-4 py-3 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
+          >
+            Edit Bills
+          </Link>
+
+          <Link
+            href="/"
+            className="rounded-2xl border border-stone-300/20 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
+          >
+            Dashboard
+          </Link>
         </div>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+      <section className="mb-5 grid gap-3">
+        <MobileStat
+          label="Paid"
+          value={formatMoney(paidTotal)}
+          detail={`${paidBills.length} bill${paidBills.length === 1 ? "" : "s"} marked paid`}
+        />
+
+        <MobileStat
+          label="Unpaid"
+          value={formatMoney(unpaidTotal)}
+          detail={`${unpaidBills.length} bill${unpaidBills.length === 1 ? "" : "s"} remaining`}
+        />
+
+        <MobileStat
+          label="Attention"
+          value={String(attentionBills.length)}
+          detail="Due soon or overdue"
+        />
+      </section>
+
+      <section className="grid gap-5">
         <BillSection
           title="Still To Pay"
-          subtitle="These bills are still counted against your available money."
+          description="These bills are still included in your unpaid total."
         >
           {unpaidBills.length > 0 ? (
             <div className="divide-y divide-stone-300/10">
               {unpaidBills.map((bill, index) => (
-                <BillRow key={`${bill.name}-${index}`} bill={bill} />
+                <BillRow key={`unpaid-${index}`} bill={bill} />
               ))}
             </div>
           ) : (
-            <EmptyState text="No unpaid bills right now." />
+            <EmptyState
+              title="No unpaid bills"
+              text="Everything is marked paid right now."
+            />
           )}
         </BillSection>
 
         <BillSection
-          title="Paid Bills"
-          subtitle="These are marked paid and no longer subtract from your available money."
+          title="Paid"
+          description="These bills are marked paid and no longer subtract from your available money."
         >
           {paidBills.length > 0 ? (
             <div className="divide-y divide-stone-300/10">
               {paidBills.map((bill, index) => (
-                <BillRow key={`${bill.name}-${index}`} bill={bill} muted />
+                <BillRow key={`paid-${index}`} bill={bill} muted />
               ))}
             </div>
           ) : (
-            <EmptyState text="No bills marked paid yet." />
+            <EmptyState
+              title="No paid bills yet"
+              text="Bills you mark paid in the Editor will show up here."
+            />
           )}
         </BillSection>
       </section>
@@ -166,27 +194,37 @@ export default function BillsPage() {
   );
 }
 
-function OverviewStat({ label, value }: { label: string; value: string }) {
+function MobileStat({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
   return (
-    <div className="min-h-32 border-b border-r border-stone-300/10 p-5 even:border-r-0 lg:min-h-0">
-      <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
-        {label}
-      </p>
+    <div className="flex items-center justify-between gap-4 rounded-[1.4rem] border border-stone-300/20 bg-[#23211d] p-4 shadow-xl shadow-black/10">
+      <div className="min-w-0">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
+          {label}
+        </p>
 
-      <p className="mt-3 break-words text-2xl font-bold tracking-tight text-[#f5f0e8]">
-        {value}
-      </p>
+        <p className="mt-1 truncate text-sm text-stone-400">{detail}</p>
+      </div>
+
+      <p className="shrink-0 text-xl font-bold text-[#f5f0e8]">{value}</p>
     </div>
   );
 }
 
 function BillSection({
   title,
-  subtitle,
+  description,
   children,
 }: {
   title: string;
-  subtitle: string;
+  description: string;
   children: React.ReactNode;
 }) {
   return (
@@ -200,7 +238,7 @@ function BillSection({
           </h2>
         </div>
 
-        <p className="mt-3 text-sm leading-6 text-stone-400">{subtitle}</p>
+        <p className="mt-3 text-sm leading-6 text-stone-400">{description}</p>
       </div>
 
       {children}
@@ -219,7 +257,7 @@ function BillRow({ bill, muted = false }: { bill: ManualBill; muted?: boolean })
             <Pill>{bill.status}</Pill>
 
             <span className="rounded-full border border-stone-100/10 bg-stone-100/5 px-3 py-1 text-xs font-semibold text-stone-200/85">
-              Due: {bill.dueDate || "TBD"}
+              Due {bill.dueDate || "TBD"}
             </span>
           </div>
 
@@ -228,11 +266,11 @@ function BillRow({ bill, muted = false }: { bill: ManualBill; muted?: boolean })
               muted ? "text-stone-300" : "text-[#f5f0e8]"
             }`}
           >
-            {bill.name}
+            {bill.name || "Untitled Bill"}
           </p>
 
           <p className="mt-1 truncate text-sm text-stone-400">
-            Paid with {bill.paymentMethod || "TBD"}
+            {bill.paymentMethod || "Payment method TBD"}
           </p>
         </div>
 
@@ -248,10 +286,12 @@ function BillRow({ bill, muted = false }: { bill: ManualBill; muted?: boolean })
   );
 }
 
-function EmptyState({ text }: { text: string }) {
+function EmptyState({ title, text }: { title: string; text: string }) {
   return (
     <div className="rounded-[1.25rem] border border-stone-300/15 bg-[#2b2925] p-5">
-      <p className="text-sm leading-6 text-stone-400">{text}</p>
+      <p className="font-semibold text-[#f5f0e8]">{title}</p>
+
+      <p className="mt-2 text-sm leading-6 text-stone-400">{text}</p>
     </div>
   );
 }
