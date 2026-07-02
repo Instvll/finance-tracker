@@ -166,7 +166,7 @@ export default function Home() {
             Finance Tracker
           </p>
 
-          <Pill>Beta</Pill>
+          <Pill>v1.0 Beta</Pill>
         </div>
 
         <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
@@ -174,8 +174,8 @@ export default function Home() {
         </h1>
 
         <p className="mt-3 max-w-xl text-sm leading-6 text-stone-300">
-          A quick view of what you have, what is still due, and what is safe to
-          use.
+          Your quick snapshot of available money, bills, credit cards, and
+          savings.
         </p>
       </header>
 
@@ -186,12 +186,12 @@ export default function Home() {
               <span className="h-2 w-2 rounded-full bg-stone-100/70 shadow-[0_0_14px_rgba(245,240,232,0.2)]" />
 
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-300">
-                Safe After Bills
+                Available After Bills
               </p>
             </div>
 
             <p className="text-sm leading-6 text-stone-400">
-              Checking minus unpaid bills
+              Checking balance minus unpaid bills
             </p>
           </div>
 
@@ -207,14 +207,14 @@ export default function Home() {
             href="/manual"
             className="rounded-2xl border border-stone-100/20 bg-stone-100/10 px-4 py-3 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
           >
-            Update Money
+            Open Editor
           </Link>
 
           <Link
             href="/bills"
             className="rounded-2xl border border-stone-300/20 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
           >
-            View Bills
+            Review Bills
           </Link>
         </div>
       </section>
@@ -304,13 +304,13 @@ export default function Home() {
 
           <div>
             <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-100">
-              Testing Note
+              Beta Reminder
             </h2>
 
             <p className="mt-3 text-sm leading-6 text-stone-400">
-              This is a beta version. Use the Editor to test balances, bills,
-              and cards. Avoid entering full card numbers, passwords, or other
-              sensitive details.
+              This version is built for testing the tracking experience. Use
+              bills, balances, and due dates only. Avoid entering full card
+              numbers, passwords, or sensitive account details.
             </p>
           </div>
         </div>
