@@ -8,8 +8,8 @@ const navItems = [
   { label: "Bills", href: "/bills" },
   { label: "Credit Cards", href: "/cards" },
   { label: "Paycheck Planner", href: "/plan" },
-  { label: "Notes", href: "/notes" },
   { label: "Editor", href: "/manual" },
+  { label: "Account", href: "/account" },
 ];
 
 export default function TopNav() {

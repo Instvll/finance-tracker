@@ -12,10 +12,8 @@ type CloudFinanceData = {
   bills_data: unknown;
   cards_data: unknown;
   plan_data: unknown;
-  notes_data: unknown;
   manual_last_saved: string | null;
   plan_last_saved: string | null;
-  notes_last_saved: string | null;
   updated_at?: string;
 };
 
@@ -26,9 +24,6 @@ const lastSavedStorageKey = "finance-tracker-last-saved";
 
 const planStorageKey = "finance-tracker-paycheck-plan";
 const planLastSavedStorageKey = "finance-tracker-paycheck-plan-last-saved";
-
-const notesStorageKey = "finance-tracker-manual-notes";
-const notesLastSavedStorageKey = "finance-tracker-notes-last-saved";
 
 function formatSavedTime(value?: string | null) {
   if (!value) {
@@ -119,10 +114,8 @@ export default function AccountPage() {
       bills_data: readJsonStorage(billsStorageKey, []),
       cards_data: readJsonStorage(cardsStorageKey, []),
       plan_data: readJsonStorage(planStorageKey, {}),
-      notes_data: readJsonStorage(notesStorageKey, []),
       manual_last_saved: window.localStorage.getItem(lastSavedStorageKey),
       plan_last_saved: window.localStorage.getItem(planLastSavedStorageKey),
-      notes_last_saved: window.localStorage.getItem(notesLastSavedStorageKey),
     };
 
     const { data, error } = await supabase
@@ -187,7 +180,6 @@ export default function AccountPage() {
     writeJsonStorage(billsStorageKey, data.bills_data || []);
     writeJsonStorage(cardsStorageKey, data.cards_data || []);
     writeJsonStorage(planStorageKey, data.plan_data || {});
-    writeJsonStorage(notesStorageKey, data.notes_data || []);
 
     if (data.manual_last_saved) {
       window.localStorage.setItem(lastSavedStorageKey, data.manual_last_saved);
@@ -200,15 +192,10 @@ export default function AccountPage() {
       );
     }
 
-    if (data.notes_last_saved) {
-      window.localStorage.setItem(
-        notesLastSavedStorageKey,
-        data.notes_last_saved
-      );
-    }
-
     setCloudUpdatedAt(data.updated_at || null);
-    setMessage("Loaded cloud data onto this browser. Refresh the dashboard to see it.");
+    setMessage(
+      "Loaded cloud data onto this browser. Refresh the dashboard to see it."
+    );
     setIsWorking(false);
   }
 
@@ -250,6 +237,7 @@ export default function AccountPage() {
           <div className="space-y-4">
             <div className="rounded-2xl border border-stone-300/20 bg-[#2b2925] p-4">
               <p className="text-sm text-stone-400">Email</p>
+
               <p className="mt-1 break-words text-lg font-semibold text-[#f5f0e8]">
                 {email}
               </p>
@@ -257,6 +245,7 @@ export default function AccountPage() {
 
             <div className="rounded-2xl border border-stone-300/20 bg-[#2b2925] p-4">
               <p className="text-sm text-stone-400">Cloud backup</p>
+
               <p className="mt-1 text-lg font-semibold text-[#f5f0e8]">
                 {formatSavedTime(cloudUpdatedAt)}
               </p>
@@ -313,9 +302,9 @@ export default function AccountPage() {
         </h2>
 
         <p className="mt-4 text-sm leading-6 text-stone-300">
-          Save to Cloud uploads the finance data currently saved in this browser.
-          Load from Cloud downloads your saved account data onto the device you
-          are using.
+          Save to Cloud uploads the finance data currently saved in this
+          browser. Load from Cloud downloads your saved account data onto the
+          device you are using.
         </p>
       </section>
     </PageShell>
