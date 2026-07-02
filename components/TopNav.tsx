@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import LogoMark from "./LogoMark";
 
 const navItems = [
   { label: "Dashboard", href: "/" },
@@ -19,11 +20,14 @@ export default function TopNav() {
       <div className="flex items-center justify-between gap-4">
         <Link
           href="/"
-          className="group flex items-center gap-3 rounded-full px-2 py-1 text-sm font-semibold tracking-[0.32em] text-stone-100 transition hover:text-[#f5f0e8]"
+          className="group flex items-center gap-3 rounded-full px-1 py-1 transition"
           onClick={() => setIsOpen(false)}
         >
-          <span className="h-2 w-2 rounded-full bg-stone-100/70 shadow-[0_0_14px_rgba(245,240,232,0.2)] transition group-hover:bg-[#f5f0e8]" />
-          leftovr
+          <LogoMark small />
+
+          <span className="text-sm font-semibold lowercase tracking-[0.28em] text-stone-100 transition group-hover:text-[#f5f0e8]">
+            leftovr
+          </span>
         </Link>
 
         <div className="hidden items-center gap-1 rounded-full border border-stone-300/15 bg-black/10 p-1 md:flex">
