@@ -69,9 +69,9 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (isCheckingAuth) {
     return (
-      <main className="min-h-screen bg-[#171614] px-4 py-6 text-[#f5f0e8]">
+      <main className="min-h-screen bg-[#11100d] px-4 py-6 text-[#f5f0e8]">
         <div className="mx-auto flex min-h-[70vh] max-w-5xl items-center justify-center">
-          <div className="rounded-[2rem] border border-stone-300/20 bg-[#23211d] p-6 text-center shadow-xl shadow-black/10">
+          <div className="rounded-[2rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-6 text-center shadow-xl shadow-black/10">
             <p className="text-xs font-semibold lowercase tracking-[0.35em] text-stone-400">
               leftovr
             </p>

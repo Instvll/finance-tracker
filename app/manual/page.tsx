@@ -315,7 +315,7 @@ export default function ManualPage() {
         </p>
       </header>
 
-      <section className="mb-5 rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-4 shadow-xl shadow-black/10">
+      <section className="mb-5 rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-4 shadow-xl shadow-black/10">
   <div className="flex items-center justify-between gap-3">
     <div className="min-w-0">
       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
@@ -331,7 +331,7 @@ export default function ManualPage() {
       <button
         type="button"
         onClick={resetEditor}
-        className="rounded-2xl border border-stone-300/20 px-4 py-3 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
+        className="rounded-2xl border border-[#f5f0e8]/12 px-4 py-3 text-sm text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/14 hover:text-stone-100"
       >
         Reset
       </button>
@@ -339,7 +339,7 @@ export default function ManualPage() {
       <button
         type="button"
         onClick={saveAll}
-        className="rounded-2xl border border-stone-100/20 bg-stone-100/10 px-4 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
+        className="rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
       >
         Save
       </button>
@@ -347,7 +347,7 @@ export default function ManualPage() {
   </div>
 </section>
 
-      <section className="sticky top-3 z-20 mb-5 rounded-[1.5rem] border border-stone-300/20 bg-[#1f1e1b]/95 p-2 shadow-xl shadow-black/20 backdrop-blur">
+      <section className="sticky top-3 z-20 mb-5 rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#181713]/95 p-2 shadow-xl shadow-black/20 backdrop-blur">
         <div className="grid grid-cols-3 gap-2">
           <TabButton
             label="Overview"
@@ -415,7 +415,7 @@ export default function ManualPage() {
               <button
                 type="button"
                 onClick={addBill}
-                className="rounded-2xl border border-stone-100/20 bg-stone-100/10 px-5 py-4 text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
+                className="rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-5 py-4 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
               >
                 Add Bill
               </button>
@@ -423,7 +423,7 @@ export default function ManualPage() {
               <button
                 type="button"
                 onClick={addCard}
-                className="rounded-2xl border border-stone-300/20 px-5 py-4 text-sm font-semibold text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
+                className="rounded-2xl border border-[#f5f0e8]/12 px-5 py-4 text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/14 hover:text-stone-100"
               >
                 Add Credit Card
               </button>
@@ -441,7 +441,7 @@ export default function ManualPage() {
               <button
                 type="button"
                 onClick={addBill}
-                className="rounded-full border border-stone-100/20 bg-stone-100/10 px-4 py-2 text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
+                className="rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-2 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
               >
                 Add
               </button>
@@ -476,7 +476,7 @@ export default function ManualPage() {
               <button
                 type="button"
                 onClick={addCard}
-                className="rounded-full border border-stone-100/20 bg-stone-100/10 px-4 py-2 text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
+                className="rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-2 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
               >
                 Add
               </button>
@@ -505,7 +505,7 @@ export default function ManualPage() {
         </section>
       )}
 
-      <div className="sticky bottom-4 z-30 mt-6 rounded-[1.5rem] border border-stone-300/20 bg-[#1f1e1b]/95 p-3 shadow-2xl shadow-black/30 backdrop-blur">
+      <div className="sticky bottom-4 z-30 mt-6 rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#181713]/95 p-3 shadow-2xl shadow-black/30 backdrop-blur">
   <div className="flex items-center gap-3">
     <div className="min-w-0 flex-1">
       <p className="truncate text-xs uppercase tracking-[0.2em] text-stone-500">
@@ -520,7 +520,7 @@ export default function ManualPage() {
     <button
       type="button"
       onClick={saveAll}
-      className="rounded-2xl border border-stone-100/20 bg-stone-100/10 px-5 py-3 text-sm font-semibold text-[#f5f0e8]"
+      className="rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-5 py-3 text-sm font-semibold text-[#f5f0e8]"
     >
       Save
     </button>
@@ -543,10 +543,10 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-2xl px-3 py-3 text-sm font-semibold transition ${
+      className={`rounded-2xl border px-3 py-3 text-sm font-semibold transition ${
         active
-          ? "bg-stone-100/12 text-[#f5f0e8]"
-          : "text-stone-400 hover:bg-stone-100/8 hover:text-stone-100"
+          ? "border-[#c7ad75]/25 bg-[#c7ad75]/14 text-[#f5f0e8] shadow-sm shadow-black/10"
+          : "border-transparent text-stone-400 hover:border-[#f5f0e8]/10 hover:bg-[#f5f0e8]/7 hover:text-[#f5f0e8]"
       }`}
     >
       {label}
@@ -566,11 +566,11 @@ function EditorPanel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10">
-      <div className="mb-5 flex items-start justify-between gap-4 border-b border-stone-300/15 pb-4">
+    <section className="rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/10">
+      <div className="mb-5 flex items-start justify-between gap-4 border-b border-[#f5f0e8]/10 pb-4">
         <div>
           <div className="mb-3 flex items-center gap-3">
-            <span className="h-2 w-2 rounded-full bg-stone-100/60" />
+            <span className="h-2 w-2 rounded-full bg-[#c7ad75]/80" />
 
             <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-100">
               {title}
@@ -590,7 +590,7 @@ function EditorPanel({
 
 function PreviewStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1.25rem] border border-stone-300/15 bg-[#2b2925] p-4">
+    <div className="rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4">
       <p className="text-xs uppercase tracking-[0.2em] text-stone-500">
         {label}
       </p>
@@ -618,7 +618,7 @@ function BillEditor({
   onRemove: (index: number) => void;
 }) {
   return (
-    <div className="rounded-[1.35rem] border border-stone-300/15 bg-[#2b2925] p-4">
+    <div className="rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <Pill>{bill.status}</Pill>
@@ -635,7 +635,7 @@ function BillEditor({
         <button
           type="button"
           onClick={() => onRemove(index)}
-          className="rounded-full border border-stone-300/20 px-3 py-1 text-xs text-stone-400 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
+          className="rounded-full border border-[#f5f0e8]/12 px-3 py-1 text-xs text-stone-400 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/14 hover:text-stone-100"
         >
           Remove
         </button>
@@ -704,7 +704,7 @@ function CardEditor({
   const utilization = limit > 0 ? Math.round((balance / limit) * 100) : 0;
 
   return (
-    <div className="rounded-[1.35rem] border border-stone-300/15 bg-[#2b2925] p-4">
+    <div className="rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <Pill>{utilization}% used</Pill>
@@ -721,7 +721,7 @@ function CardEditor({
         <button
           type="button"
           onClick={() => onRemove(index)}
-          className="rounded-full border border-stone-300/20 px-3 py-1 text-xs text-stone-400 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
+          className="rounded-full border border-[#f5f0e8]/12 px-3 py-1 text-xs text-stone-400 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/14 hover:text-stone-100"
         >
           Remove
         </button>
@@ -729,7 +729,7 @@ function CardEditor({
 
       <div className="mb-4 h-2 overflow-hidden rounded-full bg-black/25">
         <div
-          className="h-full rounded-full bg-stone-100/55"
+          className="h-full rounded-full bg-[#c7ad75]"
           style={{ width: `${Math.min(utilization, 100)}%` }}
         />
       </div>
@@ -810,7 +810,7 @@ function InputField({
         inputMode={inputMode}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-2xl border border-stone-300/20 bg-[#171614] px-4 py-4 text-lg text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-stone-100/35 focus:bg-[#1d1b18]"
+        className="w-full rounded-2xl border border-[#f5f0e8]/12  px-4 py-4 text-lg text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-[#c7ad75]/40 focus:bg-[#1d1b18]"
       />
     </label>
   );
@@ -836,10 +836,10 @@ function SelectField({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-2xl border border-stone-300/20 bg-[#171614] px-4 py-4 text-lg text-[#f5f0e8] outline-none transition focus:border-stone-100/35 focus:bg-[#1d1b18]"
+        className="w-full rounded-2xl border border-[#f5f0e8]/12 bg-[#11100d] px-4 py-4 text-lg text-[#f5f0e8] outline-none transition focus:border-[#c7ad75]/40 focus:bg-[#1d1b18]"
       >
         {options.map((option) => (
-          <option key={option} value={option} className="bg-[#171614]">
+          <option key={option} value={option} className="bg-[#11100d]">
             {option}
           </option>
         ))}

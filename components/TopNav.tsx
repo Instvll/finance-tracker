@@ -56,7 +56,7 @@ export default function TopNav() {
                 href={item.href}
                 className={`rounded-[0.95rem] px-4 py-2 text-sm font-medium transition ${
                   active
-                    ? "border border-[#c7ad75]/20 bg-[#c7ad75]/14 text-[#f5f0e8] shadow-sm shadow-black/10"
+                    ? "border border-[#c7ad75]/25 bg-[#c7ad75]/14 text-[#f5f0e8] shadow-sm shadow-black/10"
                     : "text-stone-400 hover:bg-[#f5f0e8]/7 hover:text-[#f5f0e8]"
                 }`}
               >
@@ -88,7 +88,7 @@ export default function TopNav() {
                   href={item.href}
                   className={`rounded-2xl px-4 py-3 text-sm font-medium transition ${
                     active
-                      ? "border border-[#c7ad75]/20 bg-[#c7ad75]/14 text-[#f5f0e8]"
+                      ? "border border-[#c7ad75]/25 bg-[#c7ad75]/14 text-[#f5f0e8]"
                       : "text-stone-400 hover:bg-[#f5f0e8]/8 hover:text-[#f5f0e8]"
                   }`}
                   onClick={() => setIsOpen(false)}

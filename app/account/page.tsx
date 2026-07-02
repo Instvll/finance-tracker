@@ -215,11 +215,11 @@ export default function AccountPage() {
         </p>
       </header>
 
-      <section className="mb-5 rounded-[2rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10 sm:p-6">
+      <section className="mb-5 rounded-[2rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/10 sm:p-6">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <div className="mb-3 flex items-center gap-3">
-              <span className="h-2 w-2 rounded-full bg-stone-100/70 shadow-[0_0_14px_rgba(245,240,232,0.2)]" />
+              <span className="h-2 w-2 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(245,240,232,0.2)]" />
 
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-300">
                 Account Status
@@ -246,7 +246,7 @@ export default function AccountPage() {
             <InfoCard label="Last backup" value={formatSavedTime(cloudUpdatedAt)} />
 
             {message && (
-              <div className="rounded-2xl border border-stone-300/20 bg-[#171614] p-4">
+              <div className="rounded-2xl border border-[#f5f0e8]/12 bg-[#11100d] p-4">
                 <p className="text-sm leading-6 text-stone-300">{message}</p>
               </div>
             )}
@@ -256,7 +256,7 @@ export default function AccountPage() {
                 type="button"
                 onClick={backupThisDevice}
                 disabled={isWorking}
-                className="rounded-2xl border border-stone-100/20 bg-stone-100/10 px-5 py-4 text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-5 py-4 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isWorking ? "Working..." : "Back Up This Device"}
               </button>
@@ -265,7 +265,7 @@ export default function AccountPage() {
                 type="button"
                 onClick={restoreBackup}
                 disabled={isWorking}
-                className="rounded-2xl border border-stone-300/20 px-5 py-4 text-sm font-semibold text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-2xl border border-[#f5f0e8]/12 px-5 py-4 text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/14 hover:text-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Restore Backup
               </button>
@@ -275,7 +275,7 @@ export default function AccountPage() {
               type="button"
               onClick={handleLogout}
               disabled={isWorking}
-              className="w-full rounded-2xl border border-stone-300/20 px-5 py-4 text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-2xl border border-[#f5f0e8]/12 px-5 py-4 text-sm text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/14 hover:text-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isWorking ? "Signing out..." : "Sign Out"}
             </button>
@@ -284,14 +284,14 @@ export default function AccountPage() {
           <div className="grid gap-3">
             <Link
               href="/login"
-              className="block rounded-2xl border border-stone-100/20 bg-stone-100/10 px-5 py-4 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
+              className="block rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-5 py-4 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
             >
               Log In
             </Link>
 
             <Link
               href="/signup"
-              className="block rounded-2xl border border-stone-300/20 px-5 py-4 text-center text-sm font-semibold text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
+              className="block rounded-2xl border border-[#f5f0e8]/12 px-5 py-4 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/14 hover:text-stone-100"
             >
               Create Account
             </Link>
@@ -299,9 +299,9 @@ export default function AccountPage() {
         )}
       </section>
 
-      <section className="rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10">
+      <section className="rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/10">
         <div className="mb-4 flex items-center gap-3">
-          <span className="h-2 w-2 rounded-full bg-stone-100/60" />
+          <span className="h-2 w-2 rounded-full bg-[#c7ad75]/80" />
 
           <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-100">
             Backup
@@ -335,7 +335,7 @@ export default function AccountPage() {
 
 function InfoCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-stone-300/20 bg-[#2b2925] p-4">
+    <div className="rounded-2xl border border-[#f5f0e8]/12 bg-[#25231e] p-4">
       <p className="text-sm text-stone-400">{label}</p>
 
       <p className="mt-1 break-words text-lg font-semibold text-[#f5f0e8]">

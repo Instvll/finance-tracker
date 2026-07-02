@@ -179,11 +179,11 @@ export default function Home() {
         </p>
       </header>
 
-      <section className="mb-5 rounded-[2rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10 sm:p-6">
+      <section className="mb-5 rounded-[2rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/10 sm:p-6">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <div className="mb-3 flex items-center gap-3">
-              <span className="h-2 w-2 rounded-full bg-stone-100/70 shadow-[0_0_14px_rgba(245,240,232,0.2)]" />
+              <span className="h-2 w-2 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(245,240,232,0.2)]" />
 
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-300">
                 Available After Bills
@@ -205,14 +205,14 @@ export default function Home() {
         <div className="mt-5 grid grid-cols-2 gap-3">
           <Link
             href="/manual"
-            className="rounded-2xl border border-stone-100/20 bg-stone-100/10 px-4 py-3 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
+            className="rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-3 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
           >
             Open Editor
           </Link>
 
           <Link
             href="/bills"
-            className="rounded-2xl border border-stone-300/20 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
+            className="rounded-2xl border border-[#f5f0e8]/12 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/14 hover:text-stone-100"
           >
             Review Bills
           </Link>
@@ -298,9 +298,9 @@ export default function Home() {
         </DashboardSection>
       </section>
 
-      <section className="mt-5 rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10">
+      <section className="mt-5 rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/10">
         <div className="flex items-start gap-3">
-          <span className="mt-2 h-2 w-2 rounded-full bg-stone-100/60" />
+          <span className="mt-2 h-2 w-2 rounded-full bg-[#c7ad75]/80" />
 
           <div>
             <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-100">
@@ -329,7 +329,7 @@ function MobileStat({
   detail: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-[1.4rem] border border-stone-300/20 bg-[#23211d] p-4 shadow-xl shadow-black/10">
+    <div className="flex items-center justify-between gap-4 rounded-[1.4rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-4 shadow-xl shadow-black/10">
       <div className="min-w-0">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
           {label}
@@ -355,10 +355,10 @@ function DashboardSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10">
-      <div className="mb-4 flex items-center justify-between gap-4 border-b border-stone-300/15 pb-4">
+    <section className="rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/10">
+      <div className="mb-4 flex items-center justify-between gap-4 border-b border-[#f5f0e8]/10 pb-4">
         <div className="flex items-center gap-3">
-          <span className="h-2 w-2 rounded-full bg-stone-100/60" />
+          <span className="h-2 w-2 rounded-full bg-[#c7ad75]/80" />
 
           <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-100">
             {title}

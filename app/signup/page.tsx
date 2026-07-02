@@ -55,12 +55,12 @@ export default function SignupPage() {
       </header>
 
       <main className="mx-auto max-w-xl">
-        <section className="mb-5 rounded-[2rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10 sm:p-6">
+        <section className="mb-5 rounded-[2rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15 sm:p-6">
           <div className="mb-6">
             <div className="mb-3 flex items-center gap-3">
-              <span className="h-2 w-2 rounded-full bg-stone-100/70 shadow-[0_0_14px_rgba(245,240,232,0.2)]" />
+              <span className="h-2 w-2 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.25)]" />
 
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-300">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#c7ad75]/80">
                 Get Started
               </p>
             </div>
@@ -69,7 +69,7 @@ export default function SignupPage() {
               Create account
             </h1>
 
-            <p className="mt-3 text-sm leading-6 text-stone-400">
+            <p className="mt-3 text-sm leading-6 text-stone-300">
               Create an account to save your tracker data and use backup tools.
             </p>
           </div>
@@ -90,7 +90,7 @@ export default function SignupPage() {
             />
 
             {message && (
-              <div className="rounded-2xl border border-stone-300/20 bg-[#171614] p-4">
+              <div className="rounded-2xl border border-[#f5f0e8]/10 bg-[#11100d] p-4">
                 <p className="text-sm leading-6 text-stone-300">{message}</p>
               </div>
             )}
@@ -98,21 +98,21 @@ export default function SignupPage() {
             <button
               type="submit"
               disabled={isWorking}
-              className="w-full rounded-2xl border border-stone-100/20 bg-stone-100/10 px-5 py-4 text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-5 py-4 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isWorking ? "Creating..." : "Create Account"}
             </button>
           </form>
         </section>
 
-        <section className="rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-5 text-center shadow-xl shadow-black/10">
+        <section className="rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 text-center shadow-xl shadow-black/15">
           <p className="text-sm leading-6 text-stone-300">
             Already have an account?
           </p>
 
           <Link
             href="/login"
-            className="mt-3 block rounded-2xl border border-stone-300/20 px-5 py-4 text-sm font-semibold text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
+            className="mt-3 block rounded-2xl border border-[#f5f0e8]/12 px-5 py-4 text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/25 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
           >
             Log In
           </Link>
@@ -145,7 +145,7 @@ function InputField({
         onChange={(event) => onChange(event.target.value)}
         required
         minLength={type === "password" ? 6 : undefined}
-        className="w-full rounded-2xl border border-stone-300/20 bg-[#171614] px-4 py-4 text-lg text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-stone-100/35 focus:bg-[#1d1b18]"
+        className="w-full rounded-2xl border border-[#f5f0e8]/12 bg-[#11100d] px-4 py-4 text-lg text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-[#c7ad75]/40 focus:bg-[#181713]"
       />
     </label>
   );
