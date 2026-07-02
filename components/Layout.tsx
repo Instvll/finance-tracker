@@ -5,21 +5,26 @@ export function PageShell({ children }: { children: React.ReactNode }) {
         {children}
 
         <footer className="mt-12 border-t border-[#f5f0e8]/10 pt-6">
-          <div className="flex flex-col gap-3 text-sm text-stone-400 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="font-medium text-stone-300">
-                leftovr • v1.0 Beta
+              <p className="text-sm font-semibold lowercase tracking-[0.24em] text-[#f5f0e8]">
+                leftovr
               </p>
 
-              <p className="mt-1 text-xs leading-5 text-stone-500">
-                Built for simple personal tracking. Avoid storing sensitive
-                details.
+              <p className="mt-2 max-w-md text-xs leading-5 text-stone-500">
+                Simple personal finance tracking.
               </p>
             </div>
 
-            <p className="text-xs uppercase tracking-[0.22em] text-[#c7ad75]/70">
-              Manual Preview
-            </p>
+            <div className="sm:text-right">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#c7ad75]/75">
+                v1.0 Beta
+              </p>
+
+              <p className="mt-2 text-xs leading-5 text-stone-500">
+                Private testing build
+              </p>
+            </div>
           </div>
         </footer>
       </div>

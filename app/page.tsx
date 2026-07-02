@@ -172,7 +172,7 @@ export default function DashboardPage() {
         </h1>
 
         <p className="mt-3 max-w-xl text-sm leading-6 text-stone-300">
-          Your quick snapshot of available money, upcoming bills, credit cards,
+          A quick snapshot of available money, upcoming bills, credit cards,
           and savings.
         </p>
       </header>

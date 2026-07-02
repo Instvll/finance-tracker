@@ -88,7 +88,7 @@ export default function BillsPage() {
         </div>
 
         <p className="max-w-xl text-sm leading-6 text-stone-300">
-          Bills automatically become upcoming when they are due within 7 days.
+          *Bills automatically become upcoming when they are due within 7 days*
         </p>
       </header>
 
