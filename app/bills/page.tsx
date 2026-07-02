@@ -75,23 +75,19 @@ export default function BillsPage() {
       <TopNav />
 
       <header className="mb-5">
-        <div className="mb-3 flex items-center justify-between gap-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-stone-400">
-            Bills
-          </p>
+  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.35em] text-stone-400">
+    Finance Tracker
+  </p>
 
-          <Pill>{unpaidBills.length} unpaid</Pill>
-        </div>
+  <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
+    Bills
+  </h1>
 
-        <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
-          Bills
-        </h1>
-
-        <p className="mt-3 max-w-xl text-sm leading-6 text-stone-300">
-          Track what still needs paid, what is already handled, and what needs
-          attention.
-        </p>
-      </header>
+  <p className="mt-3 max-w-xl text-sm leading-6 text-stone-300">
+    Track what still needs paid, what is already handled, and what needs
+    attention.
+  </p>
+</header>
 
       <section className="mb-5 rounded-[2rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10 sm:p-6">
         <div className="mb-5 flex items-start justify-between gap-4">
