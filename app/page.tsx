@@ -5,6 +5,7 @@ import Link from "next/link";
 import TopNav from "../components/TopNav";
 import { PageShell, Pill } from "../components/Layout";
 import { financeSummary, bills, creditCards } from "../data/bandData";
+import { getAutoBillStatus } from "../lib/billStatus";
 
 type ManualFinanceData = {
   checkingBalance: string;
@@ -59,13 +60,6 @@ const defaultManualCards: ManualCreditCard[] = creditCards.map((card) => ({
   status: card.status,
 }));
 
-function formatMoney(amount: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(amount);
-}
-
 function parseMoney(value: string) {
   const numberValue = Number(value);
 
@@ -74,6 +68,13 @@ function parseMoney(value: string) {
   }
 
   return numberValue;
+}
+
+function formatMoney(amount: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(amount);
 }
 
 function formatSavedTime(value: string) {
@@ -89,52 +90,35 @@ function formatSavedTime(value: string) {
   }).format(new Date(value));
 }
 
-function getUnpaidBillTotal(manualBills: ManualBill[]) {
-  return manualBills
-    .filter((bill) => bill.status !== "Paid")
-    .reduce((total, bill) => total + parseMoney(bill.amount), 0);
+function readJsonStorage<T>(key: string, fallback: T) {
+  const savedValue = window.localStorage.getItem(key);
+
+  if (!savedValue) {
+    return fallback;
+  }
+
+  try {
+    return JSON.parse(savedValue) as T;
+  } catch {
+    return fallback;
+  }
 }
 
-function getTotalCardBalance(manualCards: ManualCreditCard[]) {
-  return manualCards.reduce(
-    (total, card) => total + parseMoney(card.balance),
-    0
-  );
-}
-
-function getTotalCardLimit(manualCards: ManualCreditCard[]) {
-  return manualCards.reduce((total, card) => total + parseMoney(card.limit), 0);
-}
-
-export default function Home() {
+export default function DashboardPage() {
   const [manualData, setManualData] =
     useState<ManualFinanceData>(defaultManualData);
-
   const [manualBills, setManualBills] =
     useState<ManualBill[]>(defaultManualBills);
-
   const [manualCards, setManualCards] =
     useState<ManualCreditCard[]>(defaultManualCards);
-
   const [lastSaved, setLastSaved] = useState("");
 
   useEffect(() => {
-    const savedData = window.localStorage.getItem(summaryStorageKey);
-    const savedBills = window.localStorage.getItem(billsStorageKey);
-    const savedCards = window.localStorage.getItem(cardsStorageKey);
+    setManualData(readJsonStorage(summaryStorageKey, defaultManualData));
+    setManualBills(readJsonStorage(billsStorageKey, defaultManualBills));
+    setManualCards(readJsonStorage(cardsStorageKey, defaultManualCards));
+
     const savedTime = window.localStorage.getItem(lastSavedStorageKey);
-
-    if (savedData) {
-      setManualData(JSON.parse(savedData));
-    }
-
-    if (savedBills) {
-      setManualBills(JSON.parse(savedBills));
-    }
-
-    if (savedCards) {
-      setManualCards(JSON.parse(savedCards));
-    }
 
     if (savedTime) {
       setLastSaved(savedTime);
@@ -143,18 +127,32 @@ export default function Home() {
 
   const checkingBalance = parseMoney(manualData.checkingBalance);
   const savingsBalance = parseMoney(manualData.savingsBalance);
-  const unpaidBillsTotal = getUnpaidBillTotal(manualBills);
-  const moneyLeftAfterBills = checkingBalance - unpaidBillsTotal;
 
-  const totalCardBalance = getTotalCardBalance(manualCards);
-  const totalCardLimit = getTotalCardLimit(manualCards);
-  const totalCardUtilization =
-    totalCardLimit > 0
-      ? Math.round((totalCardBalance / totalCardLimit) * 100)
+  const upcomingBills = manualBills.filter(
+    (bill) => getAutoBillStatus(bill.dueDate) === "Upcoming"
+  );
+
+  const upcomingBillTotal = upcomingBills.reduce(
+    (total, bill) => total + parseMoney(bill.amount),
+    0
+  );
+
+  const cardBalanceTotal = manualCards.reduce(
+    (total, card) => total + parseMoney(card.balance),
+    0
+  );
+
+  const cardLimitTotal = manualCards.reduce(
+    (total, card) => total + parseMoney(card.limit),
+    0
+  );
+
+  const cardUtilization =
+    cardLimitTotal > 0
+      ? Math.round((cardBalanceTotal / cardLimitTotal) * 100)
       : 0;
 
-  const unpaidBills = manualBills.filter((bill) => bill.status !== "Paid");
-  const nextBills = unpaidBills.slice(0, 3);
+  const moneyLeftAfterBills = checkingBalance - upcomingBillTotal;
 
   return (
     <PageShell>
@@ -162,7 +160,7 @@ export default function Home() {
 
       <header className="mb-5">
         <div className="mb-3 flex items-center justify-between gap-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-stone-400">
+          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
             Finance Tracker
           </p>
 
@@ -174,24 +172,24 @@ export default function Home() {
         </h1>
 
         <p className="mt-3 max-w-xl text-sm leading-6 text-stone-300">
-          Your quick snapshot of available money, bills, credit cards, and
-          savings.
+          Your quick snapshot of available money, upcoming bills, credit cards,
+          and savings.
         </p>
       </header>
 
-      <section className="mb-5 rounded-[2rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/10 sm:p-6">
+      <section className="mb-5 rounded-[2rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15 sm:p-6">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <div className="mb-3 flex items-center gap-3">
-              <span className="h-2 w-2 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(245,240,232,0.2)]" />
+              <span className="h-2 w-2 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.25)]" />
 
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-300">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f5f0e8]">
                 Available After Bills
               </p>
             </div>
 
             <p className="text-sm leading-6 text-stone-400">
-              Checking balance minus unpaid bills
+              Checking balance minus bills due within 7 days
             </p>
           </div>
 
@@ -212,7 +210,7 @@ export default function Home() {
 
           <Link
             href="/bills"
-            className="rounded-2xl border border-[#f5f0e8]/12 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/14 hover:text-stone-100"
+            className="rounded-2xl border border-[#f5f0e8]/12 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
           >
             Review Bills
           </Link>
@@ -222,98 +220,125 @@ export default function Home() {
       <section className="mb-5 grid gap-3">
         <MobileStat
           label="Checking"
-          value={formatMoney(checkingBalance)}
           detail="Current saved balance"
+          value={formatMoney(checkingBalance)}
         />
 
         <MobileStat
-          label="Unpaid Bills"
-          value={formatMoney(unpaidBillsTotal)}
-          detail={`${unpaidBills.length} bill${
-            unpaidBills.length === 1 ? "" : "s"
-          } remaining`}
+          label="Upcoming Bills"
+          detail={`${upcomingBills.length} bill${
+            upcomingBills.length === 1 ? "" : "s"
+          } due within 7 days`}
+          value={formatMoney(upcomingBillTotal)}
         />
 
         <MobileStat
           label="Credit Cards"
-          value={formatMoney(totalCardBalance)}
-          detail={`${totalCardUtilization}% utilization`}
+          detail={`${cardUtilization}% utilization`}
+          value={formatMoney(cardBalanceTotal)}
         />
 
         <MobileStat
           label="Savings"
-          value={formatMoney(savingsBalance)}
           detail="Current saved balance"
+          value={formatMoney(savingsBalance)}
         />
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-2">
-        <DashboardSection title="Next Bills" actionLabel="See all" href="/bills">
-          <div className="divide-y divide-stone-300/10">
-            {nextBills.length > 0 ? (
-              nextBills.map((bill, index) => (
-                <CompactRow
-                  key={`bill-${index}`}
-                  title={bill.name}
-                  subtitle={`Due ${bill.dueDate || "TBD"} • ${
-                    bill.paymentMethod || "TBD"
-                  }`}
-                  value={formatMoney(parseMoney(bill.amount))}
-                  tag={bill.status}
-                />
-              ))
-            ) : (
-              <p className="py-4 text-sm text-stone-400">
-                No unpaid bills right now.
-              </p>
-            )}
-          </div>
-        </DashboardSection>
+      <section className="grid gap-5">
+        <DashboardPanel title="Next Bills" href="/bills">
+          {upcomingBills.length > 0 ? (
+            <div className="divide-y divide-[#f5f0e8]/10">
+              {upcomingBills.slice(0, 3).map((bill, index) => (
+                <div
+                  key={`dashboard-bill-${index}`}
+                  className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-[#f5f0e8]">
+                      {bill.name || "Untitled Bill"}
+                    </p>
 
-        <DashboardSection
-          title="Credit Cards"
-          actionLabel="See all"
-          href="/cards"
-        >
-          <div className="divide-y divide-stone-300/10">
-            {manualCards.map((card, index) => {
-              const balance = parseMoney(card.balance);
-              const limit = parseMoney(card.limit);
-              const utilization =
-                limit > 0 ? Math.round((balance / limit) * 100) : 0;
+                    <p className="mt-1 text-sm text-stone-400">
+                      Due {bill.dueDate || "TBD"}
+                    </p>
+                  </div>
 
-              return (
-                <CompactRow
-                  key={`card-${index}`}
-                  title={card.name}
-                  subtitle={`${utilization}% utilization • Due ${
-                    card.dueDate || "TBD"
-                  }`}
-                  value={formatMoney(balance)}
-                  tag={card.status}
-                />
-              );
-            })}
-          </div>
-        </DashboardSection>
-      </section>
+                  <p className="shrink-0 font-bold text-[#f5f0e8]">
+                    {formatMoney(parseMoney(bill.amount))}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm leading-6 text-stone-400">
+              No bills due within the next 7 days.
+            </p>
+          )}
+        </DashboardPanel>
 
-      <section className="mt-5 rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/10">
-        <div className="flex items-start gap-3">
-          <span className="mt-2 h-2 w-2 rounded-full bg-[#c7ad75]/80" />
+        <DashboardPanel title="Credit Cards" href="/cards">
+          {manualCards.length > 0 ? (
+            <div className="divide-y divide-[#f5f0e8]/10">
+              {manualCards.slice(0, 3).map((card, index) => {
+                const balance = parseMoney(card.balance);
+                const limit = parseMoney(card.limit);
+                const utilization =
+                  limit > 0 ? Math.round((balance / limit) * 100) : 0;
 
-          <div>
-            <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-100">
+                return (
+                  <div
+                    key={`dashboard-card-${index}`}
+                    className="py-4 first:pt-0 last:pb-0"
+                  >
+                    <div className="mb-3 flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-[#f5f0e8]">
+                          {card.name || "Untitled Card"}
+                        </p>
+
+                        <p className="mt-1 text-sm text-stone-400">
+                          {utilization}% utilization
+                        </p>
+                      </div>
+
+                      <p className="shrink-0 font-bold text-[#f5f0e8]">
+                        {formatMoney(balance)}
+                      </p>
+                    </div>
+
+                    <div className="h-2 overflow-hidden rounded-full bg-black/30">
+                      <div
+                        className="h-full rounded-full bg-[#c7ad75]"
+                        style={{ width: `${Math.min(utilization, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm leading-6 text-stone-400">
+              No credit cards added yet.
+            </p>
+          )}
+        </DashboardPanel>
+
+        <section className="rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15">
+          <div className="mb-4 flex items-center gap-3">
+            <span className="h-2 w-2 rounded-full bg-[#c7ad75]" />
+
+            <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
               Beta Reminder
             </h2>
-
-            <p className="mt-3 text-sm leading-6 text-stone-400">
-              This version is built for testing the tracking experience. Use
-              bills, balances, and due dates only. Avoid entering full card
-              numbers, passwords, or sensitive account details.
-            </p>
           </div>
-        </div>
+
+          <p className="text-sm leading-6 text-stone-300">
+            This version is built for testing the tracking experience. Use
+            bills, balances, and due dates only. Avoid entering full card
+            numbers, passwords, or sensitive account details.
+          </p>
+        </section>
       </section>
     </PageShell>
   );
@@ -321,21 +346,21 @@ export default function Home() {
 
 function MobileStat({
   label,
-  value,
   detail,
+  value,
 }: {
   label: string;
-  value: string;
   detail: string;
+  value: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-[1.4rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-4 shadow-xl shadow-black/10">
+    <div className="flex items-center justify-between gap-4 rounded-[1.4rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-4 shadow-xl shadow-black/15">
       <div className="min-w-0">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
           {label}
         </p>
 
-        <p className="mt-1 truncate text-sm text-stone-400">{detail}</p>
+        <p className="mt-1 truncate text-sm text-stone-300">{detail}</p>
       </div>
 
       <p className="shrink-0 text-xl font-bold text-[#f5f0e8]">{value}</p>
@@ -343,65 +368,35 @@ function MobileStat({
   );
 }
 
-function DashboardSection({
+function DashboardPanel({
   title,
-  actionLabel,
   href,
   children,
 }: {
   title: string;
-  actionLabel: string;
   href: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/10">
+    <section className="rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15">
       <div className="mb-4 flex items-center justify-between gap-4 border-b border-[#f5f0e8]/10 pb-4">
         <div className="flex items-center gap-3">
-          <span className="h-2 w-2 rounded-full bg-[#c7ad75]/80" />
+          <span className="h-2 w-2 rounded-full bg-[#c7ad75]" />
 
-          <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-100">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
             {title}
           </h2>
         </div>
 
         <Link
           href={href}
-          className="shrink-0 text-sm text-stone-400 transition hover:text-stone-100"
+          className="text-sm text-stone-300 transition hover:text-[#f5f0e8]"
         >
-          {actionLabel}
+          See all
         </Link>
       </div>
 
       {children}
     </section>
-  );
-}
-
-function CompactRow({
-  title,
-  subtitle,
-  value,
-  tag,
-}: {
-  title: string;
-  subtitle: string;
-  value: string;
-  tag: string;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0">
-      <div className="min-w-0">
-        <div className="mb-2">
-          <Pill>{tag}</Pill>
-        </div>
-
-        <p className="truncate font-semibold text-[#f5f0e8]">{title}</p>
-
-        <p className="mt-1 truncate text-sm text-stone-400">{subtitle}</p>
-      </div>
-
-      <p className="shrink-0 text-lg font-bold text-[#f5f0e8]">{value}</p>
-    </div>
   );
 }

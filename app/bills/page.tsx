@@ -5,6 +5,7 @@ import Link from "next/link";
 import TopNav from "../../components/TopNav";
 import { PageShell, Pill } from "../../components/Layout";
 import { bills } from "../../data/bandData";
+import { getAutoBillStatus } from "../../lib/billStatus";
 
 type ManualBill = {
   name: string;
@@ -53,10 +54,15 @@ export default function BillsPage() {
     }
   }, []);
 
-  const unpaidBills = manualBills.filter((bill) => bill.status !== "Paid");
-  const paidBills = manualBills.filter((bill) => bill.status === "Paid");
+  const upcomingBills = manualBills.filter(
+    (bill) => getAutoBillStatus(bill.dueDate) === "Upcoming"
+  );
 
-  const unpaidTotal = unpaidBills.reduce(
+  const paidBills = manualBills.filter(
+    (bill) => getAutoBillStatus(bill.dueDate) === "Paid"
+  );
+
+  const upcomingTotal = upcomingBills.reduce(
     (total, bill) => total + parseMoney(bill.amount),
     0
   );
@@ -64,10 +70,6 @@ export default function BillsPage() {
   const paidTotal = paidBills.reduce(
     (total, bill) => total + parseMoney(bill.amount),
     0
-  );
-
-  const attentionBills = unpaidBills.filter(
-    (bill) => bill.status === "Due Soon" || bill.status === "Overdue"
   );
 
   const hasBills = manualBills.length > 0;
@@ -79,47 +81,40 @@ export default function BillsPage() {
       <header className="mb-4">
         <div className="mb-3 flex items-center justify-between gap-4">
           <p className="text-lg font-semibold uppercase tracking-[0.24em] text-stone-300">
-  Bill Tracker
-</p>
+            Bill Tracker
+          </p>
 
           <Pill>v1.0 Beta</Pill>
         </div>
 
         <p className="max-w-xl text-sm leading-6 text-stone-300">
-          Track what still needs paid, what is already handled, and what needs
-          attention.
+          Bills automatically become upcoming when they are due within 7 days.
         </p>
       </header>
 
-      <section className="mb-5 rounded-[2rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/10 sm:p-6">
+      <section className="mb-5 rounded-[2rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15 sm:p-6">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <div className="mb-3 flex items-center gap-3">
-              <span className="h-2 w-2 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(245,240,232,0.2)]" />
+              <span className="h-2 w-2 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.25)]" />
 
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-300">
-                Still To Pay
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f5f0e8]">
+                Upcoming Bills
               </p>
             </div>
 
             <p className="text-sm leading-6 text-stone-400">
               {hasBills
-                ? "Unpaid bills counted against your dashboard total"
-                : "Add bills to start tracking what is still left after expenses"}
+                ? "Bills due within the next 7 days"
+                : "Add bills to start tracking what is coming up"}
             </p>
           </div>
 
-          <Pill>
-            {attentionBills.length > 0
-              ? `${attentionBills.length} attention`
-              : hasBills
-              ? "clear"
-              : "empty"}
-          </Pill>
+          <Pill>{hasBills ? `${upcomingBills.length} upcoming` : "empty"}</Pill>
         </div>
 
         <p className="break-words text-5xl font-bold tracking-tight text-[#f5f0e8] sm:text-7xl">
-          {formatMoney(unpaidTotal)}
+          {formatMoney(upcomingTotal)}
         </p>
 
         {!hasBills && (
@@ -129,8 +124,8 @@ export default function BillsPage() {
             </p>
 
             <p className="mt-2 text-sm leading-6 text-stone-400">
-              Once you add your monthly bills, this page will show what still
-              needs paid and what is already handled.
+              Once you add your monthly bills, this page will show what is due
+              within the next 7 days.
             </p>
           </div>
         )}
@@ -145,7 +140,7 @@ export default function BillsPage() {
 
           <Link
             href="/"
-            className="rounded-2xl border border-[#f5f0e8]/12 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/14 hover:text-stone-100"
+            className="rounded-2xl border border-[#f5f0e8]/12 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
           >
             Dashboard
           </Link>
@@ -154,11 +149,11 @@ export default function BillsPage() {
 
       <section className="mb-5 grid gap-3">
         <MobileStat
-          label="Unpaid"
-          value={formatMoney(unpaidTotal)}
-          detail={`${unpaidBills.length} bill${
-            unpaidBills.length === 1 ? "" : "s"
-          } remaining`}
+          label="Upcoming"
+          value={formatMoney(upcomingTotal)}
+          detail={`${upcomingBills.length} bill${
+            upcomingBills.length === 1 ? "" : "s"
+          } due within 7 days`}
         />
 
         <MobileStat
@@ -166,34 +161,34 @@ export default function BillsPage() {
           value={formatMoney(paidTotal)}
           detail={`${paidBills.length} bill${
             paidBills.length === 1 ? "" : "s"
-          } marked paid`}
+          } outside the pay window`}
         />
 
         <MobileStat
-          label="Attention"
-          value={String(attentionBills.length)}
-          detail="Due soon or overdue"
+          label="Tracked"
+          value={String(manualBills.length)}
+          detail="Total bills saved"
         />
       </section>
 
       <section className="grid gap-5">
         <BillSection
-          title="Still To Pay"
-          description="These bills are still included in your unpaid total."
+          title="Upcoming"
+          description="These bills are due within the next 7 days."
         >
-          {unpaidBills.length > 0 ? (
-            <div className="divide-y divide-stone-300/10">
-              {unpaidBills.map((bill, index) => (
-                <BillRow key={`unpaid-${index}`} bill={bill} />
+          {upcomingBills.length > 0 ? (
+            <div className="divide-y divide-[#f5f0e8]/10">
+              {upcomingBills.map((bill, index) => (
+                <BillRow key={`upcoming-${index}`} bill={bill} />
               ))}
             </div>
           ) : (
             <EmptyState
               eyebrow="Nothing due"
-              title="No unpaid bills"
+              title="No upcoming bills"
               text={
                 hasBills
-                  ? "Everything is marked paid right now."
+                  ? "None of your bills are due within the next 7 days."
                   : "Add your first bill in the Editor to start tracking upcoming expenses."
               }
               actionLabel="Add Bill"
@@ -204,22 +199,22 @@ export default function BillsPage() {
 
         <BillSection
           title="Paid"
-          description="These bills are marked paid and no longer subtract from your available money."
+          description="These bills are outside the current 7-day pay window."
         >
           {paidBills.length > 0 ? (
-            <div className="divide-y divide-stone-300/10">
+            <div className="divide-y divide-[#f5f0e8]/10">
               {paidBills.map((bill, index) => (
                 <BillRow key={`paid-${index}`} bill={bill} muted />
               ))}
             </div>
           ) : (
             <EmptyState
-              eyebrow="No history yet"
-              title="No paid bills"
+              eyebrow="No paid bills"
+              title="Nothing outside the pay window"
               text={
                 hasBills
-                  ? "Bills you mark paid in the Editor will show up here."
-                  : "After you add bills and mark them paid, they will move into this section."
+                  ? "Bills will show here when they are not due within the next 7 days."
+                  : "After you add bills, anything outside the 7-day pay window will show here."
               }
               actionLabel="Open Editor"
               actionHref="/manual"
@@ -241,13 +236,13 @@ function MobileStat({
   detail: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-[1.4rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-4 shadow-xl shadow-black/10">
+    <div className="flex items-center justify-between gap-4 rounded-[1.4rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-4 shadow-xl shadow-black/15">
       <div className="min-w-0">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
           {label}
         </p>
 
-        <p className="mt-1 truncate text-sm text-stone-400">{detail}</p>
+        <p className="mt-1 truncate text-sm text-stone-300">{detail}</p>
       </div>
 
       <p className="shrink-0 text-xl font-bold text-[#f5f0e8]">{value}</p>
@@ -265,12 +260,12 @@ function BillSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/10">
+    <section className="rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15">
       <div className="mb-4 border-b border-[#f5f0e8]/10 pb-4">
         <div className="flex items-center gap-3">
-          <span className="h-2 w-2 rounded-full bg-[#c7ad75]/80" />
+          <span className="h-2 w-2 rounded-full bg-[#c7ad75]" />
 
-          <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-100">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
             {title}
           </h2>
         </div>
@@ -291,15 +286,16 @@ function BillRow({
   muted?: boolean;
 }) {
   const amount = parseMoney(bill.amount);
+  const autoStatus = getAutoBillStatus(bill.dueDate);
 
   return (
     <div className="py-4 first:pt-0 last:pb-0">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap gap-2">
-            <Pill>{bill.status}</Pill>
+            <Pill>{autoStatus}</Pill>
 
-            <span className="rounded-full border border-stone-100/10 bg-stone-100/5 px-3 py-1 text-xs font-semibold text-stone-200/85">
+            <span className="rounded-full border border-[#f5f0e8]/10 bg-[#11100d] px-3 py-1 text-xs font-semibold text-stone-200/85">
               Due {bill.dueDate || "TBD"}
             </span>
           </div>
@@ -310,10 +306,6 @@ function BillRow({
             }`}
           >
             {bill.name || "Untitled Bill"}
-          </p>
-
-          <p className="mt-1 truncate text-sm text-stone-400">
-            {bill.paymentMethod || "Payment method TBD"}
           </p>
         </div>
 
@@ -344,8 +336,8 @@ function EmptyState({
 }) {
   return (
     <div className="rounded-[1.35rem] border border-dashed border-[#f5f0e8]/12 bg-[#25231e] p-5">
-      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-[#c7ad75]/20 bg-stone-100/8">
-        <span className="h-2 w-2 rounded-full bg-[#c7ad75]/80" />
+      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-[#c7ad75]/20 bg-[#c7ad75]/10">
+        <span className="h-2 w-2 rounded-full bg-[#c7ad75]" />
       </div>
 
       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">

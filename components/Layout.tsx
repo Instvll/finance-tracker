@@ -1,7 +1,28 @@
 export function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <main className="min-h-screen bg-[#11100d] px-4 py-6 text-[#f5f0e8] sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-5xl">{children}</div>
+      <div className="mx-auto max-w-5xl">
+        {children}
+
+        <footer className="mt-12 border-t border-[#f5f0e8]/10 pt-6">
+          <div className="flex flex-col gap-3 text-sm text-stone-400 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-medium text-stone-300">
+                leftovr • v1.0 Beta
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-stone-500">
+                Built for simple personal tracking. Avoid storing sensitive
+                details.
+              </p>
+            </div>
+
+            <p className="text-xs uppercase tracking-[0.22em] text-[#c7ad75]/70">
+              Manual Preview
+            </p>
+          </div>
+        </footer>
+      </div>
     </main>
   );
 }

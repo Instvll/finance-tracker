@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import TopNav from "../../components/TopNav";
 import { PageShell, Pill } from "../../components/Layout";
 import { financeSummary, bills, creditCards } from "../../data/bandData";
+import { getAutoBillStatus } from "../../lib/billStatus";
 
 type ManualFinanceData = {
   checkingBalance: string;
@@ -127,15 +128,12 @@ export default function ManualPage() {
     }
   }, []);
 
-  const checkingBalance = parseMoney(manualData.checkingBalance);
-  const savingsBalance = parseMoney(manualData.savingsBalance);
-
   const unpaidBillTotal = manualBills
-    .filter((bill) => bill.status !== "Paid")
+    .filter((bill) => getAutoBillStatus(bill.dueDate) === "Upcoming")
     .reduce((total, bill) => total + parseMoney(bill.amount), 0);
 
   const paidBillTotal = manualBills
-    .filter((bill) => bill.status === "Paid")
+    .filter((bill) => getAutoBillStatus(bill.dueDate) === "Paid")
     .reduce((total, bill) => total + parseMoney(bill.amount), 0);
 
   const cardBalanceTotal = manualCards.reduce(
@@ -152,8 +150,6 @@ export default function ManualPage() {
     cardLimitTotal > 0
       ? Math.round((cardBalanceTotal / cardLimitTotal) * 100)
       : 0;
-
-  const moneyLeftAfterBills = checkingBalance - unpaidBillTotal;
 
   function updateManualData(field: keyof ManualFinanceData, value: string) {
     setManualData((current) => ({
@@ -208,8 +204,8 @@ export default function ManualPage() {
       {
         name: "New Bill",
         amount: "0",
-        dueDate: "TBD",
-        status: "Upcoming",
+        dueDate: "5",
+        status: "Paid",
         paymentMethod: "TBD",
       },
     ]);
@@ -303,8 +299,8 @@ export default function ManualPage() {
       <header className="mb-4">
         <div className="mb-3 flex items-center justify-between gap-4">
           <p className="text-lg font-semibold uppercase tracking-[0.24em] text-stone-300">
-  Money Editor
-</p>
+            Money Editor
+          </p>
 
           <Pill>v1.0 Beta</Pill>
         </div>
@@ -315,37 +311,37 @@ export default function ManualPage() {
         </p>
       </header>
 
-      <section className="mb-5 rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-4 shadow-xl shadow-black/10">
-  <div className="flex items-center justify-between gap-3">
-    <div className="min-w-0">
-      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
-        Editor Status
-      </p>
+      <section className="mb-5 rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-4 shadow-xl shadow-black/15">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c7ad75]/75">
+              Editor Status
+            </p>
 
-      <p className="mt-1 truncate text-sm text-stone-300">
-        {saveMessage || formatSavedTime(lastSaved)}
-      </p>
-    </div>
+            <p className="mt-1 truncate text-sm text-stone-300">
+              {saveMessage || formatSavedTime(lastSaved)}
+            </p>
+          </div>
 
-    <div className="flex shrink-0 gap-2">
-      <button
-        type="button"
-        onClick={resetEditor}
-        className="rounded-2xl border border-[#f5f0e8]/12 px-4 py-3 text-sm text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/14 hover:text-stone-100"
-      >
-        Reset
-      </button>
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              onClick={resetEditor}
+              className="rounded-2xl border border-[#f5f0e8]/12 px-4 py-3 text-sm text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+            >
+              Reset
+            </button>
 
-      <button
-        type="button"
-        onClick={saveAll}
-        className="rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
-      >
-        Save
-      </button>
-    </div>
-  </div>
-</section>
+            <button
+              type="button"
+              onClick={saveAll}
+              className="rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      </section>
 
       <section className="sticky top-3 z-20 mb-5 rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#181713]/95 p-2 shadow-xl shadow-black/20 backdrop-blur">
         <div className="grid grid-cols-3 gap-2">
@@ -423,7 +419,7 @@ export default function ManualPage() {
               <button
                 type="button"
                 onClick={addCard}
-                className="rounded-2xl border border-[#f5f0e8]/12 px-5 py-4 text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/14 hover:text-stone-100"
+                className="rounded-2xl border border-[#f5f0e8]/12 px-5 py-4 text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
               >
                 Add Credit Card
               </button>
@@ -436,7 +432,7 @@ export default function ManualPage() {
         <section className="grid gap-5">
           <EditorPanel
             title="Bills"
-            description="Paid bills do not subtract from your money-left number."
+            description="Bills automatically become upcoming when they are due within 7 days."
             action={
               <button
                 type="button"
@@ -448,7 +444,7 @@ export default function ManualPage() {
             }
           >
             <div className="mb-4 grid grid-cols-2 gap-3">
-              <PreviewStat label="Unpaid" value={formatMoney(unpaidBillTotal)} />
+              <PreviewStat label="Upcoming" value={formatMoney(unpaidBillTotal)} />
               <PreviewStat label="Paid" value={formatMoney(paidBillTotal)} />
             </div>
 
@@ -506,26 +502,26 @@ export default function ManualPage() {
       )}
 
       <div className="sticky bottom-4 z-30 mt-6 rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#181713]/95 p-3 shadow-2xl shadow-black/30 backdrop-blur">
-  <div className="flex items-center gap-3">
-    <div className="min-w-0 flex-1">
-      <p className="truncate text-xs uppercase tracking-[0.2em] text-stone-500">
-        Changes
-      </p>
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs uppercase tracking-[0.2em] text-[#c7ad75]/75">
+              Changes
+            </p>
 
-      <p className="truncate text-sm font-medium text-stone-300">
-        {saveMessage || "Save when you are done editing."}
-      </p>
-    </div>
+            <p className="truncate text-sm font-medium text-stone-300">
+              {saveMessage || "Save when you are done editing."}
+            </p>
+          </div>
 
-    <button
-      type="button"
-      onClick={saveAll}
-      className="rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-5 py-3 text-sm font-semibold text-[#f5f0e8]"
-    >
-      Save
-    </button>
-  </div>
-</div>
+          <button
+            type="button"
+            onClick={saveAll}
+            className="rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-5 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
+          >
+            Save
+          </button>
+        </div>
+      </div>
     </PageShell>
   );
 }
@@ -566,13 +562,13 @@ function EditorPanel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/10">
+    <section className="rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15">
       <div className="mb-5 flex items-start justify-between gap-4 border-b border-[#f5f0e8]/10 pb-4">
         <div>
           <div className="mb-3 flex items-center gap-3">
-            <span className="h-2 w-2 rounded-full bg-[#c7ad75]/80" />
+            <span className="h-2 w-2 rounded-full bg-[#c7ad75]" />
 
-            <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-100">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
               {title}
             </h2>
           </div>
@@ -617,11 +613,13 @@ function BillEditor({
   ) => void;
   onRemove: (index: number) => void;
 }) {
+  const autoStatus = getAutoBillStatus(bill.dueDate);
+
   return (
-    <div className="rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4">
+    <div className="rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4 shadow-lg shadow-black/10">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <Pill>{bill.status}</Pill>
+          <Pill>{autoStatus}</Pill>
 
           <h3 className="mt-3 truncate text-xl font-bold text-[#f5f0e8]">
             {bill.name || "Untitled Bill"}
@@ -635,7 +633,7 @@ function BillEditor({
         <button
           type="button"
           onClick={() => onRemove(index)}
-          className="rounded-full border border-[#f5f0e8]/12 px-3 py-1 text-xs text-stone-400 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/14 hover:text-stone-100"
+          className="rounded-full border border-[#f5f0e8]/12 px-3 py-1 text-xs text-stone-400 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
         >
           Remove
         </button>
@@ -663,22 +661,6 @@ function BillEditor({
           type="text"
           onChange={(value) => onChange(index, "dueDate", value)}
         />
-
-        <InputField
-          label="Payment Method"
-          value={bill.paymentMethod}
-          type="text"
-          onChange={(value) => onChange(index, "paymentMethod", value)}
-        />
-
-        <SelectField
-          label="Status"
-          value={bill.status}
-          options={["Paid", "Upcoming", "Due Soon", "Overdue"]}
-          onChange={(value) =>
-            onChange(index, "status", value as ManualBill["status"])
-          }
-        />
       </div>
     </div>
   );
@@ -704,83 +686,56 @@ function CardEditor({
   const utilization = limit > 0 ? Math.round((balance / limit) * 100) : 0;
 
   return (
-    <div className="rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4">
-      <div className="mb-4 flex items-start justify-between gap-4">
+    <div className="rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4 shadow-lg shadow-black/10">
+      <div className="mb-5 flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <Pill>{utilization}% used</Pill>
-
-          <h3 className="mt-3 truncate text-xl font-bold text-[#f5f0e8]">
-            {card.name || "Untitled Card"}
+          <h3 className="truncate text-xl font-bold text-[#f5f0e8]">
+            {card.name || "Card Name"}
           </h3>
 
-          <p className="mt-1 text-sm text-stone-400">
+          <p className="mt-2 text-sm text-stone-300">
             {formatMoney(balance)} of {formatMoney(limit)}
           </p>
+
+          <div className="mt-3">
+            <Pill>{utilization}% used</Pill>
+          </div>
         </div>
 
         <button
           type="button"
           onClick={() => onRemove(index)}
-          className="rounded-full border border-[#f5f0e8]/12 px-3 py-1 text-xs text-stone-400 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/14 hover:text-stone-100"
+          className="rounded-full border border-[#f5f0e8]/12 px-3 py-1 text-xs text-stone-400 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
         >
           Remove
         </button>
       </div>
 
-      <div className="mb-4 h-2 overflow-hidden rounded-full bg-black/25">
+      <div className="mb-5 h-2 overflow-hidden rounded-full bg-black/30">
         <div
           className="h-full rounded-full bg-[#c7ad75]"
           style={{ width: `${Math.min(utilization, 100)}%` }}
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <InputField
-          label="Name"
-          value={card.name}
-          type="text"
-          onChange={(value) => onChange(index, "name", value)}
-        />
+      <div className="rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#11100d] p-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <InputField
+            label="Balance"
+            value={card.balance}
+            type="number"
+            inputMode="decimal"
+            onChange={(value) => onChange(index, "balance", value)}
+          />
 
-        <InputField
-          label="Balance"
-          value={card.balance}
-          type="number"
-          inputMode="decimal"
-          onChange={(value) => onChange(index, "balance", value)}
-        />
-
-        <InputField
-          label="Limit"
-          value={card.limit}
-          type="number"
-          inputMode="decimal"
-          onChange={(value) => onChange(index, "limit", value)}
-        />
-
-        <InputField
-          label="Minimum Payment"
-          value={card.minimumPayment}
-          type="number"
-          inputMode="decimal"
-          onChange={(value) => onChange(index, "minimumPayment", value)}
-        />
-
-        <InputField
-          label="Due Date"
-          value={card.dueDate}
-          type="text"
-          onChange={(value) => onChange(index, "dueDate", value)}
-        />
-
-        <SelectField
-          label="Status"
-          value={card.status}
-          options={["Good", "Watch", "Pay Down"]}
-          onChange={(value) =>
-            onChange(index, "status", value as ManualCreditCard["status"])
-          }
-        />
+          <InputField
+            label="Limit"
+            value={card.limit}
+            type="number"
+            inputMode="decimal"
+            onChange={(value) => onChange(index, "limit", value)}
+          />
+        </div>
       </div>
     </div>
   );
@@ -810,40 +765,8 @@ function InputField({
         inputMode={inputMode}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-2xl border border-[#f5f0e8]/12  px-4 py-4 text-lg text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-[#c7ad75]/40 focus:bg-[#1d1b18]"
+        className="w-full rounded-2xl border border-[#f5f0e8]/12 bg-[#11100d] px-4 py-4 text-lg text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-[#c7ad75]/40 focus:bg-[#181713]"
       />
-    </label>
-  );
-}
-
-function SelectField({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: string[];
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-medium text-stone-300">
-        {label}
-      </span>
-
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-2xl border border-[#f5f0e8]/12 bg-[#11100d] px-4 py-4 text-lg text-[#f5f0e8] outline-none transition focus:border-[#c7ad75]/40 focus:bg-[#1d1b18]"
-      >
-        {options.map((option) => (
-          <option key={option} value={option} className="bg-[#11100d]">
-            {option}
-          </option>
-        ))}
-      </select>
     </label>
   );
 }
