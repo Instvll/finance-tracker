@@ -300,16 +300,16 @@ export default function ManualPage() {
     <PageShell>
       <TopNav />
 
-      <header className="mb-5">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.35em] text-stone-400">
-          Editor
-        </p>
+      <header className="mb-4">
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-stone-400">
+            Money Editor
+          </p>
 
-        <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
-          Update Your Money
-        </h1>
+          <Pill>v1.0 Beta</Pill>
+        </div>
 
-        <p className="mt-3 max-w-xl text-sm leading-6 text-stone-300">
+        <p className="max-w-xl text-sm leading-6 text-stone-300">
           Edit your balances, bills, and credit cards. Save once and the whole
           dashboard updates.
         </p>
