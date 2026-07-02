@@ -23,6 +23,9 @@ export default function AccountPage() {
   const [isRestoring, setIsRestoring] = useState(false);
   const [message, setMessage] = useState("");
   const [lastSaved, setLastSaved] = useState("");
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [backupOpen, setBackupOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   useEffect(() => {
     loadAccount();
@@ -195,13 +198,15 @@ export default function AccountPage() {
         </p>
       </header>
 
-      <section className="grid gap-5">
+      <section className="grid gap-4">
         <ThemeSelector />
 
-        <SettingsSection
+        <SettingsDropdown
           eyebrow="Account"
           title="Signed In"
-          description="Your account is used for backup and restore during the private beta."
+          description="View your current account and sign out when needed."
+          isOpen={accountOpen}
+          onToggle={() => setAccountOpen((current) => !current)}
         >
           <div className="rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
@@ -220,12 +225,14 @@ export default function AccountPage() {
           >
             Sign Out
           </button>
-        </SettingsSection>
+        </SettingsDropdown>
 
-        <SettingsSection
+        <SettingsDropdown
           eyebrow="Backup"
           title="Backup Tools"
-          description="Save this device&apos;s tracker data to your account, then restore it on another device when needed."
+          description="Save this device's tracker data to your account, then restore it on another device when needed."
+          isOpen={backupOpen}
+          onToggle={() => setBackupOpen((current) => !current)}
         >
           <div className="mb-4 grid gap-3 sm:grid-cols-2">
             <InfoCard label="Local Save" value={formatSavedTime(lastSaved)} />
@@ -262,42 +269,87 @@ export default function AccountPage() {
               {isRestoring ? "Restoring..." : "Restore Backup"}
             </button>
           </div>
-        </SettingsSection>
+        </SettingsDropdown>
+
+        <SettingsDropdown
+          eyebrow="About"
+          title="About leftovr"
+          description="Version notes and beta safety information."
+          isOpen={aboutOpen}
+          onToggle={() => setAboutOpen((current) => !current)}
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <InfoCard label="Version" value="v1.0 Beta" />
+
+            <InfoCard label="Build Type" value="Private Testing" />
+          </div>
+
+          <div className="mt-4 rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
+              Important Note
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-stone-300">
+              leftovr is currently built for personal tracking and private beta
+              testing. Avoid storing full card numbers, passwords, Social
+              Security numbers, bank account numbers, or other sensitive account
+              details.
+            </p>
+          </div>
+        </SettingsDropdown>
       </section>
     </PageShell>
   );
 }
 
-function SettingsSection({
+function SettingsDropdown({
   eyebrow,
   title,
   description,
+  isOpen,
+  onToggle,
   children,
 }: {
   eyebrow: string;
   title: string;
   description: string;
+  isOpen: boolean;
+  onToggle: () => void;
   children: React.ReactNode;
 }) {
   return (
     <section className="rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15">
-      <div className="mb-5 border-b border-[#f5f0e8]/10 pb-4">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[#c7ad75]/75">
-          {eyebrow}
-        </p>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-4 text-left"
+      >
+        <div className="min-w-0">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[#c7ad75]/75">
+            {eyebrow}
+          </p>
 
-        <div className="mb-3 flex items-center gap-3">
-          <span className="h-2 w-2 rounded-full bg-[#c7ad75]" />
+          <div className="mb-3 flex items-center gap-3">
+            <span className="h-2 w-2 rounded-full bg-[#c7ad75]" />
 
-          <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
-            {title}
-          </h2>
+            <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
+              {title}
+            </h2>
+          </div>
+
+          <p className="text-sm leading-6 text-stone-400">{description}</p>
         </div>
 
-        <p className="text-sm leading-6 text-stone-400">{description}</p>
-      </div>
+        <span className="shrink-0 rounded-full border border-[#f5f0e8]/10 px-3 py-1 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]">
+          {isOpen ? "Hide" : "View"}
+        </span>
+      </button>
 
-      {children}
+      {isOpen && (
+        <div className="mt-5 border-t border-[#f5f0e8]/10 pt-5">
+          {children}
+        </div>
+      )}
     </section>
   );
 }

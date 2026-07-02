@@ -126,11 +126,11 @@ html[data-theme] [class*="text-stone-500"] {
   color: color-mix(in srgb, var(--theme-text) 45%, transparent) !important;
 }
 
-/* Borders */
+/* Brighter borders */
 html[data-theme] [class*="border-[#f5f0e8]"] {
   border-color: color-mix(
     in srgb,
-    var(--theme-text) 13%,
+    var(--theme-text) 22%,
     transparent
   ) !important;
 }
@@ -138,7 +138,22 @@ html[data-theme] [class*="border-[#f5f0e8]"] {
 html[data-theme] [class*="border-[#c7ad75]"] {
   border-color: color-mix(
     in srgb,
-    var(--theme-accent) 34%,
+    var(--theme-accent) 48%,
+    transparent
+  ) !important;
+}/* Brighter borders */
+html[data-theme] [class*="border-[#f5f0e8]"] {
+  border-color: color-mix(
+    in srgb,
+    var(--theme-text) 22%,
+    transparent
+  ) !important;
+}
+
+html[data-theme] [class*="border-[#c7ad75]"] {
+  border-color: color-mix(
+    in srgb,
+    var(--theme-accent) 48%,
     transparent
   ) !important;
 }

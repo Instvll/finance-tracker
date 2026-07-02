@@ -42,23 +42,34 @@ function formatMoney(amount: number) {
   }).format(amount);
 }
 
+function readBillsStorage() {
+  const savedBills = window.localStorage.getItem(billsStorageKey);
+
+  if (!savedBills) {
+    return defaultManualBills;
+  }
+
+  try {
+    return JSON.parse(savedBills) as ManualBill[];
+  } catch {
+    return defaultManualBills;
+  }
+}
+
 export default function BillsPage() {
   const [manualBills, setManualBills] =
     useState<ManualBill[]>(defaultManualBills);
+  const [showOtherBills, setShowOtherBills] = useState(false);
 
   useEffect(() => {
-    const savedBills = window.localStorage.getItem(billsStorageKey);
-
-    if (savedBills) {
-      setManualBills(JSON.parse(savedBills));
-    }
+    setManualBills(readBillsStorage());
   }, []);
 
   const upcomingBills = manualBills.filter(
     (bill) => getAutoBillStatus(bill.dueDate) === "Upcoming"
   );
 
-  const paidBills = manualBills.filter(
+  const otherBills = manualBills.filter(
     (bill) => getAutoBillStatus(bill.dueDate) === "Paid"
   );
 
@@ -67,7 +78,12 @@ export default function BillsPage() {
     0
   );
 
-  const paidTotal = paidBills.reduce(
+  const otherTotal = otherBills.reduce(
+    (total, bill) => total + parseMoney(bill.amount),
+    0
+  );
+
+  const totalBills = manualBills.reduce(
     (total, bill) => total + parseMoney(bill.amount),
     0
   );
@@ -78,203 +94,154 @@ export default function BillsPage() {
     <PageShell>
       <TopNav />
 
-      <header className="mb-4">
+      <header className="mb-5">
         <div className="mb-3 flex items-center justify-between gap-4">
-          <p className="text-lg font-semibold uppercase tracking-[0.24em] text-stone-300">
+          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
             Bill Tracker
           </p>
 
           <Pill>v1.0 Beta</Pill>
         </div>
 
-        <p className="max-w-xl text-sm leading-6 text-stone-300">
-          Bills automatically become upcoming when they are due within 7 days.
-        </p>
+        <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
+          Bills
+        </h1>
       </header>
 
-      <section className="mb-5 rounded-[2rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15 sm:p-6">
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <div className="mb-3 flex items-center gap-3">
-              <span className="h-2 w-2 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.25)]" />
+      <section className="mb-5 overflow-hidden rounded-[2.25rem] border border-[#c7ad75]/20 bg-[#1d1b17] shadow-2xl shadow-black/25">
+        <div className="relative p-5 sm:p-7">
+          <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#c7ad75]/10 blur-3xl" />
+          <div className="absolute -bottom-20 left-10 h-44 w-44 rounded-full bg-[#f5f0e8]/5 blur-3xl" />
 
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f5f0e8]">
-                Upcoming Bills
+          <div className="relative mb-7 flex items-start justify-between gap-4">
+            <div>
+              <div className="mb-3 flex items-center gap-3">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.35)]" />
+
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f5f0e8]">
+                  Due Soon
+                </p>
+              </div>
+
+              <p className="text-sm text-stone-400">
+                Bills due within the next 7 days.
               </p>
             </div>
 
-            <p className="text-sm leading-6 text-stone-400">
-              {hasBills
-                ? "Bills due within the next 7 days"
-                : "Add bills to start tracking what is coming up"}
-            </p>
+            <Pill>{upcomingBills.length} upcoming</Pill>
           </div>
 
-          <Pill>{hasBills ? `${upcomingBills.length} upcoming` : "empty"}</Pill>
-        </div>
+          <p className="relative break-words text-6xl font-bold tracking-tight text-[#f5f0e8] sm:text-7xl">
+            {formatMoney(upcomingTotal)}
+          </p>
 
-        <p className="break-words text-5xl font-bold tracking-tight text-[#f5f0e8] sm:text-7xl">
-          {formatMoney(upcomingTotal)}
-        </p>
-
-        {!hasBills && (
-          <div className="mt-5 rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#11100d] p-4">
-            <p className="text-sm font-semibold text-[#f5f0e8]">
-              No bills added yet.
-            </p>
-
-            <p className="mt-2 text-sm leading-6 text-stone-400">
-              Once you add your monthly bills, this page will show what is due
-              within the next 7 days.
-            </p>
+          <div className="relative mt-7 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <MiniStat label="Tracked" value={String(manualBills.length)} />
+            <MiniStat label="Other Bills" value={formatMoney(otherTotal)} />
+            <MiniStat label="Monthly Total" value={formatMoney(totalBills)} />
           </div>
-        )}
-
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <Link
-            href="/manual?tab=bills"
-            className="rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-3 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
-          >
-            Open Editor
-          </Link>
-
-          <Link
-            href="/"
-            className="rounded-2xl border border-[#f5f0e8]/12 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
-          >
-            Dashboard
-          </Link>
         </div>
-      </section>
-
-      <section className="mb-5 grid gap-3">
-        <MobileStat
-          label="Upcoming"
-          value={formatMoney(upcomingTotal)}
-          detail={`${upcomingBills.length} bill${
-            upcomingBills.length === 1 ? "" : "s"
-          } due within 7 days`}
-        />
-
-        <MobileStat
-          label="Paid"
-          value={formatMoney(paidTotal)}
-          detail={`${paidBills.length} bill${
-            paidBills.length === 1 ? "" : "s"
-          } outside the pay window`}
-        />
-
-        <MobileStat
-          label="Tracked"
-          value={String(manualBills.length)}
-          detail="Total bills saved"
-        />
       </section>
 
       <section className="grid gap-5">
-        <BillSection
-          title="Upcoming"
-          description="These bills are due within the next 7 days."
-        >
+        <section className="rounded-[1.65rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75]" />
+
+              <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
+                Upcoming Bills
+              </h2>
+            </div>
+
+            <Link
+              href="/manual?tab=bills"
+              className="rounded-full border border-[#f5f0e8]/10 px-3 py-1 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+            >
+              Edit
+            </Link>
+          </div>
+
           {upcomingBills.length > 0 ? (
-            <div className="divide-y divide-[#f5f0e8]/10">
+            <div className="grid gap-3">
               {upcomingBills.map((bill, index) => (
                 <BillRow key={`upcoming-${index}`} bill={bill} />
               ))}
             </div>
           ) : (
             <EmptyState
-              eyebrow="Nothing due"
-              title="No upcoming bills"
+              title={hasBills ? "Nothing due soon" : "No bills added yet"}
               text={
                 hasBills
-                  ? "None of your bills are due within the next 7 days."
+                  ? "No bills are due within the next 7 days."
                   : "Add your first bill in the Editor to start tracking upcoming expenses."
               }
               actionLabel="Add Bill"
               actionHref="/manual?tab=bills"
             />
           )}
-        </BillSection>
+        </section>
 
-        <BillSection
-          title="Paid"
-          description="These bills are outside the current 7-day pay window."
-        >
-          {paidBills.length > 0 ? (
-            <div className="divide-y divide-[#f5f0e8]/10">
-              {paidBills.map((bill, index) => (
-                <BillRow key={`paid-${index}`} bill={bill} muted />
-              ))}
+        <section className="rounded-[1.65rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15">
+          <button
+            type="button"
+            onClick={() => setShowOtherBills((current) => !current)}
+            className="flex w-full items-center justify-between gap-4 text-left"
+          >
+            <div className="min-w-0">
+              <div className="mb-3 flex items-center gap-3">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75]" />
+
+                <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
+                  Other Bills
+                </h2>
+              </div>
+
+              <p className="text-sm text-stone-400">
+                Bills outside the current 7-day window.
+              </p>
             </div>
-          ) : (
-            <EmptyState
-              eyebrow="No paid bills"
-              title="Nothing outside the pay window"
-              text={
-                hasBills
-                  ? "Bills will show here when they are not due within the next 7 days."
-                  : "After you add bills, anything outside the 7-day pay window will show here."
-              }
-              actionLabel="Open Editor"
-              actionHref="/manual?tab=bills"
-            />
+
+            <span className="shrink-0 rounded-full border border-[#f5f0e8]/10 px-3 py-1 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]">
+              {showOtherBills ? "Hide" : "View"}
+            </span>
+          </button>
+
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <MiniStat label="Count" value={String(otherBills.length)} />
+            <MiniStat label="Total" value={formatMoney(otherTotal)} />
+          </div>
+
+          {showOtherBills && (
+            <div className="mt-4 border-t border-[#f5f0e8]/10 pt-4">
+              {otherBills.length > 0 ? (
+                <div className="grid gap-3">
+                  {otherBills.map((bill, index) => (
+                    <BillRow key={`other-${index}`} bill={bill} muted />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-stone-400">
+                  No other bills to show yet.
+                </p>
+              )}
+            </div>
           )}
-        </BillSection>
+        </section>
       </section>
     </PageShell>
   );
 }
 
-function MobileStat({
-  label,
-  value,
-  detail,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-}) {
+function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-[1.4rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-4 shadow-xl shadow-black/15">
-      <div className="min-w-0">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
-          {label}
-        </p>
+    <div className="rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#11100d]/75 p-4 backdrop-blur">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
+        {label}
+      </p>
 
-        <p className="mt-1 truncate text-sm text-stone-300">{detail}</p>
-      </div>
-
-      <p className="shrink-0 text-xl font-bold text-[#f5f0e8]">{value}</p>
+      <p className="mt-2 truncate text-lg font-bold text-[#f5f0e8]">{value}</p>
     </div>
-  );
-}
-
-function BillSection({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15">
-      <div className="mb-4 border-b border-[#f5f0e8]/10 pb-4">
-        <div className="flex items-center gap-3">
-          <span className="h-2 w-2 rounded-full bg-[#c7ad75]" />
-
-          <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
-            {title}
-          </h2>
-        </div>
-
-        <p className="mt-3 text-sm leading-6 text-stone-400">{description}</p>
-      </div>
-
-      {children}
-    </section>
   );
 }
 
@@ -286,31 +253,26 @@ function BillRow({
   muted?: boolean;
 }) {
   const amount = parseMoney(bill.amount);
-  const autoStatus = getAutoBillStatus(bill.dueDate);
 
   return (
-    <div className="py-4 first:pt-0 last:pb-0">
-      <div className="flex items-start justify-between gap-4">
+    <div className="rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4">
+      <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <div className="mb-2 flex flex-wrap gap-2">
-            <Pill>{autoStatus}</Pill>
-
-            <span className="rounded-full border border-[#f5f0e8]/10 bg-[#11100d] px-3 py-1 text-xs font-semibold text-stone-200/85">
-              Due {bill.dueDate || "TBD"}
-            </span>
-          </div>
-
           <p
-            className={`truncate text-lg font-semibold ${
+            className={`truncate text-base font-semibold ${
               muted ? "text-stone-300" : "text-[#f5f0e8]"
             }`}
           >
             {bill.name || "Untitled Bill"}
           </p>
+
+          <p className="mt-1 text-sm text-stone-400">
+            Due {bill.dueDate || "TBD"}
+          </p>
         </div>
 
         <p
-          className={`shrink-0 text-xl font-bold ${
+          className={`shrink-0 text-lg font-bold ${
             muted ? "text-stone-300" : "text-[#f5f0e8]"
           }`}
         >
@@ -322,13 +284,11 @@ function BillRow({
 }
 
 function EmptyState({
-  eyebrow,
   title,
   text,
   actionLabel,
   actionHref,
 }: {
-  eyebrow: string;
   title: string;
   text: string;
   actionLabel: string;
@@ -336,23 +296,15 @@ function EmptyState({
 }) {
   return (
     <div className="rounded-[1.35rem] border border-dashed border-[#f5f0e8]/12 bg-[#25231e] p-5">
-      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-[#c7ad75]/20 bg-[#c7ad75]/10">
-        <span className="h-2 w-2 rounded-full bg-[#c7ad75]" />
-      </div>
-
-      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
-        {eyebrow}
-      </p>
-
-      <p className="mt-2 text-lg font-semibold text-[#f5f0e8]">{title}</p>
+      <p className="text-lg font-semibold text-[#f5f0e8]">{title}</p>
 
       <p className="mt-2 text-sm leading-6 text-stone-400">{text}</p>
 
       <Link
         href={actionHref}
-        className="mt-4 inline-flex rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
+        className="mt-4 flex rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-3 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
       >
-        {actionLabel}
+        <span className="w-full">{actionLabel}</span>
       </Link>
     </div>
   );
