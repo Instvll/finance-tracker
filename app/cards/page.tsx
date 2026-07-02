@@ -82,9 +82,9 @@ export default function CardsPage() {
 
       <header className="mb-4">
         <div className="mb-3 flex items-center justify-between gap-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-stone-400">
-            Card Tracker
-          </p>
+          <p className="text-lg font-semibold uppercase tracking-[0.24em] text-stone-300">
+  Card Tracker
+</p>
 
           <Pill>v1.0 Beta</Pill>
         </div>

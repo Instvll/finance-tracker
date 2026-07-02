@@ -302,9 +302,9 @@ export default function ManualPage() {
 
       <header className="mb-4">
         <div className="mb-3 flex items-center justify-between gap-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-stone-400">
-            Money Editor
-          </p>
+          <p className="text-lg font-semibold uppercase tracking-[0.24em] text-stone-300">
+  Money Editor
+</p>
 
           <Pill>v1.0 Beta</Pill>
         </div>
