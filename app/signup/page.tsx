@@ -6,24 +6,30 @@ import TopNav from "../../components/TopNav";
 import { PageShell } from "../../components/Layout";
 import { supabase } from "../../lib/supabase/client";
 
-export default function LoginPage() {
+export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [message, setMessage] = useState("");
   const [isWorking, setIsWorking] = useState(false);
 
-  async function handleLogin() {
+  async function handleCreateAccount() {
     setIsWorking(true);
     setMessage("");
 
     if (!email || !password) {
-      setMessage("Enter your email and password to log in.");
+      setMessage("Enter an email and password to create your account.");
       setIsWorking(false);
       return;
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
+    if (password.length < 6) {
+      setMessage("Password should be at least 6 characters.");
+      setIsWorking(false);
+      return;
+    }
+
+    const { error } = await supabase.auth.signUp({
       email,
       password,
     });
@@ -34,7 +40,10 @@ export default function LoginPage() {
       return;
     }
 
-    window.location.href = "/account";
+    setMessage(
+      "Account created. Check your email to confirm your account, then come back and log in."
+    );
+    setIsWorking(false);
   }
 
   return (
@@ -47,23 +56,24 @@ export default function LoginPage() {
         </p>
 
         <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
-          Log In
+          Create Account
         </h1>
 
         <p className="mt-3 max-w-xl text-sm leading-6 text-stone-300">
-          Log in to access your account tools and eventually sync your finance
-          tracker between devices.
+          Create an account so your finance tracker can later back up and
+          restore your saved data.
         </p>
       </header>
 
       <section className="rounded-[2rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10 sm:p-6">
         <div className="mb-5 rounded-2xl border border-stone-300/20 bg-[#2b2925] p-4">
           <p className="text-sm font-semibold text-[#f5f0e8]">
-            Already have an account?
+            New here?
           </p>
 
           <p className="mt-2 text-sm leading-6 text-stone-300">
-            Use this page to sign in. New users should create an account first.
+            Create your account first. After that, you’ll be able to log in from
+            the Account page and use backup tools.
           </p>
         </div>
 
@@ -92,7 +102,7 @@ export default function LoginPage() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               className="w-full rounded-2xl border border-stone-300/20 bg-[#171614] px-4 py-4 text-lg text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-stone-100/35 focus:bg-[#1d1b18]"
-              placeholder="Enter password"
+              placeholder="At least 6 characters"
             />
           </label>
 
@@ -104,18 +114,18 @@ export default function LoginPage() {
 
           <button
             type="button"
-            onClick={handleLogin}
+            onClick={handleCreateAccount}
             disabled={isWorking}
             className="w-full rounded-2xl border border-stone-100/20 bg-stone-100/10 px-5 py-4 text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isWorking ? "Logging in..." : "Log In"}
+            {isWorking ? "Creating account..." : "Create Account"}
           </button>
 
           <Link
-            href="/signup"
+            href="/login"
             className="block rounded-2xl border border-stone-300/20 px-5 py-4 text-center text-sm font-semibold text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
           >
-            Create a New Account
+            I Already Have an Account
           </Link>
 
           <Link
