@@ -1,20 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import TopNav from "../../components/TopNav";
+import ThemeSelector from "../../components/ThemeSelector";
 import { PageShell, Pill } from "../../components/Layout";
 import { supabase } from "../../lib/supabase/client";
 
-type CloudFinanceData = {
-  user_id: string;
-  dashboard_data: unknown;
-  bills_data: unknown;
-  cards_data: unknown;
-  plan_data: unknown;
-  manual_last_saved: string | null;
-  plan_last_saved: string | null;
-  updated_at?: string;
+type AccountUser = {
+  id: string;
+  email?: string;
 };
 
 const summaryStorageKey = "finance-tracker-manual-data";
@@ -22,325 +16,312 @@ const billsStorageKey = "finance-tracker-manual-bills";
 const cardsStorageKey = "finance-tracker-manual-cards";
 const lastSavedStorageKey = "finance-tracker-last-saved";
 
-const planStorageKey = "finance-tracker-paycheck-plan";
-const planLastSavedStorageKey = "finance-tracker-paycheck-plan-last-saved";
-
-function formatSavedTime(value?: string | null) {
-  if (!value) {
-    return "No backup yet";
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
-
-function readJsonStorage(key: string, fallback: unknown) {
-  const value = window.localStorage.getItem(key);
-
-  if (!value) {
-    return fallback;
-  }
-
-  try {
-    return JSON.parse(value);
-  } catch {
-    return fallback;
-  }
-}
-
-function writeJsonStorage(key: string, value: unknown) {
-  window.localStorage.setItem(key, JSON.stringify(value));
-}
-
 export default function AccountPage() {
-  const [email, setEmail] = useState("");
-  const [userId, setUserId] = useState("");
-  const [status, setStatus] = useState("Checking account...");
+  const [user, setUser] = useState<AccountUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
   const [message, setMessage] = useState("");
-  const [cloudUpdatedAt, setCloudUpdatedAt] = useState<string | null>(null);
-  const [isWorking, setIsWorking] = useState(false);
+  const [lastSaved, setLastSaved] = useState("");
 
   useEffect(() => {
-    async function loadUser() {
-      const { data, error } = await supabase.auth.getUser();
-
-      if (error || !data.user) {
-        setStatus("Signed out");
-        setEmail("");
-        setUserId("");
-        return;
-      }
-
-      setEmail(data.user.email || "");
-      setUserId(data.user.id);
-      setStatus("Signed in");
-
-      const { data: cloudData } = await supabase
-        .from("finance_data")
-        .select("updated_at")
-        .eq("user_id", data.user.id)
-        .maybeSingle();
-
-      if (cloudData?.updated_at) {
-        setCloudUpdatedAt(cloudData.updated_at);
-      }
-    }
-
-    loadUser();
+    loadAccount();
+    loadLastSaved();
   }, []);
 
-  async function handleLogout() {
-    setIsWorking(true);
-    await supabase.auth.signOut();
-    window.location.href = "/login";
+  async function loadAccount() {
+    setIsLoading(true);
+
+    const { data, error } = await supabase.auth.getUser();
+
+    if (error || !data.user) {
+      setUser(null);
+      setIsLoading(false);
+      return;
+    }
+
+    setUser({
+      id: data.user.id,
+      email: data.user.email,
+    });
+
+    setIsLoading(false);
   }
 
-  async function backupThisDevice() {
-    if (!userId) {
-      setMessage("Log in before backing up this device.");
+  function loadLastSaved() {
+    const savedTime = window.localStorage.getItem(lastSavedStorageKey);
+
+    if (savedTime) {
+      setLastSaved(savedTime);
+    }
+  }
+
+  function formatSavedTime(value: string) {
+    if (!value) {
+      return "No local save yet";
+    }
+
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date(value));
+  }
+
+  function readStorageValue(key: string, fallback: string) {
+    return window.localStorage.getItem(key) || fallback;
+  }
+
+  async function backUpThisDevice() {
+    if (!user) {
+      setMessage("You need to be signed in before backing up.");
       return;
     }
 
-    setIsWorking(true);
+    setIsBackingUp(true);
     setMessage("");
 
-    const payload: CloudFinanceData = {
-      user_id: userId,
-      dashboard_data: readJsonStorage(summaryStorageKey, {}),
-      bills_data: readJsonStorage(billsStorageKey, []),
-      cards_data: readJsonStorage(cardsStorageKey, []),
-      plan_data: readJsonStorage(planStorageKey, {}),
-      manual_last_saved: window.localStorage.getItem(lastSavedStorageKey),
-      plan_last_saved: window.localStorage.getItem(planLastSavedStorageKey),
-    };
+    const dashboardData = readStorageValue(summaryStorageKey, "{}");
+    const billsData = readStorageValue(billsStorageKey, "[]");
+    const cardsData = readStorageValue(cardsStorageKey, "[]");
+    const manualLastSaved = window.localStorage.getItem(lastSavedStorageKey);
 
-    const { data, error } = await supabase
-      .from("finance_data")
-      .upsert(
-        {
-          ...payload,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id" }
-      )
-      .select("updated_at")
-      .single();
+    const { error } = await supabase.from("finance_data").upsert({
+      user_id: user.id,
+      dashboard_data: JSON.parse(dashboardData),
+      bills_data: JSON.parse(billsData),
+      cards_data: JSON.parse(cardsData),
+      plan_data: {},
+      notes_data: [],
+      manual_last_saved: manualLastSaved,
+      plan_last_saved: null,
+      notes_last_saved: null,
+      updated_at: new Date().toISOString(),
+    });
 
     if (error) {
-      setMessage(error.message);
-      setIsWorking(false);
+      setMessage(`Backup failed: ${error.message}`);
+      setIsBackingUp(false);
       return;
     }
 
-    setCloudUpdatedAt(data.updated_at);
-    setMessage("Backup complete. This device's saved data is now backed up.");
-    setIsWorking(false);
+    setMessage("Backup complete.");
+    setIsBackingUp(false);
   }
 
   async function restoreBackup() {
-    if (!userId) {
-      setMessage("Log in before restoring a backup.");
+    if (!user) {
+      setMessage("You need to be signed in before restoring.");
       return;
     }
 
     const confirmed = window.confirm(
-      "Restore your backup onto this device? This will replace the saved finance data currently on this browser."
+      "Restore your saved backup to this device? This will replace the current tracker data on this device."
     );
 
     if (!confirmed) {
       return;
     }
 
-    setIsWorking(true);
+    setIsRestoring(true);
     setMessage("");
 
     const { data, error } = await supabase
       .from("finance_data")
-      .select("*")
-      .eq("user_id", userId)
-      .maybeSingle();
+      .select(
+        "dashboard_data, bills_data, cards_data, manual_last_saved, updated_at"
+      )
+      .eq("user_id", user.id)
+      .single();
 
-    if (error) {
-      setMessage(error.message);
-      setIsWorking(false);
+    if (error || !data) {
+      setMessage(
+        error
+          ? `Restore failed: ${error.message}`
+          : "No backup was found for this account."
+      );
+      setIsRestoring(false);
       return;
     }
 
-    if (!data) {
-      setMessage("No backup found yet. Back up a device first.");
-      setIsWorking(false);
-      return;
-    }
+    window.localStorage.setItem(
+      summaryStorageKey,
+      JSON.stringify(data.dashboard_data || {})
+    );
 
-    writeJsonStorage(summaryStorageKey, data.dashboard_data || {});
-    writeJsonStorage(billsStorageKey, data.bills_data || []);
-    writeJsonStorage(cardsStorageKey, data.cards_data || []);
-    writeJsonStorage(planStorageKey, data.plan_data || {});
+    window.localStorage.setItem(
+      billsStorageKey,
+      JSON.stringify(data.bills_data || [])
+    );
+
+    window.localStorage.setItem(
+      cardsStorageKey,
+      JSON.stringify(data.cards_data || [])
+    );
 
     if (data.manual_last_saved) {
       window.localStorage.setItem(lastSavedStorageKey, data.manual_last_saved);
+      setLastSaved(data.manual_last_saved);
+    } else if (data.updated_at) {
+      window.localStorage.setItem(lastSavedStorageKey, data.updated_at);
+      setLastSaved(data.updated_at);
     }
 
-    if (data.plan_last_saved) {
-      window.localStorage.setItem(
-        planLastSavedStorageKey,
-        data.plan_last_saved
-      );
-    }
+    setMessage("Restore complete. Go back to the Dashboard to view your data.");
+    setIsRestoring(false);
+  }
 
-    setCloudUpdatedAt(data.updated_at || null);
-    setMessage("Backup restored. Refresh the dashboard to see your data.");
-    setIsWorking(false);
+  async function signOut() {
+    await supabase.auth.signOut();
+    window.location.href = "/login";
   }
 
   return (
     <PageShell>
       <TopNav />
 
-      <header className="mb-4">
+      <header className="mb-5">
         <div className="mb-3 flex items-center justify-between gap-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-stone-400">
-            Account
+          <p className="text-lg font-semibold uppercase tracking-[0.24em] text-stone-300">
+            Settings
           </p>
 
           <Pill>v1.0 Beta</Pill>
         </div>
 
         <p className="max-w-xl text-sm leading-6 text-stone-300">
-          Manage your sign-in and keep a backup of your finance tracker data.
+          Customize leftovr, manage your account, and control your backup tools.
         </p>
       </header>
 
-      <section className="mb-5 rounded-[2rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/10 sm:p-6">
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <div className="mb-3 flex items-center gap-3">
-              <span className="h-2 w-2 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(245,240,232,0.2)]" />
+      <section className="grid gap-5">
+        <ThemeSelector />
 
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-300">
-                Account Status
-              </p>
-            </div>
+        <SettingsSection
+          eyebrow="Account"
+          title="Signed In"
+          description="Your account is used for backup and restore during the private beta."
+        >
+          <div className="rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
+              Email
+            </p>
 
-            <h2 className="text-3xl font-bold tracking-tight text-[#f5f0e8]">
-              {status}
-            </h2>
-
-            <p className="mt-3 text-sm leading-6 text-stone-400">
-              {email
-                ? "Your account is connected on this device."
-                : "Log in when you are ready to use backup and restore."}
+            <p className="mt-2 break-words text-lg font-bold text-[#f5f0e8]">
+              {isLoading ? "Loading..." : user?.email || "Not signed in"}
             </p>
           </div>
 
-          <Pill>{email ? "Connected" : "Guest"}</Pill>
-        </div>
+          <button
+            type="button"
+            onClick={signOut}
+            className="mt-4 w-full rounded-2xl border border-[#f5f0e8]/12 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+          >
+            Sign Out
+          </button>
+        </SettingsSection>
 
-        {email ? (
-          <div className="space-y-4">
-            <InfoCard label="Signed in as" value={email} />
-            <InfoCard label="Last backup" value={formatSavedTime(cloudUpdatedAt)} />
+        <SettingsSection
+          eyebrow="Backup"
+          title="Backup Tools"
+          description="Save this device&apos;s tracker data to your account, then restore it on another device when needed."
+        >
+          <div className="mb-4 grid gap-3 sm:grid-cols-2">
+            <InfoCard label="Local Save" value={formatSavedTime(lastSaved)} />
 
-            {message && (
-              <div className="rounded-2xl border border-[#f5f0e8]/12 bg-[#11100d] p-4">
-                <p className="text-sm leading-6 text-stone-300">{message}</p>
-              </div>
-            )}
+            <InfoCard
+              label="Backup Type"
+              value="Manual"
+              detail="You choose when to back up or restore."
+            />
+          </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={backupThisDevice}
-                disabled={isWorking}
-                className="rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-5 py-4 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isWorking ? "Working..." : "Back Up This Device"}
-              </button>
-
-              <button
-                type="button"
-                onClick={restoreBackup}
-                disabled={isWorking}
-                className="rounded-2xl border border-[#f5f0e8]/12 px-5 py-4 text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/14 hover:text-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Restore Backup
-              </button>
+          {message && (
+            <div className="mb-4 rounded-[1.25rem] border border-[#c7ad75]/25 bg-[#c7ad75]/14 p-4">
+              <p className="text-sm font-semibold text-[#f5f0e8]">{message}</p>
             </div>
+          )}
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={backUpThisDevice}
+              disabled={isBackingUp || isRestoring || !user}
+              className="rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-5 py-4 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isBackingUp ? "Backing Up..." : "Back Up This Device"}
+            </button>
 
             <button
               type="button"
-              onClick={handleLogout}
-              disabled={isWorking}
-              className="w-full rounded-2xl border border-[#f5f0e8]/12 px-5 py-4 text-sm text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/14 hover:text-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={restoreBackup}
+              disabled={isBackingUp || isRestoring || !user}
+              className="rounded-2xl border border-[#f5f0e8]/12 px-5 py-4 text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isWorking ? "Signing out..." : "Sign Out"}
+              {isRestoring ? "Restoring..." : "Restore Backup"}
             </button>
           </div>
-        ) : (
-          <div className="grid gap-3">
-            <Link
-              href="/login"
-              className="block rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-5 py-4 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
-            >
-              Log In
-            </Link>
-
-            <Link
-              href="/signup"
-              className="block rounded-2xl border border-[#f5f0e8]/12 px-5 py-4 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/14 hover:text-stone-100"
-            >
-              Create Account
-            </Link>
-          </div>
-        )}
-      </section>
-
-      <section className="rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/10">
-        <div className="mb-4 flex items-center gap-3">
-          <span className="h-2 w-2 rounded-full bg-[#c7ad75]/80" />
-
-          <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-100">
-            Backup
-          </h2>
-        </div>
-
-        <div className="space-y-3 text-sm leading-6 text-stone-300">
-          <p>
-            <span className="font-semibold text-[#f5f0e8]">
-              Back Up This Device
-            </span>{" "}
-            saves the finance data currently stored on this browser.
-          </p>
-
-          <p>
-            <span className="font-semibold text-[#f5f0e8]">
-              Restore Backup
-            </span>{" "}
-            brings your saved backup onto the device you are using.
-          </p>
-
-          <p className="text-stone-400">
-            For now, backup is manual so you stay in control of when data moves
-            between devices.
-          </p>
-        </div>
+        </SettingsSection>
       </section>
     </PageShell>
   );
 }
 
-function InfoCard({ label, value }: { label: string; value: string }) {
+function SettingsSection({
+  eyebrow,
+  title,
+  description,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="rounded-2xl border border-[#f5f0e8]/12 bg-[#25231e] p-4">
-      <p className="text-sm text-stone-400">{label}</p>
+    <section className="rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15">
+      <div className="mb-5 border-b border-[#f5f0e8]/10 pb-4">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[#c7ad75]/75">
+          {eyebrow}
+        </p>
 
-      <p className="mt-1 break-words text-lg font-semibold text-[#f5f0e8]">
+        <div className="mb-3 flex items-center gap-3">
+          <span className="h-2 w-2 rounded-full bg-[#c7ad75]" />
+
+          <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
+            {title}
+          </h2>
+        </div>
+
+        <p className="text-sm leading-6 text-stone-400">{description}</p>
+      </div>
+
+      {children}
+    </section>
+  );
+}
+
+function InfoCard({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+}) {
+  return (
+    <div className="rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
+        {label}
+      </p>
+
+      <p className="mt-2 break-words text-lg font-bold text-[#f5f0e8]">
         {value}
       </p>
+
+      {detail && <p className="mt-2 text-sm text-stone-400">{detail}</p>}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import AuthGate from "../components/AuthGate";
+import ThemeBoot from "../components/ThemeBoot";
 
 export const metadata: Metadata = {
   title: "leftovr",
@@ -29,6 +30,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <ThemeBoot />
         <AuthGate>{children}</AuthGate>
       </body>
     </html>

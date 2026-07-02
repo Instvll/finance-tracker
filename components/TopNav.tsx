@@ -10,7 +10,7 @@ const navItems = [
   { label: "Bills", href: "/bills" },
   { label: "Credit Cards", href: "/cards" },
   { label: "Editor", href: "/manual" },
-  { label: "Account", href: "/account" },
+  { label: "Settings", href: "/account" },
 ];
 
 export default function TopNav() {
