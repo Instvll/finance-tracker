@@ -2,26 +2,23 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import TopNav from "../../components/TopNav";
+import { useRouter } from "next/navigation";
 import { PageShell, Pill } from "../../components/Layout";
 import { supabase } from "../../lib/supabase/client";
 
 export default function LoginPage() {
+  const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [message, setMessage] = useState("");
   const [isWorking, setIsWorking] = useState(false);
 
-  async function handleLogin() {
+  async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
     setIsWorking(true);
     setMessage("");
-
-    if (!email || !password) {
-      setMessage("Enter your email and password to log in.");
-      setIsWorking(false);
-      return;
-    }
 
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -34,30 +31,27 @@ export default function LoginPage() {
       return;
     }
 
-    window.location.href = "/account";
+    router.push("/");
+    router.refresh();
   }
 
   return (
     <PageShell>
-      <TopNav />
+      <header className="mb-8 flex items-center justify-between gap-4">
+        <Link href="/login" className="flex items-center gap-3">
+          <LogoMark />
 
-      <header className="mb-5">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.35em] text-stone-400">
-          Account
-        </p>
+          <span className="text-sm font-semibold lowercase tracking-[0.32em] text-[#f5f0e8]">
+            leftovr
+          </span>
+        </Link>
 
-        <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
-          Log In
-        </h1>
-
-        <p className="mt-3 max-w-xl text-sm leading-6 text-stone-300">
-          Access your account, backup tools, and saved finance tracker data.
-        </p>
+        <Pill>v1.0 Beta</Pill>
       </header>
 
-      <section className="mb-5 rounded-[2rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10 sm:p-6">
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
+      <main className="mx-auto max-w-xl">
+        <section className="mb-5 rounded-[2rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10 sm:p-6">
+          <div className="mb-6">
             <div className="mb-3 flex items-center gap-3">
               <span className="h-2 w-2 rounded-full bg-stone-100/70 shadow-[0_0_14px_rgba(245,240,232,0.2)]" />
 
@@ -66,75 +60,70 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <h2 className="text-3xl font-bold tracking-tight text-[#f5f0e8]">
-              Sign in to continue
-            </h2>
+            <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
+              Log in
+            </h1>
 
             <p className="mt-3 text-sm leading-6 text-stone-400">
-              Use the email and password you created for your finance tracker
-              account.
+              Sign in to access your dashboard, editor, bills, and credit card
+              tracker.
             </p>
           </div>
 
-          <Pill>Login</Pill>
-        </div>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <InputField
+              label="Email"
+              value={email}
+              type="email"
+              onChange={setEmail}
+            />
 
-        <div className="space-y-4">
-          <InputField
-            label="Email"
-            value={email}
-            type="email"
-            placeholder="you@example.com"
-            onChange={setEmail}
-          />
+            <InputField
+              label="Password"
+              value={password}
+              type="password"
+              onChange={setPassword}
+            />
 
-          <InputField
-            label="Password"
-            value={password}
-            type="password"
-            placeholder="Enter password"
-            onChange={setPassword}
-          />
+            {message && (
+              <div className="rounded-2xl border border-stone-300/20 bg-[#171614] p-4">
+                <p className="text-sm leading-6 text-stone-300">{message}</p>
+              </div>
+            )}
 
-          {message && (
-            <div className="rounded-2xl border border-stone-300/20 bg-[#171614] p-4">
-              <p className="text-sm leading-6 text-stone-300">{message}</p>
-            </div>
-          )}
+            <button
+              type="submit"
+              disabled={isWorking}
+              className="w-full rounded-2xl border border-stone-100/20 bg-stone-100/10 px-5 py-4 text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isWorking ? "Logging in..." : "Log In"}
+            </button>
+          </form>
+        </section>
 
-          <button
-            type="button"
-            onClick={handleLogin}
-            disabled={isWorking}
-            className="w-full rounded-2xl border border-stone-100/20 bg-stone-100/10 px-5 py-4 text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isWorking ? "Logging in..." : "Log In"}
-          </button>
-        </div>
-      </section>
-
-      <section className="grid gap-3">
-        <Link
-          href="/signup"
-          className="rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10 transition hover:border-stone-100/30 hover:bg-[#2b2925]"
-        >
-          <p className="text-sm font-semibold text-[#f5f0e8]">
+        <section className="rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-5 text-center shadow-xl shadow-black/10">
+          <p className="text-sm leading-6 text-stone-300">
             Need an account?
           </p>
 
-          <p className="mt-2 text-sm leading-6 text-stone-400">
-            Create one first, then come back here to log in.
-          </p>
-        </Link>
-
-        <Link
-          href="/"
-          className="rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-5 text-center text-sm text-stone-300 shadow-xl shadow-black/10 transition hover:border-stone-100/30 hover:bg-[#2b2925] hover:text-stone-100"
-        >
-          Back to Dashboard
-        </Link>
-      </section>
+          <Link
+            href="/signup"
+            className="mt-3 block rounded-2xl border border-stone-300/20 px-5 py-4 text-sm font-semibold text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
+          >
+            Create Account
+          </Link>
+        </section>
+      </main>
     </PageShell>
+  );
+}
+
+function LogoMark() {
+  return (
+    <div className="relative h-9 w-9 overflow-hidden rounded-2xl border border-stone-100/20 bg-stone-100/10 shadow-[0_0_22px_rgba(245,240,232,0.08)]">
+      <div className="absolute left-2 top-2 h-5 w-5 rounded-full border border-stone-100/45" />
+      <div className="absolute bottom-2 right-2 h-3 w-3 rounded-full bg-stone-100/55" />
+    </div>
   );
 }
 
@@ -142,13 +131,11 @@ function InputField({
   label,
   value,
   type,
-  placeholder,
   onChange,
 }: {
   label: string;
   value: string;
   type: "email" | "password";
-  placeholder: string;
   onChange: (value: string) => void;
 }) {
   return (
@@ -161,8 +148,8 @@ function InputField({
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        required
         className="w-full rounded-2xl border border-stone-300/20 bg-[#171614] px-4 py-4 text-lg text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-stone-100/35 focus:bg-[#1d1b18]"
-        placeholder={placeholder}
       />
     </label>
   );

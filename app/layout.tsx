@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import AuthGate from "../components/AuthGate";
 
 export const metadata: Metadata = {
-  title: "Finance Tracker",
-  description: "A personal money dashboard for bills, cards, goals, and spending.",
+  title: "leftovr",
+  description: "A simple personal finance tracker.",
 };
 
 export default function RootLayout({
@@ -13,7 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AuthGate>{children}</AuthGate>
+      </body>
     </html>
   );
 }
