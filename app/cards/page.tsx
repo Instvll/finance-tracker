@@ -74,6 +74,8 @@ export default function CardsPage() {
     (card) => card.status === "Watch" || card.status === "Pay Down"
   );
 
+  const hasCards = manualCards.length > 0;
+
   return (
     <PageShell>
       <TopNav />
@@ -104,11 +106,13 @@ export default function CardsPage() {
             </div>
 
             <p className="text-sm leading-6 text-stone-400">
-              Combined balance across tracked cards
+              {hasCards
+                ? "Combined balance across tracked cards"
+                : "Add a card to start tracking balances and utilization"}
             </p>
           </div>
 
-          <Pill>{utilization}% used</Pill>
+          <Pill>{hasCards ? `${utilization}% used` : "empty"}</Pill>
         </div>
 
         <p className="break-words text-5xl font-bold tracking-tight text-[#f5f0e8] sm:text-7xl">
@@ -122,12 +126,25 @@ export default function CardsPage() {
           />
         </div>
 
+        {!hasCards && (
+          <div className="mt-5 rounded-[1.35rem] border border-stone-300/15 bg-[#171614] p-4">
+            <p className="text-sm font-semibold text-[#f5f0e8]">
+              No credit cards added yet.
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-stone-400">
+              Add a card when you want to track balances, limits, utilization,
+              and upcoming payments.
+            </p>
+          </div>
+        )}
+
         <div className="mt-5 grid grid-cols-2 gap-3">
           <Link
             href="/manual"
             className="rounded-2xl border border-stone-100/20 bg-stone-100/10 px-4 py-3 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
           >
-            Edit Cards
+            Open Editor
           </Link>
 
           <Link
@@ -174,8 +191,11 @@ export default function CardsPage() {
             </div>
           ) : (
             <EmptyState
-              title="No cards yet"
-              text="Add a card in the Editor to start tracking credit balances."
+              eyebrow="No cards yet"
+              title="No credit cards added"
+              text="Add your first card in the Editor to start tracking balances, limits, and utilization."
+              actionLabel="Add Card"
+              actionHref="/manual"
             />
           )}
         </CardSection>
@@ -298,12 +318,39 @@ function InfoBox({ label, value }: { label: string; value: string }) {
   );
 }
 
-function EmptyState({ title, text }: { title: string; text: string }) {
+function EmptyState({
+  eyebrow,
+  title,
+  text,
+  actionLabel,
+  actionHref,
+}: {
+  eyebrow: string;
+  title: string;
+  text: string;
+  actionLabel: string;
+  actionHref: string;
+}) {
   return (
-    <div className="rounded-[1.25rem] border border-stone-300/15 bg-[#2b2925] p-5">
-      <p className="font-semibold text-[#f5f0e8]">{title}</p>
+    <div className="rounded-[1.35rem] border border-dashed border-stone-300/20 bg-[#2b2925] p-5">
+      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-stone-100/15 bg-stone-100/8">
+        <span className="h-2 w-2 rounded-full bg-stone-100/60" />
+      </div>
+
+      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
+        {eyebrow}
+      </p>
+
+      <p className="mt-2 text-lg font-semibold text-[#f5f0e8]">{title}</p>
 
       <p className="mt-2 text-sm leading-6 text-stone-400">{text}</p>
+
+      <Link
+        href={actionHref}
+        className="mt-4 inline-flex rounded-2xl border border-stone-100/20 bg-stone-100/10 px-4 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
+      >
+        {actionLabel}
+      </Link>
     </div>
   );
 }

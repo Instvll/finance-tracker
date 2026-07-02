@@ -70,6 +70,8 @@ export default function BillsPage() {
     (bill) => bill.status === "Due Soon" || bill.status === "Overdue"
   );
 
+  const hasBills = manualBills.length > 0;
+
   return (
     <PageShell>
       <TopNav />
@@ -101,23 +103,44 @@ export default function BillsPage() {
             </div>
 
             <p className="text-sm leading-6 text-stone-400">
-              Unpaid bills counted against your dashboard total
+              {hasBills
+                ? "Unpaid bills counted against your dashboard total"
+                : "Add bills to start tracking what is still left after expenses"}
             </p>
           </div>
 
-          <Pill>{attentionBills.length} attention</Pill>
+          <Pill>
+            {attentionBills.length > 0
+              ? `${attentionBills.length} attention`
+              : hasBills
+              ? "clear"
+              : "empty"}
+          </Pill>
         </div>
 
         <p className="break-words text-5xl font-bold tracking-tight text-[#f5f0e8] sm:text-7xl">
           {formatMoney(unpaidTotal)}
         </p>
 
+        {!hasBills && (
+          <div className="mt-5 rounded-[1.35rem] border border-stone-300/15 bg-[#171614] p-4">
+            <p className="text-sm font-semibold text-[#f5f0e8]">
+              No bills added yet.
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-stone-400">
+              Once you add your monthly bills, this page will show what still
+              needs paid and what is already handled.
+            </p>
+          </div>
+        )}
+
         <div className="mt-5 grid grid-cols-2 gap-3">
           <Link
             href="/manual"
             className="rounded-2xl border border-stone-100/20 bg-stone-100/10 px-4 py-3 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
           >
-            Edit Bills
+            Open Editor
           </Link>
 
           <Link
@@ -166,8 +189,15 @@ export default function BillsPage() {
             </div>
           ) : (
             <EmptyState
+              eyebrow="Nothing due"
               title="No unpaid bills"
-              text="Everything is marked paid right now."
+              text={
+                hasBills
+                  ? "Everything is marked paid right now."
+                  : "Add your first bill in the Editor to start tracking upcoming expenses."
+              }
+              actionLabel="Add Bill"
+              actionHref="/manual"
             />
           )}
         </BillSection>
@@ -184,8 +214,15 @@ export default function BillsPage() {
             </div>
           ) : (
             <EmptyState
-              title="No paid bills yet"
-              text="Bills you mark paid in the Editor will show up here."
+              eyebrow="No history yet"
+              title="No paid bills"
+              text={
+                hasBills
+                  ? "Bills you mark paid in the Editor will show up here."
+                  : "After you add bills and mark them paid, they will move into this section."
+              }
+              actionLabel="Open Editor"
+              actionHref="/manual"
             />
           )}
         </BillSection>
@@ -292,12 +329,39 @@ function BillRow({
   );
 }
 
-function EmptyState({ title, text }: { title: string; text: string }) {
+function EmptyState({
+  eyebrow,
+  title,
+  text,
+  actionLabel,
+  actionHref,
+}: {
+  eyebrow: string;
+  title: string;
+  text: string;
+  actionLabel: string;
+  actionHref: string;
+}) {
   return (
-    <div className="rounded-[1.25rem] border border-stone-300/15 bg-[#2b2925] p-5">
-      <p className="font-semibold text-[#f5f0e8]">{title}</p>
+    <div className="rounded-[1.35rem] border border-dashed border-stone-300/20 bg-[#2b2925] p-5">
+      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-stone-100/15 bg-stone-100/8">
+        <span className="h-2 w-2 rounded-full bg-stone-100/60" />
+      </div>
+
+      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
+        {eyebrow}
+      </p>
+
+      <p className="mt-2 text-lg font-semibold text-[#f5f0e8]">{title}</p>
 
       <p className="mt-2 text-sm leading-6 text-stone-400">{text}</p>
+
+      <Link
+        href={actionHref}
+        className="mt-4 inline-flex rounded-2xl border border-stone-100/20 bg-stone-100/10 px-4 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
+      >
+        {actionLabel}
+      </Link>
     </div>
   );
 }

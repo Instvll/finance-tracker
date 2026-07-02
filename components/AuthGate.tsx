@@ -18,6 +18,15 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
     async function checkAuth() {
       const isPublicRoute = publicRoutes.includes(pathname);
+      const isLocalhost =
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1";
+
+      if (isLocalhost) {
+        setIsAllowed(true);
+        setIsCheckingAuth(false);
+        return;
+      }
 
       const { data } = await supabase.auth.getSession();
       const session = data.session;
@@ -63,7 +72,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       <main className="min-h-screen bg-[#171614] px-4 py-6 text-[#f5f0e8]">
         <div className="mx-auto flex min-h-[70vh] max-w-5xl items-center justify-center">
           <div className="rounded-[2rem] border border-stone-300/20 bg-[#23211d] p-6 text-center shadow-xl shadow-black/10">
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-stone-400">
+            <p className="text-xs font-semibold lowercase tracking-[0.35em] text-stone-400">
               leftovr
             </p>
 
