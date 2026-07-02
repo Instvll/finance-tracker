@@ -115,6 +115,10 @@ export default function ManualPage() {
     useState<ManualCreditCard[]>(defaultManualCards);
   const [lastSaved, setLastSaved] = useState("");
   const [saveMessage, setSaveMessage] = useState("");
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isEditingOverview, setIsEditingOverview] = useState(false);
+  const [editingBills, setEditingBills] = useState<number[]>([]);
+  const [editingCards, setEditingCards] = useState<number[]>([]);
 
   useEffect(() => {
     setManualData(readJsonStorage(summaryStorageKey, defaultManualData));
@@ -139,7 +143,7 @@ export default function ManualPage() {
     }
   }, []);
 
-  const unpaidBillTotal = manualBills
+  const upcomingBillTotal = manualBills
     .filter((bill) => getAutoBillStatus(bill.dueDate) === "Upcoming")
     .reduce((total, bill) => total + parseMoney(bill.amount), 0);
 
@@ -162,13 +166,42 @@ export default function ManualPage() {
       ? Math.round((cardBalanceTotal / cardLimitTotal) * 100)
       : 0;
 
+  function markUnsaved() {
+    setHasUnsavedChanges(true);
+    setSaveMessage("Unsaved changes");
+  }
+
+  function startEditingBill(index: number) {
+    setEditingBills((current) =>
+      current.includes(index) ? current : [...current, index]
+    );
+  }
+
+  function stopEditingBill(index: number) {
+    setEditingBills((current) =>
+      current.filter((billIndex) => billIndex !== index)
+    );
+  }
+
+  function startEditingCard(index: number) {
+    setEditingCards((current) =>
+      current.includes(index) ? current : [...current, index]
+    );
+  }
+
+  function stopEditingCard(index: number) {
+    setEditingCards((current) =>
+      current.filter((cardIndex) => cardIndex !== index)
+    );
+  }
+
   function updateManualData(field: keyof ManualFinanceData, value: string) {
     setManualData((current) => ({
       ...current,
       [field]: value,
     }));
 
-    setSaveMessage("");
+    markUnsaved();
   }
 
   function updateBill(
@@ -187,7 +220,7 @@ export default function ManualPage() {
       )
     );
 
-    setSaveMessage("");
+    markUnsaved();
   }
 
   function updateCard(
@@ -206,23 +239,24 @@ export default function ManualPage() {
       )
     );
 
-    setSaveMessage("");
+    markUnsaved();
   }
 
   function addBill() {
     setManualBills((current) => [
       ...current,
       {
-        name: "New Bill",
-        amount: "0",
-        dueDate: "5",
+        name: "",
+        amount: "",
+        dueDate: "",
         status: "Paid",
         paymentMethod: "TBD",
       },
     ]);
 
     setActiveTab("bills");
-    setSaveMessage("");
+    setEditingBills([manualBills.length]);
+    markUnsaved();
   }
 
   function removeBill(index: number) {
@@ -236,16 +270,22 @@ export default function ManualPage() {
       current.filter((_, billIndex) => billIndex !== index)
     );
 
-    setSaveMessage("");
+    setEditingBills((current) =>
+      current
+        .filter((billIndex) => billIndex !== index)
+        .map((billIndex) => (billIndex > index ? billIndex - 1 : billIndex))
+    );
+
+    markUnsaved();
   }
 
   function addCard() {
     setManualCards((current) => [
       ...current,
       {
-        name: "New Card",
-        balance: "0",
-        limit: "0",
+        name: "",
+        balance: "",
+        limit: "",
         minimumPayment: "0",
         dueDate: "TBD",
         status: "Good",
@@ -253,7 +293,8 @@ export default function ManualPage() {
     ]);
 
     setActiveTab("cards");
-    setSaveMessage("");
+    setEditingCards([manualCards.length]);
+    markUnsaved();
   }
 
   function removeCard(index: number) {
@@ -267,7 +308,13 @@ export default function ManualPage() {
       current.filter((_, cardIndex) => cardIndex !== index)
     );
 
-    setSaveMessage("");
+    setEditingCards((current) =>
+      current
+        .filter((cardIndex) => cardIndex !== index)
+        .map((cardIndex) => (cardIndex > index ? cardIndex - 1 : cardIndex))
+    );
+
+    markUnsaved();
   }
 
   function saveAll() {
@@ -279,7 +326,11 @@ export default function ManualPage() {
     window.localStorage.setItem(lastSavedStorageKey, savedAt);
 
     setLastSaved(savedAt);
-    setSaveMessage("Saved.");
+    setHasUnsavedChanges(false);
+    setSaveMessage("All changes saved");
+    setIsEditingOverview(false);
+    setEditingBills([]);
+    setEditingCards([]);
   }
 
   function resetEditor() {
@@ -300,7 +351,11 @@ export default function ManualPage() {
     setManualBills(defaultManualBills);
     setManualCards(defaultManualCards);
     setLastSaved("");
-    setSaveMessage("Reset complete.");
+    setSaveMessage("Reset complete");
+    setHasUnsavedChanges(false);
+    setIsEditingOverview(false);
+    setEditingBills([]);
+    setEditingCards([]);
   }
 
   return (
@@ -317,12 +372,18 @@ export default function ManualPage() {
         </div>
 
         <p className="max-w-xl text-sm leading-6 text-stone-300">
-          Edit your balances, bills, and credit cards. Save once and the whole
-          dashboard updates.
+          View saved details, tap Edit when you want to make changes, then Save
+          to lock everything back in.
         </p>
       </header>
 
-      <section className="mb-5 rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-4 shadow-xl shadow-black/15">
+      <section
+        className={`mb-5 rounded-[1.5rem] border p-4 shadow-xl shadow-black/15 ${
+          hasUnsavedChanges
+            ? "border-[#c7ad75]/25 bg-[#211f19]"
+            : "border-[#f5f0e8]/12 bg-[#1d1b17]"
+        }`}
+      >
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c7ad75]/75">
@@ -330,7 +391,9 @@ export default function ManualPage() {
             </p>
 
             <p className="mt-1 truncate text-sm text-stone-300">
-              {saveMessage || formatSavedTime(lastSaved)}
+              {hasUnsavedChanges
+                ? "Unsaved changes"
+                : saveMessage || formatSavedTime(lastSaved)}
             </p>
           </div>
 
@@ -378,45 +441,91 @@ export default function ManualPage() {
         <section className="grid gap-5">
           <EditorPanel
             title="Main Numbers"
-            description="These numbers feed the dashboard summary."
+            description={
+              isEditingOverview
+                ? "Update the numbers that feed your dashboard."
+                : "These are your saved dashboard numbers."
+            }
+            action={
+              <button
+                type="button"
+                onClick={() => setIsEditingOverview((current) => !current)}
+                className="rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-2 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
+              >
+                {isEditingOverview ? "Done" : "Edit"}
+              </button>
+            }
           >
-            <div className="grid gap-4 sm:grid-cols-2">
-              <InputField
-                label="Checking Balance"
-                value={manualData.checkingBalance}
-                type="number"
-                inputMode="decimal"
-                onChange={(value) => updateManualData("checkingBalance", value)}
-              />
+            {isEditingOverview ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <InputField
+                  label="Checking Balance"
+                  value={manualData.checkingBalance}
+                  type="number"
+                  inputMode="decimal"
+                  clearZeroOnFocus
+                  onChange={(value) =>
+                    updateManualData("checkingBalance", value)
+                  }
+                />
 
-              <InputField
-                label="Savings Balance"
-                value={manualData.savingsBalance}
-                type="number"
-                inputMode="decimal"
-                onChange={(value) => updateManualData("savingsBalance", value)}
-              />
+                <InputField
+                  label="Savings Balance"
+                  value={manualData.savingsBalance}
+                  type="number"
+                  inputMode="decimal"
+                  clearZeroOnFocus
+                  onChange={(value) =>
+                    updateManualData("savingsBalance", value)
+                  }
+                />
 
-              <InputField
-                label="Monthly Income"
-                value={manualData.monthlyIncome}
-                type="number"
-                inputMode="decimal"
-                onChange={(value) => updateManualData("monthlyIncome", value)}
-              />
+                <InputField
+                  label="Monthly Income"
+                  value={manualData.monthlyIncome}
+                  type="number"
+                  inputMode="decimal"
+                  clearZeroOnFocus
+                  onChange={(value) =>
+                    updateManualData("monthlyIncome", value)
+                  }
+                />
 
-              <InputField
-                label="Next Payday"
-                value={manualData.nextPayday}
-                type="text"
-                onChange={(value) => updateManualData("nextPayday", value)}
-              />
-            </div>
+                <InputField
+                  label="Next Payday"
+                  value={manualData.nextPayday}
+                  type="text"
+                  onChange={(value) => updateManualData("nextPayday", value)}
+                />
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <SavedInfoCard
+                  label="Checking"
+                  value={formatMoney(parseMoney(manualData.checkingBalance))}
+                />
+
+                <SavedInfoCard
+                  label="Savings"
+                  value={formatMoney(parseMoney(manualData.savingsBalance))}
+                />
+
+                <SavedInfoCard
+                  label="Monthly Income"
+                  value={formatMoney(parseMoney(manualData.monthlyIncome))}
+                />
+
+                <SavedInfoCard
+                  label="Next Payday"
+                  value={manualData.nextPayday || "Not set"}
+                />
+              </div>
+            )}
           </EditorPanel>
 
           <EditorPanel
             title="Quick Actions"
-            description="Jump straight into adding something new."
+            description="Add a new bill or credit card."
           >
             <div className="grid gap-3 sm:grid-cols-2">
               <button
@@ -457,7 +566,7 @@ export default function ManualPage() {
             <div className="mb-4 grid grid-cols-2 gap-3">
               <PreviewStat
                 label="Upcoming"
-                value={formatMoney(unpaidBillTotal)}
+                value={formatMoney(upcomingBillTotal)}
               />
               <PreviewStat label="Paid" value={formatMoney(paidBillTotal)} />
             </div>
@@ -468,6 +577,9 @@ export default function ManualPage() {
                   key={`bill-${index}`}
                   bill={bill}
                   index={index}
+                  isEditing={editingBills.includes(index)}
+                  onEdit={() => startEditingBill(index)}
+                  onDone={() => stopEditingBill(index)}
                   onChange={updateBill}
                   onRemove={removeBill}
                 />
@@ -506,6 +618,9 @@ export default function ManualPage() {
                   key={`card-${index}`}
                   card={card}
                   index={index}
+                  isEditing={editingCards.includes(index)}
+                  onEdit={() => startEditingCard(index)}
+                  onDone={() => stopEditingCard(index)}
                   onChange={updateCard}
                   onRemove={removeCard}
                 />
@@ -515,7 +630,13 @@ export default function ManualPage() {
         </section>
       )}
 
-      <div className="sticky bottom-4 z-30 mt-6 rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#181713]/95 p-3 shadow-2xl shadow-black/30 backdrop-blur">
+      <div
+        className={`sticky bottom-4 z-30 mt-6 rounded-[1.5rem] border p-3 shadow-2xl shadow-black/30 backdrop-blur ${
+          hasUnsavedChanges
+            ? "border-[#c7ad75]/25 bg-[#211f19]/95"
+            : "border-[#f5f0e8]/12 bg-[#181713]/95"
+        }`}
+      >
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs uppercase tracking-[0.2em] text-[#c7ad75]/75">
@@ -523,7 +644,9 @@ export default function ManualPage() {
             </p>
 
             <p className="truncate text-sm font-medium text-stone-300">
-              {saveMessage || "Save when you are done editing."}
+              {hasUnsavedChanges
+                ? "Unsaved changes"
+                : saveMessage || "All changes saved"}
             </p>
           </div>
 
@@ -612,14 +735,34 @@ function PreviewStat({ label, value }: { label: string; value: string }) {
   );
 }
 
+function SavedInfoCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
+        {label}
+      </p>
+
+      <p className="mt-2 break-words text-xl font-bold text-[#f5f0e8]">
+        {value}
+      </p>
+    </div>
+  );
+}
+
 function BillEditor({
   bill,
   index,
+  isEditing,
+  onEdit,
+  onDone,
   onChange,
   onRemove,
 }: {
   bill: ManualBill;
   index: number;
+  isEditing: boolean;
+  onEdit: () => void;
+  onDone: () => void;
   onChange: (
     index: number,
     field: keyof ManualBill,
@@ -640,42 +783,56 @@ function BillEditor({
           </h3>
 
           <p className="mt-1 text-sm text-stone-400">
-            {formatMoney(parseMoney(bill.amount))} • Due {bill.dueDate || "TBD"}
+            {formatMoney(parseMoney(bill.amount))} • Due{" "}
+            {bill.dueDate || "TBD"}
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => onRemove(index)}
-          className="rounded-full border border-[#f5f0e8]/12 px-3 py-1 text-xs text-stone-400 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
-        >
-          Remove
-        </button>
+        <div className="flex shrink-0 gap-2">
+          <button
+            type="button"
+            onClick={isEditing ? onDone : onEdit}
+            className="rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-3 py-1 text-xs font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
+          >
+            {isEditing ? "Done" : "Edit"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onRemove(index)}
+            className="rounded-full border border-[#f5f0e8]/12 px-3 py-1 text-xs text-stone-400 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+          >
+            Remove
+          </button>
+        </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <InputField
-          label="Name"
-          value={bill.name}
-          type="text"
-          onChange={(value) => onChange(index, "name", value)}
-        />
+      {isEditing && (
+        <div className="grid gap-4 border-t border-[#f5f0e8]/10 pt-4 sm:grid-cols-2">
+          <InputField
+            label="Name"
+            value={bill.name}
+            type="text"
+            onChange={(value) => onChange(index, "name", value)}
+          />
 
-        <InputField
-          label="Amount"
-          value={bill.amount}
-          type="number"
-          inputMode="decimal"
-          onChange={(value) => onChange(index, "amount", value)}
-        />
+          <InputField
+            label="Amount"
+            value={bill.amount}
+            type="number"
+            inputMode="decimal"
+            clearZeroOnFocus
+            onChange={(value) => onChange(index, "amount", value)}
+          />
 
-        <InputField
-          label="Due Date"
-          value={bill.dueDate}
-          type="text"
-          onChange={(value) => onChange(index, "dueDate", value)}
-        />
-      </div>
+          <InputField
+            label="Due Date"
+            value={bill.dueDate}
+            type="text"
+            onChange={(value) => onChange(index, "dueDate", value)}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -683,11 +840,17 @@ function BillEditor({
 function CardEditor({
   card,
   index,
+  isEditing,
+  onEdit,
+  onDone,
   onChange,
   onRemove,
 }: {
   card: ManualCreditCard;
   index: number;
+  isEditing: boolean;
+  onEdit: () => void;
+  onDone: () => void;
   onChange: (
     index: number,
     field: keyof ManualCreditCard,
@@ -704,7 +867,7 @@ function CardEditor({
       <div className="mb-5 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h3 className="truncate text-xl font-bold text-[#f5f0e8]">
-            {card.name || "Card Name"}
+            {card.name || "Untitled Card"}
           </h3>
 
           <p className="mt-2 text-sm text-stone-300">
@@ -716,50 +879,64 @@ function CardEditor({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => onRemove(index)}
-          className="rounded-full border border-[#f5f0e8]/12 px-3 py-1 text-xs text-stone-400 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
-        >
-          Remove
-        </button>
+        <div className="flex shrink-0 gap-2">
+          <button
+            type="button"
+            onClick={isEditing ? onDone : onEdit}
+            className="rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-3 py-1 text-xs font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
+          >
+            {isEditing ? "Done" : "Edit"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onRemove(index)}
+            className="rounded-full border border-[#f5f0e8]/12 px-3 py-1 text-xs text-stone-400 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+          >
+            Remove
+          </button>
+        </div>
       </div>
 
-      <div className="mb-5 h-2 overflow-hidden rounded-full bg-black/30">
+      <div className="h-2 overflow-hidden rounded-full bg-black/30">
         <div
           className="h-full rounded-full bg-[#c7ad75]"
           style={{ width: `${Math.min(utilization, 100)}%` }}
         />
       </div>
 
-      <div className="rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#11100d] p-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
+      {isEditing && (
+        <div className="mt-5 rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#11100d] p-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <InputField
+                label="Card Name"
+                value={card.name}
+                type="text"
+                onChange={(value) => onChange(index, "name", value)}
+              />
+            </div>
+
             <InputField
-              label="Card Name"
-              value={card.name}
-              type="text"
-              onChange={(value) => onChange(index, "name", value)}
+              label="Balance"
+              value={card.balance}
+              type="number"
+              inputMode="decimal"
+              clearZeroOnFocus
+              onChange={(value) => onChange(index, "balance", value)}
+            />
+
+            <InputField
+              label="Limit"
+              value={card.limit}
+              type="number"
+              inputMode="decimal"
+              clearZeroOnFocus
+              onChange={(value) => onChange(index, "limit", value)}
             />
           </div>
-
-          <InputField
-            label="Balance"
-            value={card.balance}
-            type="number"
-            inputMode="decimal"
-            onChange={(value) => onChange(index, "balance", value)}
-          />
-
-          <InputField
-            label="Limit"
-            value={card.limit}
-            type="number"
-            inputMode="decimal"
-            onChange={(value) => onChange(index, "limit", value)}
-          />
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -769,14 +946,22 @@ function InputField({
   value,
   type,
   inputMode,
+  clearZeroOnFocus = false,
   onChange,
 }: {
   label: string;
   value: string;
   type: "text" | "number";
   inputMode?: "decimal" | "numeric";
+  clearZeroOnFocus?: boolean;
   onChange: (value: string) => void;
 }) {
+  function handleFocus() {
+    if (clearZeroOnFocus && value === "0") {
+      onChange("");
+    }
+  }
+
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-stone-300">
@@ -787,6 +972,7 @@ function InputField({
         type={type}
         inputMode={inputMode}
         value={value}
+        onFocus={handleFocus}
         onChange={(event) => onChange(event.target.value)}
         className="w-full rounded-2xl border border-[#f5f0e8]/12 bg-[#11100d] px-4 py-4 text-lg text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-[#c7ad75]/40 focus:bg-[#181713]"
       />
