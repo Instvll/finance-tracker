@@ -26,11 +26,11 @@ export default function TopNav() {
   }
 
   return (
-    <nav className="mb-8 rounded-[1.75rem] border border-[#f5f0e8]/12 bg-[#181713]/90 px-3 py-3 shadow-2xl shadow-black/20 backdrop-blur-xl">
-      <div className="flex items-center justify-between gap-3">
+    <nav className="mb-8 rounded-[1.5rem] border border-[#f5f0e8]/10 bg-[#181713]/88 px-4 py-3 shadow-xl shadow-black/15 backdrop-blur-xl">
+      <div className="flex items-center justify-between gap-5">
         <Link
           href="/"
-          className="group flex min-w-0 items-center gap-3 rounded-[1.25rem] px-2 py-1.5 transition hover:bg-[#f5f0e8]/5"
+          className="flex min-w-0 items-center gap-3"
           onClick={() => setIsOpen(false)}
         >
           <LogoMark small />
@@ -46,7 +46,7 @@ export default function TopNav() {
           </div>
         </Link>
 
-        <div className="hidden items-center gap-1 rounded-[1.25rem] border border-[#f5f0e8]/10 bg-black/20 p-1 md:flex">
+        <div className="hidden items-center gap-6 md:flex">
           {navItems.map((item) => {
             const active = isActiveRoute(item.href);
 
@@ -54,13 +54,17 @@ export default function TopNav() {
               <Link
                 key={item.label}
                 href={item.href}
-                className={`rounded-[1rem] px-3.5 py-2 text-sm font-medium transition ${
+                className={`relative py-2 text-sm font-medium transition ${
                   active
-                    ? "border border-[#c7ad75]/25 bg-[#c7ad75]/14 text-[#f5f0e8] shadow-sm shadow-black/10"
-                    : "text-stone-400 hover:bg-[#f5f0e8]/7 hover:text-[#f5f0e8]"
+                    ? "text-[#f5f0e8]"
+                    : "text-stone-400 hover:text-[#f5f0e8]"
                 }`}
               >
                 {item.label}
+
+                {active && (
+                  <span className="absolute -bottom-0.5 left-0 h-[2px] w-full rounded-full bg-[#c7ad75]" />
+                )}
               </Link>
             );
           })}
@@ -68,7 +72,7 @@ export default function TopNav() {
 
         <button
           type="button"
-          className="rounded-[1.1rem] border border-[#f5f0e8]/12 bg-[#f5f0e8]/6 px-4 py-2.5 text-sm font-semibold text-stone-200 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8] md:hidden"
+          className="rounded-xl border border-[#f5f0e8]/12 bg-[#f5f0e8]/6 px-4 py-2 text-sm font-semibold text-stone-200 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8] md:hidden"
           onClick={() => setIsOpen((current) => !current)}
           aria-label="Toggle navigation menu"
         >
@@ -77,7 +81,7 @@ export default function TopNav() {
       </div>
 
       {isOpen && (
-        <div className="mt-3 rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#11100d] p-2 md:hidden">
+        <div className="mt-4 border-t border-[#f5f0e8]/10 pt-3 md:hidden">
           <div className="grid gap-1">
             {navItems.map((item) => {
               const active = isActiveRoute(item.href);
@@ -86,9 +90,9 @@ export default function TopNav() {
                 <Link
                   key={item.label}
                   href={item.href}
-                  className={`rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                  className={`rounded-xl px-3 py-3 text-sm font-medium transition ${
                     active
-                      ? "border border-[#c7ad75]/25 bg-[#c7ad75]/14 text-[#f5f0e8]"
+                      ? "bg-[#c7ad75]/14 text-[#f5f0e8]"
                       : "text-stone-400 hover:bg-[#f5f0e8]/8 hover:text-[#f5f0e8]"
                   }`}
                   onClick={() => setIsOpen(false)}
