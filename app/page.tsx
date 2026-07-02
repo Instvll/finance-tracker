@@ -186,8 +186,8 @@ export default function Home() {
 
   const checkingBalance = parseMoney(manualData.checkingBalance);
   const savingsBalance = parseMoney(manualData.savingsBalance);
-  const totalUpcomingBills = getUnpaidBillTotal(manualBills);
-  const moneyLeftAfterBills = checkingBalance - totalUpcomingBills;
+  const unpaidBillsTotal = getUnpaidBillTotal(manualBills);
+  const moneyLeftAfterBills = checkingBalance - unpaidBillsTotal;
 
   const totalCardBalance = getTotalCardBalance(manualCards);
   const totalCardLimit = getTotalCardLimit(manualCards);
@@ -196,10 +196,8 @@ export default function Home() {
       ? Math.round((totalCardBalance / totalCardLimit) * 100)
       : 0;
 
-  const nextBills = manualBills
-    .filter((bill) => bill.status !== "Paid")
-    .slice(0, 3);
-
+  const unpaidBills = manualBills.filter((bill) => bill.status !== "Paid");
+  const nextBills = unpaidBills.slice(0, 3);
   const planLeftover = getPlanLeftover(paycheckPlan);
 
   return (
@@ -207,16 +205,21 @@ export default function Home() {
       <TopNav />
 
       <header className="mb-5">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.35em] text-stone-400">
-          Finance Tracker
-        </p>
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-stone-400">
+            Finance Tracker
+          </p>
+
+          <Pill>Beta</Pill>
+        </div>
 
         <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
           Dashboard
         </h1>
 
         <p className="mt-3 max-w-xl text-sm leading-6 text-stone-300">
-          Your quick view of money, bills, cards, and paycheck planning.
+          A quick view of what you have, what is still due, and what is safe to
+          use.
         </p>
       </header>
 
@@ -227,12 +230,12 @@ export default function Home() {
               <span className="h-2 w-2 rounded-full bg-stone-100/70 shadow-[0_0_14px_rgba(245,240,232,0.2)]" />
 
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-300">
-                Money Left
+                Safe After Bills
               </p>
             </div>
 
             <p className="text-sm leading-6 text-stone-400">
-              After unpaid bills
+              Checking minus unpaid bills
             </p>
           </div>
 
@@ -248,14 +251,14 @@ export default function Home() {
             href="/manual"
             className="rounded-2xl border border-stone-100/20 bg-stone-100/10 px-4 py-3 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-stone-100/15"
           >
-            Update
+            Update Money
           </Link>
 
           <Link
             href="/plan"
-            className="rounded-2xl border border-stone-300/20 px-4 py-3 text-center text-sm text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
+            className="rounded-2xl border border-stone-300/20 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
           >
-            Plan
+            Plan Paycheck
           </Link>
         </div>
       </section>
@@ -268,9 +271,9 @@ export default function Home() {
         />
 
         <MobileStat
-          label="Bills"
-          value={formatMoney(totalUpcomingBills)}
-          detail="Unpaid bills remaining"
+          label="Unpaid Bills"
+          value={formatMoney(unpaidBillsTotal)}
+          detail={`${unpaidBills.length} bill${unpaidBills.length === 1 ? "" : "s"} remaining`}
         />
 
         <MobileStat
@@ -282,7 +285,7 @@ export default function Home() {
         <MobileStat
           label="Savings"
           value={formatMoney(savingsBalance)}
-          detail="Saved balance"
+          detail="Current saved balance"
         />
       </section>
 
@@ -327,9 +330,9 @@ export default function Home() {
             {nextBills.length > 0 ? (
               nextBills.map((bill, index) => (
                 <CompactRow
-                  key={`${bill.name}-${index}`}
+                  key={`bill-${index}`}
                   title={bill.name}
-                  subtitle={`Due: ${bill.dueDate}`}
+                  subtitle={`Due ${bill.dueDate || "TBD"} • ${bill.paymentMethod || "TBD"}`}
                   value={formatMoney(parseMoney(bill.amount))}
                   tag={bill.status}
                 />
@@ -356,9 +359,9 @@ export default function Home() {
 
               return (
                 <CompactRow
-                  key={`${card.name}-${index}`}
+                  key={`card-${index}`}
                   title={card.name}
-                  subtitle={`${utilization}% utilization`}
+                  subtitle={`${utilization}% utilization • Due ${card.dueDate || "TBD"}`}
                   value={formatMoney(balance)}
                   tag={card.status}
                 />
@@ -366,6 +369,24 @@ export default function Home() {
             })}
           </div>
         </DashboardSection>
+      </section>
+
+      <section className="mt-5 rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10">
+        <div className="flex items-start gap-3">
+          <span className="mt-2 h-2 w-2 rounded-full bg-stone-100/60" />
+
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-100">
+              Testing Note
+            </h2>
+
+            <p className="mt-3 text-sm leading-6 text-stone-400">
+              This is a beta version. Use the Editor to test balances, bills,
+              and cards. Avoid entering full card numbers, passwords, or other
+              sensitive details.
+            </p>
+          </div>
+        </div>
       </section>
     </PageShell>
   );
