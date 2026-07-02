@@ -472,7 +472,7 @@ export default function ManualPage() {
             <div className="space-y-4">
               {manualBills.map((bill, index) => (
                 <BillEditor
-                  key={`${bill.name}-${index}`}
+                  key={`bill-${index}`}
                   bill={bill}
                   index={index}
                   onChange={updateBill}
@@ -510,7 +510,7 @@ export default function ManualPage() {
             <div className="space-y-4">
               {manualCards.map((card, index) => (
                 <CardEditor
-                  key={`${card.name}-${index}`}
+                  key={`card-${index}`}
                   card={card}
                   index={index}
                   onChange={updateCard}
