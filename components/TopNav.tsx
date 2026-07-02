@@ -7,7 +7,6 @@ const navItems = [
   { label: "Dashboard", href: "/" },
   { label: "Bills", href: "/bills" },
   { label: "Credit Cards", href: "/cards" },
-  { label: "Paycheck Planner", href: "/plan" },
   { label: "Editor", href: "/manual" },
   { label: "Account", href: "/account" },
 ];

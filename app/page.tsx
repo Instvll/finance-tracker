@@ -30,23 +30,10 @@ type ManualCreditCard = {
   status: "Good" | "Watch" | "Pay Down";
 };
 
-type PaycheckPlan = {
-  name: string;
-  payday: string;
-  paycheckAmount: string;
-  bills: string;
-  gasFood: string;
-  savings: string;
-  debtPayment: string;
-  extraSpending: string;
-  notes: string;
-};
-
 const summaryStorageKey = "finance-tracker-manual-data";
 const billsStorageKey = "finance-tracker-manual-bills";
 const cardsStorageKey = "finance-tracker-manual-cards";
 const lastSavedStorageKey = "finance-tracker-last-saved";
-const planStorageKey = "finance-tracker-paycheck-plan";
 
 const defaultManualData: ManualFinanceData = {
   checkingBalance: String(financeSummary.checkingBalance),
@@ -71,18 +58,6 @@ const defaultManualCards: ManualCreditCard[] = creditCards.map((card) => ({
   dueDate: card.dueDate,
   status: card.status,
 }));
-
-const defaultPlan: PaycheckPlan = {
-  name: "Next Paycheck",
-  payday: "TBD",
-  paycheckAmount: "0",
-  bills: "0",
-  gasFood: "0",
-  savings: "0",
-  debtPayment: "0",
-  extraSpending: "0",
-  notes: "",
-};
 
 function formatMoney(amount: number) {
   return new Intl.NumberFormat("en-US", {
@@ -131,18 +106,6 @@ function getTotalCardLimit(manualCards: ManualCreditCard[]) {
   return manualCards.reduce((total, card) => total + parseMoney(card.limit), 0);
 }
 
-function getPlanLeftover(plan: PaycheckPlan) {
-  const paycheckAmount = parseMoney(plan.paycheckAmount);
-  const plannedTotal =
-    parseMoney(plan.bills) +
-    parseMoney(plan.gasFood) +
-    parseMoney(plan.savings) +
-    parseMoney(plan.debtPayment) +
-    parseMoney(plan.extraSpending);
-
-  return paycheckAmount - plannedTotal;
-}
-
 export default function Home() {
   const [manualData, setManualData] =
     useState<ManualFinanceData>(defaultManualData);
@@ -153,7 +116,6 @@ export default function Home() {
   const [manualCards, setManualCards] =
     useState<ManualCreditCard[]>(defaultManualCards);
 
-  const [paycheckPlan, setPaycheckPlan] = useState<PaycheckPlan>(defaultPlan);
   const [lastSaved, setLastSaved] = useState("");
 
   useEffect(() => {
@@ -161,7 +123,6 @@ export default function Home() {
     const savedBills = window.localStorage.getItem(billsStorageKey);
     const savedCards = window.localStorage.getItem(cardsStorageKey);
     const savedTime = window.localStorage.getItem(lastSavedStorageKey);
-    const savedPlan = window.localStorage.getItem(planStorageKey);
 
     if (savedData) {
       setManualData(JSON.parse(savedData));
@@ -177,10 +138,6 @@ export default function Home() {
 
     if (savedTime) {
       setLastSaved(savedTime);
-    }
-
-    if (savedPlan) {
-      setPaycheckPlan(JSON.parse(savedPlan));
     }
   }, []);
 
@@ -198,7 +155,6 @@ export default function Home() {
 
   const unpaidBills = manualBills.filter((bill) => bill.status !== "Paid");
   const nextBills = unpaidBills.slice(0, 3);
-  const planLeftover = getPlanLeftover(paycheckPlan);
 
   return (
     <PageShell>
@@ -255,10 +211,10 @@ export default function Home() {
           </Link>
 
           <Link
-            href="/plan"
+            href="/bills"
             className="rounded-2xl border border-stone-300/20 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-stone-100/30 hover:bg-stone-100/10 hover:text-stone-100"
           >
-            Plan Paycheck
+            View Bills
           </Link>
         </div>
       </section>
@@ -273,7 +229,9 @@ export default function Home() {
         <MobileStat
           label="Unpaid Bills"
           value={formatMoney(unpaidBillsTotal)}
-          detail={`${unpaidBills.length} bill${unpaidBills.length === 1 ? "" : "s"} remaining`}
+          detail={`${unpaidBills.length} bill${
+            unpaidBills.length === 1 ? "" : "s"
+          } remaining`}
         />
 
         <MobileStat
@@ -289,41 +247,6 @@ export default function Home() {
         />
       </section>
 
-      <section className="mb-5 rounded-[1.5rem] border border-stone-300/20 bg-[#23211d] p-5 shadow-xl shadow-black/10">
-        <div className="mb-4 flex items-center justify-between gap-4 border-b border-stone-300/15 pb-4">
-          <div>
-            <div className="mb-2 flex items-center gap-3">
-              <span className="h-2 w-2 rounded-full bg-stone-100/60" />
-
-              <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-stone-100">
-                Paycheck Planner
-              </h2>
-            </div>
-
-            <p className="text-sm text-stone-400">
-              {paycheckPlan.name || "Next Paycheck"} •{" "}
-              {paycheckPlan.payday || "TBD"}
-            </p>
-          </div>
-
-          <Link
-            href="/plan"
-            className="shrink-0 text-sm text-stone-400 transition hover:text-stone-100"
-          >
-            Open
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <MiniStat
-            label="Paycheck"
-            value={formatMoney(parseMoney(paycheckPlan.paycheckAmount))}
-          />
-
-          <MiniStat label="Leftover" value={formatMoney(planLeftover)} />
-        </div>
-      </section>
-
       <section className="grid gap-5 xl:grid-cols-2">
         <DashboardSection title="Next Bills" actionLabel="See all" href="/bills">
           <div className="divide-y divide-stone-300/10">
@@ -332,7 +255,9 @@ export default function Home() {
                 <CompactRow
                   key={`bill-${index}`}
                   title={bill.name}
-                  subtitle={`Due ${bill.dueDate || "TBD"} • ${bill.paymentMethod || "TBD"}`}
+                  subtitle={`Due ${bill.dueDate || "TBD"} • ${
+                    bill.paymentMethod || "TBD"
+                  }`}
                   value={formatMoney(parseMoney(bill.amount))}
                   tag={bill.status}
                 />
@@ -361,7 +286,9 @@ export default function Home() {
                 <CompactRow
                   key={`card-${index}`}
                   title={card.name}
-                  subtitle={`${utilization}% utilization • Due ${card.dueDate || "TBD"}`}
+                  subtitle={`${utilization}% utilization • Due ${
+                    card.dueDate || "TBD"
+                  }`}
                   value={formatMoney(balance)}
                   tag={card.status}
                 />
@@ -412,20 +339,6 @@ function MobileStat({
       </div>
 
       <p className="shrink-0 text-xl font-bold text-[#f5f0e8]">{value}</p>
-    </div>
-  );
-}
-
-function MiniStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[1.25rem] border border-stone-300/15 bg-[#2b2925] p-4">
-      <p className="text-xs uppercase tracking-[0.2em] text-stone-500">
-        {label}
-      </p>
-
-      <p className="mt-2 break-words text-xl font-bold text-[#f5f0e8]">
-        {value}
-      </p>
     </div>
   );
 }
