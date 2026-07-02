@@ -7,9 +7,21 @@ export function PageShell({ children }: { children: ReactNode }) {
         {children}
 
         <footer className="mt-12 border-t border-stone-300/20 pt-6">
-          <div className="flex flex-col gap-2 text-sm text-stone-400 sm:flex-row sm:items-center sm:justify-between">
-            <p>Finance Tracker • Personal Money Dashboard</p>
-            <p>Manual Beta</p>
+          <div className="flex flex-col gap-3 text-sm text-stone-400 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-medium text-stone-300">
+                Finance Tracker • v1.0 Beta
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-stone-500">
+                Built for simple personal tracking. Avoid storing sensitive
+                details.
+              </p>
+            </div>
+
+            <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
+              Manual Preview
+            </p>
           </div>
         </footer>
       </div>
