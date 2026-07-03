@@ -419,3 +419,11 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
     transition: none;
   }
 }
+/* Prevent iPhone Safari from zooming into inputs */
+@media (max-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
