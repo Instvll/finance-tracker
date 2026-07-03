@@ -51,7 +51,7 @@ export default function SignupPage() {
           </span>
         </Link>
 
-        <Pill>v1.0 Beta</Pill>
+        <Pill>v1.1 Beta</Pill>
       </header>
 
       <main className="mx-auto max-w-xl">
