@@ -88,7 +88,7 @@ export default function CardsPage() {
       <TopNav />
 
       <div className="min-h-[70vh]">
-        <header className="mb-5">
+        <header className="mb-5 motion-card">
           <div className="mb-3 flex items-center justify-between gap-4">
             <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
               Card Tracker
@@ -102,8 +102,8 @@ export default function CardsPage() {
           </h1>
         </header>
 
-        <section className="mb-5 overflow-hidden rounded-[2.25rem] border border-[#c7ad75]/20 bg-[#1d1b17] shadow-2xl shadow-black/25">
-          <div className="relative p-5 sm:p-7">
+        <section className="liquid-glass-accent motion-card motion-card-delay-1 mb-5 rounded-[2.25rem]">
+          <div className="liquid-content relative p-5 sm:p-7">
             <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#c7ad75]/10 blur-3xl" />
             <div className="absolute -bottom-20 left-10 h-44 w-44 rounded-full bg-[#f5f0e8]/5 blur-3xl" />
 
@@ -131,7 +131,7 @@ export default function CardsPage() {
 
             <div className="relative mt-7 h-2 overflow-hidden rounded-full bg-black/30">
               <div
-                className="h-full rounded-full bg-[#c7ad75]"
+                className="liquid-progress h-full rounded-full bg-[#c7ad75]"
                 style={{ width: `${Math.min(utilization, 100)}%` }}
               />
             </div>
@@ -148,62 +148,64 @@ export default function CardsPage() {
         </section>
 
         <section className="grid gap-5">
-          <section className="rounded-[1.65rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15">
-            <button
-              type="button"
-              onClick={() => setShowCardList((current) => !current)}
-              className="flex w-full items-center justify-between gap-4 text-left"
-            >
-              <div className="min-w-0">
-                <div className="mb-3 flex items-center gap-3">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75]" />
+          <section className="liquid-glass motion-card motion-card-delay-2 rounded-[1.65rem] p-5">
+            <div className="liquid-content">
+              <button
+                type="button"
+                onClick={() => setShowCardList((current) => !current)}
+                className="flex w-full items-center justify-between gap-4 text-left"
+              >
+                <div className="min-w-0">
+                  <div className="mb-3 flex items-center gap-3">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75]" />
 
-                  <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
-                    Card List
-                  </h2>
+                    <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
+                      Card List
+                    </h2>
+                  </div>
+
+                  <p className="text-sm text-stone-400">
+                    {hasCards
+                      ? `${manualCards.length} card${
+                          manualCards.length === 1 ? "" : "s"
+                        } tracked.`
+                      : "No cards added yet."}
+                  </p>
                 </div>
 
-                <p className="text-sm text-stone-400">
-                  {hasCards
-                    ? `${manualCards.length} card${
-                        manualCards.length === 1 ? "" : "s"
-                      } tracked.`
-                    : "No cards added yet."}
-                </p>
-              </div>
+                <span className="pressable shrink-0 rounded-full border border-[#f5f0e8]/10 px-3 py-1 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]">
+                  {showCardList ? "Hide" : "View"}
+                </span>
+              </button>
 
-              <span className="shrink-0 rounded-full border border-[#f5f0e8]/10 px-3 py-1 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]">
-                {showCardList ? "Hide" : "View"}
-              </span>
-            </button>
+              {showCardList && (
+                <div className="mt-4 border-t border-[#f5f0e8]/10 pt-4">
+                  {manualCards.length > 0 ? (
+                    <div className="grid gap-3">
+                      {manualCards.map((card, index) => (
+                        <CreditCardRow key={`card-${index}`} card={card} />
+                      ))}
+                    </div>
+                  ) : (
+                    <EmptyState
+                      title="No credit cards yet"
+                      text="Add your first card in the Editor to start tracking balances, limits, and utilization."
+                      actionLabel="Add Card"
+                      actionHref="/manual?tab=cards"
+                    />
+                  )}
 
-            {showCardList && (
-              <div className="mt-4 border-t border-[#f5f0e8]/10 pt-4">
-                {manualCards.length > 0 ? (
-                  <div className="grid gap-3">
-                    {manualCards.map((card, index) => (
-                      <CreditCardRow key={`card-${index}`} card={card} />
-                    ))}
-                  </div>
-                ) : (
-                  <EmptyState
-                    title="No credit cards yet"
-                    text="Add your first card in the Editor to start tracking balances, limits, and utilization."
-                    actionLabel="Add Card"
-                    actionHref="/manual?tab=cards"
-                  />
-                )}
-
-                {manualCards.length > 0 && (
-                  <Link
-                    href="/manual?tab=cards"
-                    className="mt-4 flex rounded-2xl border border-[#f5f0e8]/10 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
-                  >
-                    <span className="w-full">Edit Credit Cards</span>
-                  </Link>
-                )}
-              </div>
-            )}
+                  {manualCards.length > 0 && (
+                    <Link
+                      href="/manual?tab=cards"
+                      className="pressable mt-4 flex rounded-2xl border border-[#f5f0e8]/10 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+                    >
+                      <span className="w-full">Edit Credit Cards</span>
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
           </section>
         </section>
       </div>
@@ -213,12 +215,16 @@ export default function CardsPage() {
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#11100d]/75 p-4 backdrop-blur">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
-        {label}
-      </p>
+    <div className="liquid-glass-soft rounded-[1.35rem] p-4">
+      <div className="liquid-content">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
+          {label}
+        </p>
 
-      <p className="mt-2 truncate text-lg font-bold text-[#f5f0e8]">{value}</p>
+        <p className="mt-2 truncate text-lg font-bold text-[#f5f0e8]">
+          {value}
+        </p>
+      </div>
     </div>
   );
 }
@@ -230,32 +236,34 @@ function CreditCardRow({ card }: { card: ManualCreditCard }) {
   const utilization = limit > 0 ? Math.round((balance / limit) * 100) : 0;
 
   return (
-    <div className="rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4 shadow-lg shadow-black/10">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="truncate text-lg font-semibold text-[#f5f0e8]">
-            {card.name || "Untitled Card"}
-          </p>
+    <div className="liquid-glass-soft rounded-[1.35rem] p-4">
+      <div className="liquid-content">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="truncate text-lg font-semibold text-[#f5f0e8]">
+              {card.name || "Untitled Card"}
+            </p>
 
-          <p className="mt-1 text-sm text-stone-400">{utilization}% used</p>
+            <p className="mt-1 text-sm text-stone-400">{utilization}% used</p>
+          </div>
+
+          <p className="shrink-0 text-xl font-bold text-[#f5f0e8]">
+            {formatMoney(balance)}
+          </p>
         </div>
 
-        <p className="shrink-0 text-xl font-bold text-[#f5f0e8]">
-          {formatMoney(balance)}
-        </p>
-      </div>
+        <div className="mb-4 h-2 overflow-hidden rounded-full bg-black/30">
+          <div
+            className="liquid-progress h-full rounded-full bg-[#c7ad75]"
+            style={{ width: `${Math.min(utilization, 100)}%` }}
+          />
+        </div>
 
-      <div className="mb-4 h-2 overflow-hidden rounded-full bg-black/30">
-        <div
-          className="h-full rounded-full bg-[#c7ad75]"
-          style={{ width: `${Math.min(utilization, 100)}%` }}
-        />
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        <InfoBox label="Limit" value={formatMoney(limit)} />
-        <InfoBox label="Credit Left" value={formatMoney(available)} />
-        <InfoBox label="Status" value={card.status || "Good"} />
+        <div className="grid gap-3 sm:grid-cols-3">
+          <InfoBox label="Limit" value={formatMoney(limit)} />
+          <InfoBox label="Credit Left" value={formatMoney(available)} />
+          <InfoBox label="Status" value={card.status || "Good"} />
+        </div>
       </div>
     </div>
   );
@@ -263,7 +271,7 @@ function CreditCardRow({ card }: { card: ManualCreditCard }) {
 
 function InfoBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1.15rem] border border-[#f5f0e8]/10 bg-[#11100d]/75 p-4">
+    <div className="rounded-[1.15rem] border border-[#f5f0e8]/10 bg-[#11100d]/50 p-4">
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
         {label}
       </p>
@@ -287,17 +295,19 @@ function EmptyState({
   actionHref: string;
 }) {
   return (
-    <div className="rounded-[1.35rem] border border-dashed border-[#f5f0e8]/12 bg-[#25231e] p-5">
-      <p className="text-lg font-semibold text-[#f5f0e8]">{title}</p>
+    <div className="liquid-glass-soft rounded-[1.35rem] border-dashed p-5">
+      <div className="liquid-content">
+        <p className="text-lg font-semibold text-[#f5f0e8]">{title}</p>
 
-      <p className="mt-2 text-sm leading-6 text-stone-400">{text}</p>
+        <p className="mt-2 text-sm leading-6 text-stone-400">{text}</p>
 
-      <Link
-        href={actionHref}
-        className="mt-4 flex rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-3 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
-      >
-        <span className="w-full">{actionLabel}</span>
-      </Link>
+        <Link
+          href={actionHref}
+          className="pressable mt-4 flex rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-3 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
+        >
+          <span className="w-full">{actionLabel}</span>
+        </Link>
+      </div>
     </div>
   );
 }

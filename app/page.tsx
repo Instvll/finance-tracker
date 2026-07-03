@@ -166,7 +166,7 @@ export default function DashboardPage() {
     <PageShell>
       <TopNav />
 
-      <header className="mb-5">
+      <header className="mb-5 motion-card">
         <div className="mb-3 flex items-center justify-between gap-4">
           <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
             Finance Tracker
@@ -180,8 +180,8 @@ export default function DashboardPage() {
         </h1>
       </header>
 
-      <section className="mb-5 overflow-hidden rounded-[2.25rem] border border-[#c7ad75]/20 bg-[#1d1b17] shadow-2xl shadow-black/25">
-        <div className="relative p-5 sm:p-7">
+      <section className="liquid-glass-accent motion-card motion-card-delay-1 mb-5 rounded-[2.25rem]">
+        <div className="liquid-content relative p-5 sm:p-7">
           <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#c7ad75]/10 blur-3xl" />
           <div className="absolute -bottom-20 left-10 h-44 w-44 rounded-full bg-[#f5f0e8]/5 blur-3xl" />
 
@@ -228,167 +228,176 @@ export default function DashboardPage() {
       </section>
 
       <section className="grid gap-5">
-        <section className="rounded-[1.65rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15">
-          <div className="mb-4 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75]" />
-
-              <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
-                Next Bills
-              </h2>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowAllBills((current) => !current)}
-              className="rounded-full border border-[#f5f0e8]/10 px-3 py-1 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
-            >
-              {showAllBills ? "Hide" : "See all"}
-            </button>
-          </div>
-
-          {upcomingBills.length > 0 ? (
-            <div className="grid gap-3">
-              {upcomingBills.map((bill, index) => (
-                <BillPreviewRow
-                  key={`dashboard-upcoming-bill-${index}`}
-                  bill={bill}
-                />
-              ))}
-            </div>
-          ) : (
-            <EmptyPreview
-              title="No bills due soon"
-              text="You have nothing due within the next 7 days."
-            />
-          )}
-
-          {showAllBills && (
-            <div className="mt-4 border-t border-[#f5f0e8]/10 pt-4">
-              <div className="mb-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c7ad75]/75">
-                  Other Bills
-                </p>
-              </div>
-
-              {otherBills.length > 0 ? (
-                <div className="grid gap-3">
-                  {otherBills.map((bill, index) => (
-                    <BillPreviewRow
-                      key={`dashboard-other-bill-${index}`}
-                      bill={bill}
-                      muted
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-stone-400">
-                  No other bills to show yet.
-                </p>
-              )}
-
-              <Link
-                href="/bills"
-                className="mt-3 flex rounded-2xl border border-[#f5f0e8]/10 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
-              >
-                <span className="w-full">Open Bills</span>
-              </Link>
-            </div>
-          )}
-        </section>
-
-        <section className="rounded-[1.65rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15">
-          <button
-            type="button"
-            onClick={() => setShowCards((current) => !current)}
-            className="flex w-full items-center justify-between gap-4 text-left"
-          >
-            <div className="min-w-0">
-              <div className="mb-3 flex items-center gap-3">
+        <section className="liquid-glass motion-card motion-card-delay-2 rounded-[1.65rem] p-5">
+          <div className="liquid-content">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75]" />
 
                 <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
-                  Credit Cards
+                  Next Bills
                 </h2>
               </div>
 
-              <p className="text-sm text-stone-400">
-                {manualCards.length} card{manualCards.length === 1 ? "" : "s"}{" "}
-                tracked • {cardUtilization}% used
-              </p>
-            </div>
-
-            <span className="rounded-full border border-[#f5f0e8]/10 px-3 py-1 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]">
-              {showCards ? "Hide" : "View"}
-            </span>
-          </button>
-
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <CompactStat
-              label="Balance"
-              value={formatMoney(cardBalanceTotal)}
-            />
-
-            <CompactStat
-              label="Credit Left"
-              value={formatMoney(availableCredit)}
-            />
-          </div>
-
-          {showCards && (
-            <div className="mt-4 grid gap-3 border-t border-[#f5f0e8]/10 pt-4">
-              {manualCards.length > 0 ? (
-                manualCards.map((card, index) => {
-                  const balance = parseMoney(card.balance);
-                  const limit = parseMoney(card.limit);
-                  const utilization =
-                    limit > 0 ? Math.round((balance / limit) * 100) : 0;
-
-                  return (
-                    <div
-                      key={`dashboard-card-${index}`}
-                      className="rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4"
-                    >
-                      <div className="mb-3 flex items-center justify-between gap-4">
-                        <div className="min-w-0">
-                          <p className="truncate text-base font-semibold text-[#f5f0e8]">
-                            {card.name || "Untitled Card"}
-                          </p>
-
-                          <p className="mt-1 text-sm text-stone-400">
-                            {utilization}% used
-                          </p>
-                        </div>
-
-                        <p className="shrink-0 text-lg font-bold text-[#f5f0e8]">
-                          {formatMoney(balance)}
-                        </p>
-                      </div>
-
-                      <div className="h-2 overflow-hidden rounded-full bg-black/30">
-                        <div
-                          className="h-full rounded-full bg-[#c7ad75]"
-                          style={{ width: `${Math.min(utilization, 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <EmptyPreview
-                  title="No credit cards yet"
-                  text="Add a card in the Editor to track utilization."
-                />
-              )}
-
-              <Link
-                href="/cards"
-                className="rounded-2xl border border-[#f5f0e8]/10 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+              <button
+                type="button"
+                onClick={() => setShowAllBills((current) => !current)}
+                className="pressable rounded-full border border-[#f5f0e8]/10 px-3 py-1 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
               >
-                Open Credit Cards
-              </Link>
+                {showAllBills ? "Hide" : "See all"}
+              </button>
             </div>
-          )}
+
+            {upcomingBills.length > 0 ? (
+              <div className="grid gap-3">
+                {upcomingBills.map((bill, index) => (
+                  <BillPreviewRow
+                    key={`dashboard-upcoming-bill-${index}`}
+                    bill={bill}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyPreview
+                title="No bills due soon"
+                text="You have nothing due within the next 7 days."
+              />
+            )}
+
+            {showAllBills && (
+              <div className="mt-4 border-t border-[#f5f0e8]/10 pt-4">
+                <div className="mb-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c7ad75]/75">
+                    Other Bills
+                  </p>
+                </div>
+
+                {otherBills.length > 0 ? (
+                  <div className="grid gap-3">
+                    {otherBills.map((bill, index) => (
+                      <BillPreviewRow
+                        key={`dashboard-other-bill-${index}`}
+                        bill={bill}
+                        muted
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-stone-400">
+                    No other bills to show yet.
+                  </p>
+                )}
+
+                <Link
+                  href="/bills"
+                  className="pressable mt-3 flex rounded-2xl border border-[#f5f0e8]/10 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+                >
+                  <span className="w-full">Open Bills</span>
+                </Link>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="liquid-glass motion-card motion-card-delay-3 rounded-[1.65rem] p-5">
+          <div className="liquid-content">
+            <button
+              type="button"
+              onClick={() => setShowCards((current) => !current)}
+              className="flex w-full items-center justify-between gap-4 text-left"
+            >
+              <div className="min-w-0">
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75]" />
+
+                  <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
+                    Credit Cards
+                  </h2>
+                </div>
+
+                <p className="text-sm text-stone-400">
+                  {manualCards.length} card
+                  {manualCards.length === 1 ? "" : "s"} tracked •{" "}
+                  {cardUtilization}% used
+                </p>
+              </div>
+
+              <span className="pressable rounded-full border border-[#f5f0e8]/10 px-3 py-1 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]">
+                {showCards ? "Hide" : "View"}
+              </span>
+            </button>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <CompactStat
+                label="Balance"
+                value={formatMoney(cardBalanceTotal)}
+              />
+
+              <CompactStat
+                label="Credit Left"
+                value={formatMoney(availableCredit)}
+              />
+            </div>
+
+            {showCards && (
+              <div className="mt-4 grid gap-3 border-t border-[#f5f0e8]/10 pt-4">
+                {manualCards.length > 0 ? (
+                  manualCards.map((card, index) => {
+                    const balance = parseMoney(card.balance);
+                    const limit = parseMoney(card.limit);
+                    const utilization =
+                      limit > 0 ? Math.round((balance / limit) * 100) : 0;
+
+                    return (
+                      <div
+                        key={`dashboard-card-${index}`}
+                        className="liquid-glass-soft rounded-[1.25rem] p-4"
+                      >
+                        <div className="liquid-content">
+                          <div className="mb-3 flex items-center justify-between gap-4">
+                            <div className="min-w-0">
+                              <p className="truncate text-base font-semibold text-[#f5f0e8]">
+                                {card.name || "Untitled Card"}
+                              </p>
+
+                              <p className="mt-1 text-sm text-stone-400">
+                                {utilization}% used
+                              </p>
+                            </div>
+
+                            <p className="shrink-0 text-lg font-bold text-[#f5f0e8]">
+                              {formatMoney(balance)}
+                            </p>
+                          </div>
+
+                          <div className="h-2 overflow-hidden rounded-full bg-black/30">
+                            <div
+                              className="liquid-progress h-full rounded-full bg-[#c7ad75]"
+                              style={{
+                                width: `${Math.min(utilization, 100)}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <EmptyPreview
+                    title="No credit cards yet"
+                    text="Add a card in the Editor to track utilization."
+                  />
+                )}
+
+                <Link
+                  href="/cards"
+                  className="pressable rounded-2xl border border-[#f5f0e8]/10 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+                >
+                  Open Credit Cards
+                </Link>
+              </div>
+            )}
+          </div>
         </section>
       </section>
     </PageShell>
@@ -405,16 +414,20 @@ function MiniHeroStat({
   subtext?: string;
 }) {
   return (
-    <div className="rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#11100d]/75 p-4 backdrop-blur">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
-        {label}
-      </p>
+    <div className="liquid-glass-soft rounded-[1.35rem] p-4">
+      <div className="liquid-content">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
+          {label}
+        </p>
 
-      <p className="mt-2 truncate text-lg font-bold text-[#f5f0e8]">{value}</p>
+        <p className="mt-2 truncate text-lg font-bold text-[#f5f0e8]">
+          {value}
+        </p>
 
-      {subtext ? (
-        <p className="mt-1 text-sm text-stone-400">{subtext}</p>
-      ) : null}
+        {subtext ? (
+          <p className="mt-1 text-sm text-stone-400">{subtext}</p>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -427,29 +440,31 @@ function BillPreviewRow({
   muted?: boolean;
 }) {
   return (
-    <div className="rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4">
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
+    <div className="liquid-glass-soft rounded-[1.25rem] p-4">
+      <div className="liquid-content">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p
+              className={`truncate text-base font-semibold ${
+                muted ? "text-stone-300" : "text-[#f5f0e8]"
+              }`}
+            >
+              {bill.name || "Untitled Bill"}
+            </p>
+
+            <p className="mt-1 text-sm text-stone-400">
+              Due {bill.dueDate || "TBD"}
+            </p>
+          </div>
+
           <p
-            className={`truncate text-base font-semibold ${
+            className={`shrink-0 text-lg font-bold ${
               muted ? "text-stone-300" : "text-[#f5f0e8]"
             }`}
           >
-            {bill.name || "Untitled Bill"}
-          </p>
-
-          <p className="mt-1 text-sm text-stone-400">
-            Due {bill.dueDate || "TBD"}
+            {formatMoney(parseMoney(bill.amount))}
           </p>
         </div>
-
-        <p
-          className={`shrink-0 text-lg font-bold ${
-            muted ? "text-stone-300" : "text-[#f5f0e8]"
-          }`}
-        >
-          {formatMoney(parseMoney(bill.amount))}
-        </p>
       </div>
     </div>
   );
@@ -457,22 +472,28 @@ function BillPreviewRow({
 
 function CompactStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1.15rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/70">
-        {label}
-      </p>
+    <div className="liquid-glass-soft rounded-[1.15rem] p-4">
+      <div className="liquid-content">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/70">
+          {label}
+        </p>
 
-      <p className="mt-2 truncate text-lg font-bold text-[#f5f0e8]">{value}</p>
+        <p className="mt-2 truncate text-lg font-bold text-[#f5f0e8]">
+          {value}
+        </p>
+      </div>
     </div>
   );
 }
 
 function EmptyPreview({ title, text }: { title: string; text: string }) {
   return (
-    <div className="rounded-[1.25rem] border border-dashed border-[#f5f0e8]/12 bg-[#25231e] p-4">
-      <p className="font-semibold text-[#f5f0e8]">{title}</p>
+    <div className="liquid-glass-soft rounded-[1.25rem] border-dashed p-4">
+      <div className="liquid-content">
+        <p className="font-semibold text-[#f5f0e8]">{title}</p>
 
-      <p className="mt-2 text-sm leading-6 text-stone-400">{text}</p>
+        <p className="mt-2 text-sm leading-6 text-stone-400">{text}</p>
+      </div>
     </div>
   );
 }

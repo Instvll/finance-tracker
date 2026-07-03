@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import TopNav from "../../components/TopNav";
 import { PageShell, Pill } from "../../components/Layout";
-import { financeSummary, bills, creditCards } from "../../data/bandData";
-import { getAutoBillStatus } from "../../lib/billStatus";
+import { bills, creditCards, financeSummary } from "../../data/bandData";
+
+type EditorTab = "overview" | "bills" | "cards";
 
 type ManualFinanceData = {
   checkingBalance: string;
@@ -29,8 +30,6 @@ type ManualCreditCard = {
   dueDate: string;
   status: "Good" | "Watch" | "Pay Down";
 };
-
-type EditorTab = "overview" | "bills" | "cards";
 
 const summaryStorageKey = "finance-tracker-manual-data";
 const billsStorageKey = "finance-tracker-manual-bills";
@@ -61,21 +60,18 @@ const defaultManualCards: ManualCreditCard[] = creditCards.map((card) => ({
   status: card.status,
 }));
 
-function parseMoney(value: string) {
-  const numberValue = Number(value);
+function readJsonStorage<T>(key: string, fallback: T) {
+  const savedValue = window.localStorage.getItem(key);
 
-  if (Number.isNaN(numberValue)) {
-    return 0;
+  if (!savedValue) {
+    return fallback;
   }
 
-  return numberValue;
-}
-
-function formatMoney(amount: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(amount);
+  try {
+    return JSON.parse(savedValue) as T;
+  } catch {
+    return fallback;
+  }
 }
 
 function formatSavedTime(value: string) {
@@ -91,17 +87,29 @@ function formatSavedTime(value: string) {
   }).format(new Date(value));
 }
 
-function readJsonStorage<T>(key: string, fallback: T) {
-  const savedValue = window.localStorage.getItem(key);
+function parseMoney(value: string) {
+  const numberValue = Number(value);
 
-  if (!savedValue) {
-    return fallback;
+  if (Number.isNaN(numberValue)) {
+    return 0;
   }
 
-  try {
-    return JSON.parse(savedValue) as T;
-  } catch {
-    return fallback;
+  return numberValue;
+}
+
+function formatMoney(value: string) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(parseMoney(value));
+}
+
+function clearZeroOnFocus(
+  value: string,
+  updateValue: (nextValue: string) => void
+) {
+  if (value === "0") {
+    updateValue("");
   }
 }
 
@@ -114,9 +122,7 @@ export default function ManualPage() {
   const [manualCards, setManualCards] =
     useState<ManualCreditCard[]>(defaultManualCards);
   const [lastSaved, setLastSaved] = useState("");
-  const [saveMessage, setSaveMessage] = useState("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [isEditingOverview, setIsEditingOverview] = useState(false);
   const [editingBills, setEditingBills] = useState<number[]>([]);
   const [editingCards, setEditingCards] = useState<number[]>([]);
 
@@ -131,69 +137,12 @@ export default function ManualPage() {
       setLastSaved(savedTime);
     }
 
-    const searchParams = new URLSearchParams(window.location.search);
-    const requestedTab = searchParams.get("tab");
+    const tab = new URLSearchParams(window.location.search).get("tab");
 
-    if (
-      requestedTab === "overview" ||
-      requestedTab === "bills" ||
-      requestedTab === "cards"
-    ) {
-      setActiveTab(requestedTab);
+    if (tab === "bills" || tab === "cards" || tab === "overview") {
+      setActiveTab(tab);
     }
   }, []);
-
-  const upcomingBillTotal = manualBills
-    .filter((bill) => getAutoBillStatus(bill.dueDate) === "Upcoming")
-    .reduce((total, bill) => total + parseMoney(bill.amount), 0);
-
-  const paidBillTotal = manualBills
-    .filter((bill) => getAutoBillStatus(bill.dueDate) === "Paid")
-    .reduce((total, bill) => total + parseMoney(bill.amount), 0);
-
-  const cardBalanceTotal = manualCards.reduce(
-    (total, card) => total + parseMoney(card.balance),
-    0
-  );
-
-  const cardLimitTotal = manualCards.reduce(
-    (total, card) => total + parseMoney(card.limit),
-    0
-  );
-
-  const cardUtilization =
-    cardLimitTotal > 0
-      ? Math.round((cardBalanceTotal / cardLimitTotal) * 100)
-      : 0;
-
-  function markUnsaved() {
-    setHasUnsavedChanges(true);
-    setSaveMessage("Unsaved changes");
-  }
-
-  function startEditingBill(index: number) {
-    setEditingBills((current) =>
-      current.includes(index) ? current : [...current, index]
-    );
-  }
-
-  function stopEditingBill(index: number) {
-    setEditingBills((current) =>
-      current.filter((billIndex) => billIndex !== index)
-    );
-  }
-
-  function startEditingCard(index: number) {
-    setEditingCards((current) =>
-      current.includes(index) ? current : [...current, index]
-    );
-  }
-
-  function stopEditingCard(index: number) {
-    setEditingCards((current) =>
-      current.filter((cardIndex) => cardIndex !== index)
-    );
-  }
 
   function updateManualData(field: keyof ManualFinanceData, value: string) {
     setManualData((current) => ({
@@ -201,73 +150,52 @@ export default function ManualPage() {
       [field]: value,
     }));
 
-    markUnsaved();
+    setHasUnsavedChanges(true);
   }
 
-  function updateBill(
-    index: number,
-    field: keyof ManualBill,
-    value: ManualBill[keyof ManualBill]
-  ) {
-    setManualBills((current) =>
-      current.map((bill, billIndex) =>
-        billIndex === index
-          ? {
-              ...bill,
-              [field]: value,
-            }
-          : bill
+  function updateBill(index: number, field: keyof ManualBill, value: string) {
+    setManualBills((currentBills) =>
+      currentBills.map((bill, billIndex) =>
+        billIndex === index ? { ...bill, [field]: value } : bill
       )
     );
 
-    markUnsaved();
+    setHasUnsavedChanges(true);
   }
 
   function updateCard(
     index: number,
     field: keyof ManualCreditCard,
-    value: ManualCreditCard[keyof ManualCreditCard]
+    value: string
   ) {
-    setManualCards((current) =>
-      current.map((card, cardIndex) =>
-        cardIndex === index
-          ? {
-              ...card,
-              [field]: value,
-            }
-          : card
+    setManualCards((currentCards) =>
+      currentCards.map((card, cardIndex) =>
+        cardIndex === index ? { ...card, [field]: value } : card
       )
     );
 
-    markUnsaved();
+    setHasUnsavedChanges(true);
   }
 
   function addBill() {
-    setManualBills((current) => [
-      ...current,
+    setManualBills((currentBills) => [
+      ...currentBills,
       {
         name: "",
         amount: "",
         dueDate: "",
         status: "Paid",
-        paymentMethod: "TBD",
+        paymentMethod: "",
       },
     ]);
 
-    setActiveTab("bills");
-    setEditingBills([manualBills.length]);
-    markUnsaved();
+    setEditingBills((current) => [...current, manualBills.length]);
+    setHasUnsavedChanges(true);
   }
 
   function removeBill(index: number) {
-    const confirmed = window.confirm("Remove this bill?");
-
-    if (!confirmed) {
-      return;
-    }
-
-    setManualBills((current) =>
-      current.filter((_, billIndex) => billIndex !== index)
+    setManualBills((currentBills) =>
+      currentBills.filter((_, billIndex) => billIndex !== index)
     );
 
     setEditingBills((current) =>
@@ -276,12 +204,20 @@ export default function ManualPage() {
         .map((billIndex) => (billIndex > index ? billIndex - 1 : billIndex))
     );
 
-    markUnsaved();
+    setHasUnsavedChanges(true);
+  }
+
+  function toggleBillEditing(index: number) {
+    setEditingBills((current) =>
+      current.includes(index)
+        ? current.filter((billIndex) => billIndex !== index)
+        : [...current, index]
+    );
   }
 
   function addCard() {
-    setManualCards((current) => [
-      ...current,
+    setManualCards((currentCards) => [
+      ...currentCards,
       {
         name: "",
         balance: "",
@@ -292,20 +228,13 @@ export default function ManualPage() {
       },
     ]);
 
-    setActiveTab("cards");
-    setEditingCards([manualCards.length]);
-    markUnsaved();
+    setEditingCards((current) => [...current, manualCards.length]);
+    setHasUnsavedChanges(true);
   }
 
   function removeCard(index: number) {
-    const confirmed = window.confirm("Remove this credit card?");
-
-    if (!confirmed) {
-      return;
-    }
-
-    setManualCards((current) =>
-      current.filter((_, cardIndex) => cardIndex !== index)
+    setManualCards((currentCards) =>
+      currentCards.filter((_, cardIndex) => cardIndex !== index)
     );
 
     setEditingCards((current) =>
@@ -314,350 +243,266 @@ export default function ManualPage() {
         .map((cardIndex) => (cardIndex > index ? cardIndex - 1 : cardIndex))
     );
 
-    markUnsaved();
+    setHasUnsavedChanges(true);
   }
 
-  function saveAll() {
-    const savedAt = new Date().toISOString();
+  function toggleCardEditing(index: number) {
+    setEditingCards((current) =>
+      current.includes(index)
+        ? current.filter((cardIndex) => cardIndex !== index)
+        : [...current, index]
+    );
+  }
+
+  function saveChanges() {
+    const savedTime = new Date().toISOString();
 
     window.localStorage.setItem(summaryStorageKey, JSON.stringify(manualData));
     window.localStorage.setItem(billsStorageKey, JSON.stringify(manualBills));
     window.localStorage.setItem(cardsStorageKey, JSON.stringify(manualCards));
-    window.localStorage.setItem(lastSavedStorageKey, savedAt);
+    window.localStorage.setItem(lastSavedStorageKey, savedTime);
 
-    setLastSaved(savedAt);
+    setLastSaved(savedTime);
     setHasUnsavedChanges(false);
-    setSaveMessage("All changes saved");
-    setIsEditingOverview(false);
     setEditingBills([]);
     setEditingCards([]);
   }
 
-  function resetEditor() {
-    const confirmed = window.confirm(
-      "Reset the editor back to the default starter data?"
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    window.localStorage.removeItem(summaryStorageKey);
-    window.localStorage.removeItem(billsStorageKey);
-    window.localStorage.removeItem(cardsStorageKey);
-    window.localStorage.removeItem(lastSavedStorageKey);
-
-    setManualData(defaultManualData);
-    setManualBills(defaultManualBills);
-    setManualCards(defaultManualCards);
-    setLastSaved("");
-    setSaveMessage("Reset complete");
-    setHasUnsavedChanges(false);
-    setIsEditingOverview(false);
-    setEditingBills([]);
-    setEditingCards([]);
-  }
+  const overviewCards = [
+    {
+      label: "Checking",
+      value: formatMoney(manualData.checkingBalance),
+    },
+    {
+      label: "Savings",
+      value: formatMoney(manualData.savingsBalance),
+    },
+    {
+      label: "Monthly Income",
+      value: formatMoney(manualData.monthlyIncome),
+    },
+  ];
 
   return (
     <PageShell>
       <TopNav />
 
-      <header className="mb-4">
-        <div className="mb-3 flex items-center justify-between gap-4">
-          <p className="text-lg font-semibold uppercase tracking-[0.24em] text-stone-300">
-            Money Editor
-          </p>
-
-          <Pill>v1.0 Beta</Pill>
-        </div>
-
-        <p className="max-w-xl text-sm leading-6 text-stone-300">
-          View saved details, tap Edit when you want to make changes, then Save
-          to lock everything back in.
-        </p>
-      </header>
-
-      <section
-        className={`mb-5 rounded-[1.5rem] border p-4 shadow-xl shadow-black/15 ${
-          hasUnsavedChanges
-            ? "border-[#c7ad75]/25 bg-[#211f19]"
-            : "border-[#f5f0e8]/12 bg-[#1d1b17]"
-        }`}
-      >
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c7ad75]/75">
-              Editor Status
+      <div className="min-h-[70vh]">
+        <header className="mb-5 motion-card">
+          <div className="mb-3 flex items-center justify-between gap-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
+              Data Editor
             </p>
 
-            <p className="mt-1 truncate text-sm text-stone-300">
-              {hasUnsavedChanges
-                ? "Unsaved changes"
-                : saveMessage || formatSavedTime(lastSaved)}
-            </p>
+            <Pill>{hasUnsavedChanges ? "Unsaved" : "Saved"}</Pill>
           </div>
 
-          <div className="flex shrink-0 gap-2">
-            <button
-              type="button"
-              onClick={resetEditor}
-              className="rounded-2xl border border-[#f5f0e8]/12 px-4 py-3 text-sm text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
-            >
-              Reset
-            </button>
+          <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
+            Editor
+          </h1>
+        </header>
+
+        <section className="liquid-glass-accent motion-card motion-card-delay-1 mb-5 rounded-[2.25rem]">
+          <div className="liquid-content relative p-5 sm:p-7">
+            <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#c7ad75]/10 blur-3xl" />
+            <div className="absolute -bottom-20 left-10 h-44 w-44 rounded-full bg-[#f5f0e8]/5 blur-3xl" />
+
+            <div className="relative mb-7 flex items-start justify-between gap-4">
+              <div>
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.35)]" />
+
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f5f0e8]">
+                    Manual Control
+                  </p>
+                </div>
+
+                <p className="max-w-xl text-sm leading-6 text-stone-400">
+                  Update your balances, bills, and credit cards. Save when
+                  everything looks right.
+                </p>
+              </div>
+
+              <Pill>{formatSavedTime(lastSaved)}</Pill>
+            </div>
+
+            <div className="relative grid gap-3 sm:grid-cols-3">
+              {overviewCards.map((card) => (
+                <MiniStat
+                  key={card.label}
+                  label={card.label}
+                  value={card.value}
+                />
+              ))}
+            </div>
 
             <button
               type="button"
-              onClick={saveAll}
-              className="rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
+              onClick={saveChanges}
+              className={`pressable relative mt-5 flex w-full rounded-2xl border px-5 py-4 text-center text-sm font-semibold transition ${
+                hasUnsavedChanges
+                  ? "border-[#c7ad75]/35 bg-[#c7ad75]/18 text-[#f5f0e8] hover:bg-[#c7ad75]/24"
+                  : "border-[#f5f0e8]/10 bg-[#f5f0e8]/6 text-stone-300 hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+              }`}
             >
-              Save
+              <span className="w-full">
+                {hasUnsavedChanges ? "Save Changes" : "All Changes Saved"}
+              </span>
             </button>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="sticky top-3 z-20 mb-5 rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#181713]/95 p-2 shadow-xl shadow-black/20 backdrop-blur">
-        <div className="grid grid-cols-3 gap-2">
-          <TabButton
-            label="Overview"
-            active={activeTab === "overview"}
-            onClick={() => setActiveTab("overview")}
-          />
-          <TabButton
-            label="Bills"
-            active={activeTab === "bills"}
-            onClick={() => setActiveTab("bills")}
-          />
-          <TabButton
-            label="Cards"
-            active={activeTab === "cards"}
-            onClick={() => setActiveTab("cards")}
-          />
-        </div>
-      </section>
+        <section className="liquid-glass motion-card motion-card-delay-2 mb-5 rounded-[1.65rem] p-3">
+          <div className="liquid-content grid grid-cols-3 gap-2">
+            <TabButton
+              label="Overview"
+              active={activeTab === "overview"}
+              onClick={() => setActiveTab("overview")}
+            />
 
-      {activeTab === "overview" && (
-        <section className="grid gap-5">
-          <EditorPanel
-            title="Main Numbers"
-            description={
-              isEditingOverview
-                ? "Update the numbers that feed your dashboard."
-                : "These are your saved dashboard numbers."
-            }
-            action={
-              <button
-                type="button"
-                onClick={() => setIsEditingOverview((current) => !current)}
-                className="rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-2 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
-              >
-                {isEditingOverview ? "Done" : "Edit"}
-              </button>
-            }
-          >
-            {isEditingOverview ? (
+            <TabButton
+              label="Bills"
+              active={activeTab === "bills"}
+              onClick={() => setActiveTab("bills")}
+            />
+
+            <TabButton
+              label="Cards"
+              active={activeTab === "cards"}
+              onClick={() => setActiveTab("cards")}
+            />
+          </div>
+        </section>
+
+        {activeTab === "overview" && (
+          <section className="liquid-glass motion-card motion-card-delay-3 rounded-[1.65rem] p-5">
+            <div className="liquid-content">
+              <SectionHeading
+                title="Overview"
+                description="Edit the main numbers used on your Dashboard."
+              />
+
               <div className="grid gap-4 sm:grid-cols-2">
-                <InputField
+                <MoneyInput
                   label="Checking Balance"
                   value={manualData.checkingBalance}
-                  type="number"
-                  inputMode="decimal"
-                  clearZeroOnFocus
-                  onChange={(value) =>
-                    updateManualData("checkingBalance", value)
-                  }
+                  onChange={(value) => updateManualData("checkingBalance", value)}
                 />
 
-                <InputField
+                <MoneyInput
                   label="Savings Balance"
                   value={manualData.savingsBalance}
-                  type="number"
-                  inputMode="decimal"
-                  clearZeroOnFocus
-                  onChange={(value) =>
-                    updateManualData("savingsBalance", value)
-                  }
+                  onChange={(value) => updateManualData("savingsBalance", value)}
                 />
 
-                <InputField
+                <MoneyInput
                   label="Monthly Income"
                   value={manualData.monthlyIncome}
-                  type="number"
-                  inputMode="decimal"
-                  clearZeroOnFocus
-                  onChange={(value) =>
-                    updateManualData("monthlyIncome", value)
-                  }
+                  onChange={(value) => updateManualData("monthlyIncome", value)}
                 />
 
-                <InputField
+                <TextInput
                   label="Next Payday"
                   value={manualData.nextPayday}
-                  type="text"
+                  placeholder="Example: July 12"
                   onChange={(value) => updateManualData("nextPayday", value)}
                 />
               </div>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <SavedInfoCard
-                  label="Checking"
-                  value={formatMoney(parseMoney(manualData.checkingBalance))}
+            </div>
+          </section>
+        )}
+
+        {activeTab === "bills" && (
+          <section className="liquid-glass motion-card motion-card-delay-3 rounded-[1.65rem] p-5">
+            <div className="liquid-content">
+              <div className="mb-5 flex items-center justify-between gap-4">
+                <SectionHeading
+                  title="Bills"
+                  description={`${manualBills.length} bill${
+                    manualBills.length === 1 ? "" : "s"
+                  } tracked.`}
                 />
 
-                <SavedInfoCard
-                  label="Savings"
-                  value={formatMoney(parseMoney(manualData.savingsBalance))}
-                />
-
-                <SavedInfoCard
-                  label="Monthly Income"
-                  value={formatMoney(parseMoney(manualData.monthlyIncome))}
-                />
-
-                <SavedInfoCard
-                  label="Next Payday"
-                  value={manualData.nextPayday || "Not set"}
-                />
+                <button
+                  type="button"
+                  onClick={addBill}
+                  className="pressable shrink-0 rounded-2xl border border-[#c7ad75]/30 bg-[#c7ad75]/14 px-4 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/22"
+                >
+                  Add
+                </button>
               </div>
-            )}
-          </EditorPanel>
 
-          <EditorPanel
-            title="Quick Actions"
-            description="Add a new bill or credit card."
-          >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={addBill}
-                className="rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-5 py-4 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
-              >
-                Add Bill
-              </button>
-
-              <button
-                type="button"
-                onClick={addCard}
-                className="rounded-2xl border border-[#f5f0e8]/12 px-5 py-4 text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
-              >
-                Add Credit Card
-              </button>
+              <div className="grid gap-3">
+                {manualBills.length > 0 ? (
+                  manualBills.map((bill, index) => (
+                    <BillEditorCard
+                      key={`bill-${index}`}
+                      bill={bill}
+                      index={index}
+                      isEditing={editingBills.includes(index)}
+                      onToggleEditing={() => toggleBillEditing(index)}
+                      onRemove={() => removeBill(index)}
+                      onChange={(field, value) =>
+                        updateBill(index, field, value)
+                      }
+                    />
+                  ))
+                ) : (
+                  <EmptyState
+                    title="No bills yet"
+                    text="Add your first bill to start tracking upcoming expenses."
+                  />
+                )}
+              </div>
             </div>
-          </EditorPanel>
-        </section>
-      )}
+          </section>
+        )}
 
-      {activeTab === "bills" && (
-        <section className="grid gap-5">
-          <EditorPanel
-            title="Bills"
-            description="Bills automatically become upcoming when they are due within 7 days."
-            action={
-              <button
-                type="button"
-                onClick={addBill}
-                className="rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-2 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
-              >
-                Add
-              </button>
-            }
-          >
-            <div className="mb-4 grid grid-cols-2 gap-3">
-              <PreviewStat
-                label="Upcoming"
-                value={formatMoney(upcomingBillTotal)}
-              />
-              <PreviewStat label="Paid" value={formatMoney(paidBillTotal)} />
-            </div>
-
-            <div className="space-y-4">
-              {manualBills.map((bill, index) => (
-                <BillEditor
-                  key={`bill-${index}`}
-                  bill={bill}
-                  index={index}
-                  isEditing={editingBills.includes(index)}
-                  onEdit={() => startEditingBill(index)}
-                  onDone={() => stopEditingBill(index)}
-                  onChange={updateBill}
-                  onRemove={removeBill}
+        {activeTab === "cards" && (
+          <section className="liquid-glass motion-card motion-card-delay-3 rounded-[1.65rem] p-5">
+            <div className="liquid-content">
+              <div className="mb-5 flex items-center justify-between gap-4">
+                <SectionHeading
+                  title="Credit Cards"
+                  description={`${manualCards.length} card${
+                    manualCards.length === 1 ? "" : "s"
+                  } tracked.`}
                 />
-              ))}
+
+                <button
+                  type="button"
+                  onClick={addCard}
+                  className="pressable shrink-0 rounded-2xl border border-[#c7ad75]/30 bg-[#c7ad75]/14 px-4 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/22"
+                >
+                  Add
+                </button>
+              </div>
+
+              <div className="grid gap-3">
+                {manualCards.length > 0 ? (
+                  manualCards.map((card, index) => (
+                    <CardEditorCard
+                      key={`card-${index}`}
+                      card={card}
+                      index={index}
+                      isEditing={editingCards.includes(index)}
+                      onToggleEditing={() => toggleCardEditing(index)}
+                      onRemove={() => removeCard(index)}
+                      onChange={(field, value) =>
+                        updateCard(index, field, value)
+                      }
+                    />
+                  ))
+                ) : (
+                  <EmptyState
+                    title="No credit cards yet"
+                    text="Add your first card to start tracking balances and utilization."
+                  />
+                )}
+              </div>
             </div>
-          </EditorPanel>
-        </section>
-      )}
-
-      {activeTab === "cards" && (
-        <section className="grid gap-5">
-          <EditorPanel
-            title="Credit Cards"
-            description="Balances and limits feed your utilization preview."
-            action={
-              <button
-                type="button"
-                onClick={addCard}
-                className="rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-2 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
-              >
-                Add
-              </button>
-            }
-          >
-            <div className="mb-4 grid grid-cols-2 gap-3">
-              <PreviewStat
-                label="Balance"
-                value={formatMoney(cardBalanceTotal)}
-              />
-              <PreviewStat label="Used" value={`${cardUtilization}%`} />
-            </div>
-
-            <div className="space-y-4">
-              {manualCards.map((card, index) => (
-                <CardEditor
-                  key={`card-${index}`}
-                  card={card}
-                  index={index}
-                  isEditing={editingCards.includes(index)}
-                  onEdit={() => startEditingCard(index)}
-                  onDone={() => stopEditingCard(index)}
-                  onChange={updateCard}
-                  onRemove={removeCard}
-                />
-              ))}
-            </div>
-          </EditorPanel>
-        </section>
-      )}
-
-      <div
-        className={`sticky bottom-4 z-30 mt-6 rounded-[1.5rem] border p-3 shadow-2xl shadow-black/30 backdrop-blur ${
-          hasUnsavedChanges
-            ? "border-[#c7ad75]/25 bg-[#211f19]/95"
-            : "border-[#f5f0e8]/12 bg-[#181713]/95"
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs uppercase tracking-[0.2em] text-[#c7ad75]/75">
-              Changes
-            </p>
-
-            <p className="truncate text-sm font-medium text-stone-300">
-              {hasUnsavedChanges
-                ? "Unsaved changes"
-                : saveMessage || "All changes saved"}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={saveAll}
-            className="rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-5 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
-          >
-            Save
-          </button>
-        </div>
+          </section>
+        )}
       </div>
     </PageShell>
   );
@@ -676,10 +521,10 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-2xl border px-3 py-3 text-sm font-semibold transition ${
+      className={`pressable rounded-[1.25rem] border px-3 py-3 text-sm font-semibold transition ${
         active
-          ? "border-[#c7ad75]/25 bg-[#c7ad75]/14 text-[#f5f0e8] shadow-sm shadow-black/10"
-          : "border-transparent text-stone-400 hover:border-[#f5f0e8]/10 hover:bg-[#f5f0e8]/7 hover:text-[#f5f0e8]"
+          ? "border-[#c7ad75]/35 bg-[#c7ad75]/16 text-[#f5f0e8]"
+          : "border-[#f5f0e8]/10 bg-[#25231e]/60 text-stone-400 hover:border-[#c7ad75]/25 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
       }`}
     >
       {label}
@@ -687,295 +532,315 @@ function TabButton({
   );
 }
 
-function EditorPanel({
+function SectionHeading({
   title,
   description,
-  action,
-  children,
 }: {
   title: string;
   description: string;
-  action?: React.ReactNode;
-  children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[1.5rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-5 shadow-xl shadow-black/15">
-      <div className="mb-5 flex items-start justify-between gap-4 border-b border-[#f5f0e8]/10 pb-4">
-        <div>
-          <div className="mb-3 flex items-center gap-3">
-            <span className="h-2 w-2 rounded-full bg-[#c7ad75]" />
+    <div className="min-w-0">
+      <div className="mb-3 flex items-center gap-3">
+        <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75]" />
 
-            <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
-              {title}
-            </h2>
-          </div>
-
-          <p className="text-sm leading-6 text-stone-400">{description}</p>
-        </div>
-
-        {action}
+        <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
+          {title}
+        </h2>
       </div>
 
-      {children}
-    </section>
-  );
-}
-
-function PreviewStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4">
-      <p className="text-xs uppercase tracking-[0.2em] text-stone-500">
-        {label}
-      </p>
-
-      <p className="mt-2 break-words text-xl font-bold text-[#f5f0e8]">
-        {value}
-      </p>
+      <p className="text-sm leading-6 text-stone-400">{description}</p>
     </div>
   );
 }
 
-function SavedInfoCard({ label, value }: { label: string; value: string }) {
+function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
-        {label}
-      </p>
+    <div className="liquid-glass-soft rounded-[1.35rem] p-4">
+      <div className="liquid-content">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
+          {label}
+        </p>
 
-      <p className="mt-2 break-words text-xl font-bold text-[#f5f0e8]">
-        {value}
-      </p>
+        <p className="mt-2 truncate text-lg font-bold text-[#f5f0e8]">
+          {value}
+        </p>
+      </div>
     </div>
   );
 }
 
-function BillEditor({
+function BillEditorCard({
   bill,
-  index,
   isEditing,
-  onEdit,
-  onDone,
-  onChange,
+  onToggleEditing,
   onRemove,
+  onChange,
 }: {
   bill: ManualBill;
   index: number;
   isEditing: boolean;
-  onEdit: () => void;
-  onDone: () => void;
-  onChange: (
-    index: number,
-    field: keyof ManualBill,
-    value: ManualBill[keyof ManualBill]
-  ) => void;
-  onRemove: (index: number) => void;
+  onToggleEditing: () => void;
+  onRemove: () => void;
+  onChange: (field: keyof ManualBill, value: string) => void;
 }) {
-  const autoStatus = getAutoBillStatus(bill.dueDate);
-
   return (
-    <div className="rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4 shadow-lg shadow-black/10">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <Pill>{autoStatus}</Pill>
+    <div className="liquid-glass-soft rounded-[1.35rem] p-4">
+      <div className="liquid-content">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="truncate text-lg font-semibold text-[#f5f0e8]">
+              {bill.name || "Untitled Bill"}
+            </p>
 
-          <h3 className="mt-3 truncate text-xl font-bold text-[#f5f0e8]">
-            {bill.name || "Untitled Bill"}
-          </h3>
+            <p className="mt-1 text-sm text-stone-400">
+              {formatMoney(bill.amount)} • Due {bill.dueDate || "TBD"}
+            </p>
+          </div>
 
-          <p className="mt-1 text-sm text-stone-400">
-            {formatMoney(parseMoney(bill.amount))} • Due{" "}
-            {bill.dueDate || "TBD"}
-          </p>
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              onClick={onToggleEditing}
+              className="pressable rounded-xl border border-[#f5f0e8]/10 px-3 py-2 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+            >
+              {isEditing ? "Done" : "Edit"}
+            </button>
+
+            <button
+              type="button"
+              onClick={onRemove}
+              className="pressable rounded-xl border border-[#f5f0e8]/10 px-3 py-2 text-xs font-semibold text-stone-400 transition hover:border-red-300/30 hover:bg-red-400/10 hover:text-red-200"
+            >
+              Remove
+            </button>
+          </div>
         </div>
 
-        <div className="flex shrink-0 gap-2">
-          <button
-            type="button"
-            onClick={isEditing ? onDone : onEdit}
-            className="rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-3 py-1 text-xs font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
-          >
-            {isEditing ? "Done" : "Edit"}
-          </button>
+        {isEditing && (
+          <div className="mt-4 grid gap-4 border-t border-[#f5f0e8]/10 pt-4 sm:grid-cols-2">
+            <TextInput
+              label="Bill Name"
+              value={bill.name}
+              placeholder="Example: Car Payment"
+              onChange={(value) => onChange("name", value)}
+            />
 
-          <button
-            type="button"
-            onClick={() => onRemove(index)}
-            className="rounded-full border border-[#f5f0e8]/12 px-3 py-1 text-xs text-stone-400 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
-          >
-            Remove
-          </button>
-        </div>
+            <MoneyInput
+              label="Amount"
+              value={bill.amount}
+              onChange={(value) => onChange("amount", value)}
+            />
+
+            <TextInput
+              label="Due Date"
+              value={bill.dueDate}
+              placeholder="Example: 15th"
+              onChange={(value) => onChange("dueDate", value)}
+            />
+
+            <TextInput
+              label="Payment Method"
+              value={bill.paymentMethod}
+              placeholder="Example: Checking"
+              onChange={(value) => onChange("paymentMethod", value)}
+            />
+          </div>
+        )}
       </div>
-
-      {isEditing && (
-        <div className="grid gap-4 border-t border-[#f5f0e8]/10 pt-4 sm:grid-cols-2">
-          <InputField
-            label="Name"
-            value={bill.name}
-            type="text"
-            onChange={(value) => onChange(index, "name", value)}
-          />
-
-          <InputField
-            label="Amount"
-            value={bill.amount}
-            type="number"
-            inputMode="decimal"
-            clearZeroOnFocus
-            onChange={(value) => onChange(index, "amount", value)}
-          />
-
-          <InputField
-            label="Due Date"
-            value={bill.dueDate}
-            type="text"
-            onChange={(value) => onChange(index, "dueDate", value)}
-          />
-        </div>
-      )}
     </div>
   );
 }
 
-function CardEditor({
+function CardEditorCard({
   card,
-  index,
   isEditing,
-  onEdit,
-  onDone,
-  onChange,
+  onToggleEditing,
   onRemove,
+  onChange,
 }: {
   card: ManualCreditCard;
   index: number;
   isEditing: boolean;
-  onEdit: () => void;
-  onDone: () => void;
-  onChange: (
-    index: number,
-    field: keyof ManualCreditCard,
-    value: ManualCreditCard[keyof ManualCreditCard]
-  ) => void;
-  onRemove: (index: number) => void;
+  onToggleEditing: () => void;
+  onRemove: () => void;
+  onChange: (field: keyof ManualCreditCard, value: string) => void;
 }) {
   const balance = parseMoney(card.balance);
   const limit = parseMoney(card.limit);
   const utilization = limit > 0 ? Math.round((balance / limit) * 100) : 0;
 
   return (
-    <div className="rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#25231e] p-4 shadow-lg shadow-black/10">
-      <div className="mb-5 flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h3 className="truncate text-xl font-bold text-[#f5f0e8]">
-            {card.name || "Untitled Card"}
-          </h3>
+    <div className="liquid-glass-soft rounded-[1.35rem] p-4">
+      <div className="liquid-content">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="truncate text-lg font-semibold text-[#f5f0e8]">
+              {card.name || "Untitled Card"}
+            </p>
 
-          <p className="mt-2 text-sm text-stone-300">
-            {formatMoney(balance)} of {formatMoney(limit)}
-          </p>
+            <p className="mt-1 text-sm text-stone-400">
+              {utilization}% used • {formatMoney(card.balance)}
+            </p>
+          </div>
 
-          <div className="mt-3">
-            <Pill>{utilization}% used</Pill>
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              onClick={onToggleEditing}
+              className="pressable rounded-xl border border-[#f5f0e8]/10 px-3 py-2 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+            >
+              {isEditing ? "Done" : "Edit"}
+            </button>
+
+            <button
+              type="button"
+              onClick={onRemove}
+              className="pressable rounded-xl border border-[#f5f0e8]/10 px-3 py-2 text-xs font-semibold text-stone-400 transition hover:border-red-300/30 hover:bg-red-400/10 hover:text-red-200"
+            >
+              Remove
+            </button>
           </div>
         </div>
 
-        <div className="flex shrink-0 gap-2">
-          <button
-            type="button"
-            onClick={isEditing ? onDone : onEdit}
-            className="rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-3 py-1 text-xs font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
-          >
-            {isEditing ? "Done" : "Edit"}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onRemove(index)}
-            className="rounded-full border border-[#f5f0e8]/12 px-3 py-1 text-xs text-stone-400 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
-          >
-            Remove
-          </button>
+        <div className="h-2 overflow-hidden rounded-full bg-black/30">
+          <div
+            className="liquid-progress h-full rounded-full bg-[#c7ad75]"
+            style={{ width: `${Math.min(utilization, 100)}%` }}
+          />
         </div>
-      </div>
 
-      <div className="h-2 overflow-hidden rounded-full bg-black/30">
-        <div
-          className="h-full rounded-full bg-[#c7ad75]"
-          style={{ width: `${Math.min(utilization, 100)}%` }}
-        />
-      </div>
+        {isEditing && (
+          <div className="mt-4 grid gap-4 border-t border-[#f5f0e8]/10 pt-4 sm:grid-cols-2">
+            <TextInput
+              label="Card Name"
+              value={card.name}
+              placeholder="Example: Amex"
+              onChange={(value) => onChange("name", value)}
+            />
 
-      {isEditing && (
-        <div className="mt-5 rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#11100d] p-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <InputField
-                label="Card Name"
-                value={card.name}
-                type="text"
-                onChange={(value) => onChange(index, "name", value)}
-              />
-            </div>
-
-            <InputField
+            <MoneyInput
               label="Balance"
               value={card.balance}
-              type="number"
-              inputMode="decimal"
-              clearZeroOnFocus
-              onChange={(value) => onChange(index, "balance", value)}
+              onChange={(value) => onChange("balance", value)}
             />
 
-            <InputField
+            <MoneyInput
               label="Limit"
               value={card.limit}
-              type="number"
-              inputMode="decimal"
-              clearZeroOnFocus
-              onChange={(value) => onChange(index, "limit", value)}
+              onChange={(value) => onChange("limit", value)}
+            />
+
+            <SelectInput
+              label="Status"
+              value={card.status}
+              options={["Good", "Watch", "Pay Down"]}
+              onChange={(value) =>
+                onChange("status", value as ManualCreditCard["status"])
+              }
             />
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
 
-function InputField({
+function MoneyInput({
   label,
   value,
-  type,
-  inputMode,
-  clearZeroOnFocus = false,
   onChange,
 }: {
   label: string;
   value: string;
-  type: "text" | "number";
-  inputMode?: "decimal" | "numeric";
-  clearZeroOnFocus?: boolean;
   onChange: (value: string) => void;
 }) {
-  function handleFocus() {
-    if (clearZeroOnFocus && value === "0") {
-      onChange("");
-    }
-  }
-
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-medium text-stone-300">
+      <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
         {label}
       </span>
 
       <input
-        type={type}
-        inputMode={inputMode}
+        type="number"
+        inputMode="decimal"
         value={value}
-        onFocus={handleFocus}
+        onFocus={() => clearZeroOnFocus(value, onChange)}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-2xl border border-[#f5f0e8]/12 bg-[#11100d] px-4 py-4 text-lg text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-[#c7ad75]/40 focus:bg-[#181713]"
+        className="w-full rounded-2xl border border-[#f5f0e8]/12 bg-[#11100d]/55 px-4 py-3 text-base font-semibold text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-[#c7ad75]/45 focus:bg-[#11100d]/75"
       />
     </label>
+  );
+}
+
+function TextInput({
+  label,
+  value,
+  placeholder,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
+        {label}
+      </span>
+
+      <input
+        type="text"
+        value={value}
+        placeholder={placeholder}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-2xl border border-[#f5f0e8]/12 bg-[#11100d]/55 px-4 py-3 text-base font-semibold text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-[#c7ad75]/45 focus:bg-[#11100d]/75"
+      />
+    </label>
+  );
+}
+
+function SelectInput({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
+        {label}
+      </span>
+
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-2xl border border-[#f5f0e8]/12 bg-[#11100d]/55 px-4 py-3 text-base font-semibold text-[#f5f0e8] outline-none transition focus:border-[#c7ad75]/45 focus:bg-[#11100d]/75"
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function EmptyState({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="liquid-glass-soft rounded-[1.35rem] border-dashed p-5">
+      <div className="liquid-content">
+        <p className="text-lg font-semibold text-[#f5f0e8]">{title}</p>
+
+        <p className="mt-2 text-sm leading-6 text-stone-400">{text}</p>
+      </div>
+    </div>
   );
 }
