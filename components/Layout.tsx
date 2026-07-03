@@ -18,7 +18,7 @@ export function PageShell({ children }: { children: React.ReactNode }) {
 
             <div className="sm:text-right">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#c7ad75]/75">
-                v1.0 Beta
+                v1.1 Beta
               </p>
 
               <a
