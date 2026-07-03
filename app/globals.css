@@ -419,11 +419,21 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
     transition: none;
   }
 }
-/* Prevent iPhone Safari from zooming into inputs */
-@media (max-width: 768px) {
+/* Prevent iPhone Safari from zooming into form fields */
+@media screen and (max-width: 768px) {
   input,
   textarea,
-  select {
+  select,
+  button,
+  [contenteditable="true"] {
     font-size: 16px !important;
   }
+
+  input::placeholder,
+  textarea::placeholder {
+    font-size: 16px !important;
+  }
+}
+html {
+  -webkit-text-size-adjust: 100%;
 }
