@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import AuthGate from "../components/AuthGate";
-import ThemeBoot from "../components/ThemeBoot";
+import AuthGate from "@/components/AuthGate";
 
 export const metadata: Metadata = {
   title: "leftovr",
@@ -11,15 +10,13 @@ export const metadata: Metadata = {
     icon: "/icon-512.png",
     apple: "/apple-touch-icon.png",
   },
-  appleWebApp: {
-    capable: true,
-    title: "leftovr",
-    statusBarStyle: "black-translucent",
-  },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#11100d",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
@@ -28,9 +25,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body>
-        <ThemeBoot />
         <AuthGate>{children}</AuthGate>
       </body>
     </html>
