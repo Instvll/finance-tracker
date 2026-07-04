@@ -19,6 +19,32 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
+const themeScript = `
+(function () {
+  try {
+    var themeStorageKey = "leftovr-theme";
+    var allowedThemes = [
+      "classic",
+      "forest",
+      "slate",
+      "classic-light",
+      "forest-light",
+      "slate-light"
+    ];
+
+    var savedTheme = window.localStorage.getItem(themeStorageKey);
+
+    if (!savedTheme || allowedThemes.indexOf(savedTheme) === -1) {
+      savedTheme = "classic";
+    }
+
+    document.documentElement.setAttribute("data-theme", savedTheme);
+  } catch (error) {
+    document.documentElement.setAttribute("data-theme", "classic");
+  }
+})();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -26,6 +52,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
+
       <body>
         <AuthGate>{children}</AuthGate>
       </body>
