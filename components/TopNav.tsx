@@ -168,7 +168,7 @@ export default function TopNav() {
 
                   <div className="mt-6 rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#11100d]/35 p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c7ad75]/75">
-                      v1.1 Beta
+                      v1.1.1 Beta
                     </p>
 
                     <p className="mt-2 text-sm leading-6 text-stone-400">

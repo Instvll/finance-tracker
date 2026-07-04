@@ -99,7 +99,7 @@ const hasCards = manualCards.length > 0;
               Card Tracker
             </p>
 
-            <Pill>v1.1 Beta</Pill>
+            <Pill>v1.1.1 Beta</Pill>
           </div>
 
           <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
