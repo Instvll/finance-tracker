@@ -153,21 +153,26 @@ export default function DashboardPage() {
     0
   );
 
-  const availableCredit = cardLimitTotal - cardBalanceTotal;
+const availableCredit = cardLimitTotal - cardBalanceTotal;
 
-  const cardUtilization =
-    cardLimitTotal > 0
-      ? Math.round((cardBalanceTotal / cardLimitTotal) * 100)
-      : 0;
+const cardUtilization =
+  cardLimitTotal > 0
+    ? Math.round((cardBalanceTotal / cardLimitTotal) * 100)
+    : 0;
 
-  const moneyLeftAfterBills = checkingBalance - upcomingBillTotal;
+const sortedManualCards = [...manualCards].sort(
+  (firstCard, secondCard) =>
+    parseMoney(secondCard.balance) - parseMoney(firstCard.balance)
+);
+
+const moneyLeftAfterBills = checkingBalance - upcomingBillTotal;
 
   return (
     <PageShell>
       <TopNav />
 
-      <header className="mb-5 motion-card">
-        <div className="mb-3 flex items-center justify-between gap-4">
+      <header className="-mt-1 mb-4 motion-card sm:-mt-2">
+        <div className="mb-2 flex items-center justify-between gap-4">
           <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
             Finance Tracker
           </p>
@@ -180,14 +185,14 @@ export default function DashboardPage() {
         </h1>
       </header>
 
-      <section className="liquid-glass-accent motion-card motion-card-delay-1 mb-5 rounded-[2.25rem]">
-        <div className="liquid-content relative p-5 sm:p-7">
+      <section className="liquid-glass-accent motion-card motion-card-delay-1 mb-4 rounded-[2.15rem]">
+        <div className="liquid-content relative p-4 sm:p-5">
           <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#c7ad75]/10 blur-3xl" />
           <div className="absolute -bottom-20 left-10 h-44 w-44 rounded-full bg-[#f5f0e8]/5 blur-3xl" />
 
-          <div className="relative mb-7 flex items-start justify-between gap-4">
+          <div className="relative mb-5 flex items-start justify-between gap-4">
             <div>
-              <div className="mb-3 flex items-center gap-3">
+              <div className="mb-2 flex items-center gap-3">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.35)]" />
 
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f5f0e8]">
@@ -207,37 +212,25 @@ export default function DashboardPage() {
             {formatMoney(moneyLeftAfterBills)}
           </p>
 
-          <div className="relative mt-7 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <MiniHeroStat
-              label="Checking"
-              value={formatMoney(checkingBalance)}
-            />
-
-            <MiniHeroStat
-              label="Savings"
-              value={formatMoney(savingsBalance)}
-            />
-
-            <MiniHeroStat
-              label="Bills Due Soon"
-              value={String(upcomingBills.length)}
-              subtext="Within 7 days"
-            />
+          <div className="relative mt-5 rounded-[1.45rem] border border-[#f5f0e8]/10 bg-[#11100d]/25 p-2">
+            <div className="grid gap-1 sm:grid-cols-3 sm:gap-0">
+              <HeroStat label="Checking" value={formatMoney(checkingBalance)} />
+              <HeroStat label="Savings" value={formatMoney(savingsBalance)} />
+              <HeroStat
+                label="Bills Due Soon"
+                value={String(upcomingBills.length)}
+                subtext="Within 7 days"
+              />
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="grid gap-5">
-        <section className="liquid-glass motion-card motion-card-delay-2 rounded-[1.65rem] p-5">
+      <section className="grid gap-4">
+        <section className="liquid-glass motion-card motion-card-delay-2 rounded-[1.85rem] p-4">
           <div className="liquid-content">
             <div className="mb-4 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75]" />
-
-                <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
-                  Next Bills
-                </h2>
-              </div>
+              <SectionTitle title="Next Bills" />
 
               <button
                 type="button"
@@ -249,7 +242,7 @@ export default function DashboardPage() {
             </div>
 
             {upcomingBills.length > 0 ? (
-              <div className="grid gap-3">
+              <div className="grid">
                 {upcomingBills.map((bill, index) => (
                   <BillPreviewRow
                     key={`dashboard-upcoming-bill-${index}`}
@@ -265,15 +258,22 @@ export default function DashboardPage() {
             )}
 
             {showAllBills && (
-              <div className="mt-4 border-t border-[#f5f0e8]/10 pt-4">
-                <div className="mb-3">
+              <div className="mt-4 pt-4">
+                <div className="mb-3 flex items-center justify-between gap-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c7ad75]/75">
                     Other Bills
                   </p>
+
+                  <Link
+                    href="/bills"
+                    className="text-xs font-semibold text-stone-400 transition hover:text-[#c7ad75]"
+                  >
+                    Open Bills
+                  </Link>
                 </div>
 
                 {otherBills.length > 0 ? (
-                  <div className="grid gap-3">
+                  <div className="grid">
                     {otherBills.map((bill, index) => (
                       <BillPreviewRow
                         key={`dashboard-other-bill-${index}`}
@@ -287,19 +287,12 @@ export default function DashboardPage() {
                     No other bills to show yet.
                   </p>
                 )}
-
-                <Link
-                  href="/bills"
-                  className="pressable mt-3 flex rounded-2xl border border-[#f5f0e8]/10 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
-                >
-                  <span className="w-full">Open Bills</span>
-                </Link>
               </div>
             )}
           </div>
         </section>
 
-        <section className="liquid-glass motion-card motion-card-delay-3 rounded-[1.65rem] p-5">
+        <section className="liquid-glass motion-card motion-card-delay-3 rounded-[1.85rem] p-4">
           <div className="liquid-content">
             <button
               type="button"
@@ -307,15 +300,9 @@ export default function DashboardPage() {
               className="flex w-full items-center justify-between gap-4 text-left"
             >
               <div className="min-w-0">
-                <div className="mb-3 flex items-center gap-3">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75]" />
+                <SectionTitle title="Credit Cards" />
 
-                  <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
-                    Credit Cards
-                  </h2>
-                </div>
-
-                <p className="text-sm text-stone-400">
+                <p className="mt-2 text-sm text-stone-400">
                   {manualCards.length} card
                   {manualCards.length === 1 ? "" : "s"} tracked •{" "}
                   {cardUtilization}% used
@@ -327,59 +314,36 @@ export default function DashboardPage() {
               </span>
             </button>
 
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <CompactStat
-                label="Balance"
-                value={formatMoney(cardBalanceTotal)}
-              />
+            <div className="mt-4 rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#11100d]/25 p-2">
+              <div className="grid grid-cols-2 gap-1">
+                <CompactStat
+                  label="Balance"
+                  value={formatMoney(cardBalanceTotal)}
+                />
 
-              <CompactStat
-                label="Credit Left"
-                value={formatMoney(availableCredit)}
-              />
+                <CompactStat
+                  label="Credit Left"
+                  value={formatMoney(availableCredit)}
+                />
+              </div>
             </div>
 
             {showCards && (
-              <div className="mt-4 grid gap-3 border-t border-[#f5f0e8]/10 pt-4">
+              <div className="mt-4 grid gap-2 pt-1">
                 {manualCards.length > 0 ? (
-                  manualCards.map((card, index) => {
+                  sortedManualCards.map((card, index) => {
                     const balance = parseMoney(card.balance);
                     const limit = parseMoney(card.limit);
                     const utilization =
                       limit > 0 ? Math.round((balance / limit) * 100) : 0;
 
                     return (
-                      <div
+                      <CardPreviewRow
                         key={`dashboard-card-${index}`}
-                        className="liquid-glass-soft rounded-[1.25rem] p-4"
-                      >
-                        <div className="liquid-content">
-                          <div className="mb-3 flex items-center justify-between gap-4">
-                            <div className="min-w-0">
-                              <p className="truncate text-base font-semibold text-[#f5f0e8]">
-                                {card.name || "Untitled Card"}
-                              </p>
-
-                              <p className="mt-1 text-sm text-stone-400">
-                                {utilization}% used
-                              </p>
-                            </div>
-
-                            <p className="shrink-0 text-lg font-bold text-[#f5f0e8]">
-                              {formatMoney(balance)}
-                            </p>
-                          </div>
-
-                          <div className="h-2 overflow-hidden rounded-full bg-black/30">
-                            <div
-                              className="liquid-progress h-full rounded-full bg-[#c7ad75]"
-                              style={{
-                                width: `${Math.min(utilization, 100)}%`,
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
+                        name={card.name}
+                        balance={balance}
+                        utilization={utilization}
+                      />
                     );
                   })
                 ) : (
@@ -391,7 +355,7 @@ export default function DashboardPage() {
 
                 <Link
                   href="/cards"
-                  className="pressable rounded-2xl border border-[#f5f0e8]/10 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+                  className="pressable mt-2 rounded-full border border-[#f5f0e8]/10 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
                 >
                   Open Credit Cards
                 </Link>
@@ -404,7 +368,19 @@ export default function DashboardPage() {
   );
 }
 
-function MiniHeroStat({
+function SectionTitle({ title }: { title: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.25)]" />
+
+      <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
+        {title}
+      </h2>
+    </div>
+  );
+}
+
+function HeroStat({
   label,
   value,
   subtext,
@@ -414,20 +390,18 @@ function MiniHeroStat({
   subtext?: string;
 }) {
   return (
-    <div className="liquid-glass-soft rounded-[1.35rem] p-4">
-      <div className="liquid-content">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
-          {label}
-        </p>
+    <div className="rounded-[1rem] px-3 py-2 sm:border-r sm:border-[#f5f0e8]/10 sm:last:border-r-0">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
+        {label}
+      </p>
 
-        <p className="mt-2 truncate text-lg font-bold text-[#f5f0e8]">
-          {value}
-        </p>
+      <p className="mt-1.5 truncate text-lg font-bold text-[#f5f0e8]">
+        {value}
+      </p>
 
-        {subtext ? (
-          <p className="mt-1 text-sm text-stone-400">{subtext}</p>
-        ) : null}
-      </div>
+      {subtext ? (
+        <p className="mt-1 text-sm text-stone-400">{subtext}</p>
+      ) : null}
     </div>
   );
 }
@@ -440,31 +414,66 @@ function BillPreviewRow({
   muted?: boolean;
 }) {
   return (
-    <div className="liquid-glass-soft rounded-[1.25rem] p-4">
-      <div className="liquid-content">
-        <div className="flex items-center justify-between gap-4">
-          <div className="min-w-0">
-            <p
-              className={`truncate text-base font-semibold ${
-                muted ? "text-stone-300" : "text-[#f5f0e8]"
-              }`}
-            >
-              {bill.name || "Untitled Bill"}
-            </p>
-
-            <p className="mt-1 text-sm text-stone-400">
-              Due {bill.dueDate || "TBD"}
-            </p>
-          </div>
-
+    <div className="group border-t border-[#f5f0e8]/10 px-3 py-4 transition last:border-b hover:bg-[#f5f0e8]/4">
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
           <p
-            className={`shrink-0 text-lg font-bold ${
+            className={`truncate text-base font-semibold ${
               muted ? "text-stone-300" : "text-[#f5f0e8]"
             }`}
           >
-            {formatMoney(parseMoney(bill.amount))}
+            {bill.name || "Untitled Bill"}
+          </p>
+
+          <p className="mt-1 text-sm text-stone-400">
+            Due {bill.dueDate || "TBD"}
           </p>
         </div>
+
+        <p
+          className={`shrink-0 text-lg font-bold ${
+            muted ? "text-stone-300" : "text-[#f5f0e8]"
+          }`}
+        >
+          {formatMoney(parseMoney(bill.amount))}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function CardPreviewRow({
+  name,
+  balance,
+  utilization,
+}: {
+  name: string;
+  balance: number;
+  utilization: number;
+}) {
+  return (
+    <div className="border-t border-[#f5f0e8]/10 px-3 py-4 transition last:border-b hover:bg-[#f5f0e8]/4">
+      <div className="mb-3 flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="truncate text-base font-semibold text-[#f5f0e8]">
+            {name || "Untitled Card"}
+          </p>
+
+          <p className="mt-1 text-sm text-stone-400">{utilization}% used</p>
+        </div>
+
+        <p className="shrink-0 text-lg font-bold text-[#f5f0e8]">
+          {formatMoney(balance)}
+        </p>
+      </div>
+
+      <div className="h-2 overflow-hidden rounded-full bg-black/30">
+        <div
+          className="liquid-progress h-full rounded-full bg-[#c7ad75]"
+          style={{
+            width: `${Math.min(utilization, 100)}%`,
+          }}
+        />
       </div>
     </div>
   );
@@ -472,28 +481,24 @@ function BillPreviewRow({
 
 function CompactStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="liquid-glass-soft rounded-[1.15rem] p-4">
-      <div className="liquid-content">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/70">
-          {label}
-        </p>
+    <div className="rounded-[1rem] px-3 py-2">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/70">
+        {label}
+      </p>
 
-        <p className="mt-2 truncate text-lg font-bold text-[#f5f0e8]">
-          {value}
-        </p>
-      </div>
+      <p className="mt-1.5 truncate text-lg font-bold text-[#f5f0e8]">
+        {value}
+      </p>
     </div>
   );
 }
 
 function EmptyPreview({ title, text }: { title: string; text: string }) {
   return (
-    <div className="liquid-glass-soft rounded-[1.25rem] border-dashed p-4">
-      <div className="liquid-content">
-        <p className="font-semibold text-[#f5f0e8]">{title}</p>
+    <div className="rounded-[1.25rem] border border-dashed border-[#f5f0e8]/12 bg-[#11100d]/20 p-4">
+      <p className="font-semibold text-[#f5f0e8]">{title}</p>
 
-        <p className="mt-2 text-sm leading-6 text-stone-400">{text}</p>
-      </div>
+      <p className="mt-2 text-sm leading-6 text-stone-400">{text}</p>
     </div>
   );
 }

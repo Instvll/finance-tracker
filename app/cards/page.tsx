@@ -78,18 +78,23 @@ export default function CardsPage() {
 
   const availableCredit = totalLimit - totalBalance;
 
-  const utilization =
-    totalLimit > 0 ? Math.round((totalBalance / totalLimit) * 100) : 0;
+const utilization =
+  totalLimit > 0 ? Math.round((totalBalance / totalLimit) * 100) : 0;
 
-  const hasCards = manualCards.length > 0;
+const sortedManualCards = [...manualCards].sort(
+  (firstCard, secondCard) =>
+    parseMoney(secondCard.balance) - parseMoney(firstCard.balance)
+);
+
+const hasCards = manualCards.length > 0;
 
   return (
     <PageShell>
       <TopNav />
 
       <div className="min-h-[70vh]">
-        <header className="mb-5 motion-card">
-          <div className="mb-3 flex items-center justify-between gap-4">
+        <header className="-mt-1 mb-4 motion-card sm:-mt-2">
+          <div className="mb-2 flex items-center justify-between gap-4">
             <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
               Card Tracker
             </p>
@@ -102,14 +107,14 @@ export default function CardsPage() {
           </h1>
         </header>
 
-        <section className="liquid-glass-accent motion-card motion-card-delay-1 mb-5 rounded-[2.25rem]">
-          <div className="liquid-content relative p-5 sm:p-7">
+        <section className="liquid-glass-accent motion-card motion-card-delay-1 mb-4 rounded-[2.15rem]">
+          <div className="liquid-content relative p-4 sm:p-5">
             <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#c7ad75]/10 blur-3xl" />
             <div className="absolute -bottom-20 left-10 h-44 w-44 rounded-full bg-[#f5f0e8]/5 blur-3xl" />
 
-            <div className="relative mb-7 flex items-start justify-between gap-4">
+            <div className="relative mb-5 flex items-start justify-between gap-4">
               <div>
-                <div className="mb-3 flex items-center gap-3">
+                <div className="mb-2 flex items-center gap-3">
                   <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.35)]" />
 
                   <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f5f0e8]">
@@ -129,26 +134,30 @@ export default function CardsPage() {
               {formatMoney(totalBalance)}
             </p>
 
-            <div className="relative mt-7 h-2 overflow-hidden rounded-full bg-black/30">
+            <div className="relative mt-5 h-2 overflow-hidden rounded-full bg-black/30">
               <div
                 className="liquid-progress h-full rounded-full bg-[#c7ad75]"
                 style={{ width: `${Math.min(utilization, 100)}%` }}
               />
             </div>
 
-            <div className="relative mt-7 grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <MiniStat
-                label="Credit Left"
-                value={formatMoney(availableCredit)}
-              />
-              <MiniStat label="Total Limit" value={formatMoney(totalLimit)} />
-              <MiniStat label="Cards" value={String(manualCards.length)} />
+            <div className="relative mt-5 rounded-[1.45rem] border border-[#f5f0e8]/10 bg-[#11100d]/25 p-2">
+              <div className="grid gap-1 sm:grid-cols-3 sm:gap-0">
+                <HeroStat
+                  label="Credit Left"
+                  value={formatMoney(availableCredit)}
+                />
+
+                <HeroStat label="Total Limit" value={formatMoney(totalLimit)} />
+
+                <HeroStat label="Cards" value={String(manualCards.length)} />
+              </div>
             </div>
           </div>
         </section>
 
-        <section className="grid gap-5">
-          <section className="liquid-glass motion-card motion-card-delay-2 rounded-[1.65rem] p-5">
+        <section className="grid gap-4">
+          <section className="liquid-glass motion-card motion-card-delay-2 rounded-[1.85rem] p-4">
             <div className="liquid-content">
               <button
                 type="button"
@@ -156,15 +165,9 @@ export default function CardsPage() {
                 className="flex w-full items-center justify-between gap-4 text-left"
               >
                 <div className="min-w-0">
-                  <div className="mb-3 flex items-center gap-3">
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75]" />
+                  <SectionTitle title="Card List" />
 
-                    <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
-                      Card List
-                    </h2>
-                  </div>
-
-                  <p className="text-sm text-stone-400">
+                  <p className="mt-2 text-sm text-stone-400">
                     {hasCards
                       ? `${manualCards.length} card${
                           manualCards.length === 1 ? "" : "s"
@@ -179,13 +182,11 @@ export default function CardsPage() {
               </button>
 
               {showCardList && (
-                <div className="mt-4 border-t border-[#f5f0e8]/10 pt-4">
+                <div className="mt-4 grid pt-1">
                   {manualCards.length > 0 ? (
-                    <div className="grid gap-3">
-                      {manualCards.map((card, index) => (
-                        <CreditCardRow key={`card-${index}`} card={card} />
-                      ))}
-                    </div>
+                    sortedManualCards.map((card, index) => (
+  <CreditCardRow key={`card-${index}`} card={card} />
+))
                   ) : (
                     <EmptyState
                       title="No credit cards yet"
@@ -198,9 +199,9 @@ export default function CardsPage() {
                   {manualCards.length > 0 && (
                     <Link
                       href="/manual?tab=cards"
-                      className="pressable mt-4 flex rounded-2xl border border-[#f5f0e8]/10 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+                      className="pressable mt-2 rounded-full border border-[#f5f0e8]/10 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
                     >
-                      <span className="w-full">Edit Credit Cards</span>
+                      Edit Credit Cards
                     </Link>
                   )}
                 </div>
@@ -213,18 +214,42 @@ export default function CardsPage() {
   );
 }
 
-function MiniStat({ label, value }: { label: string; value: string }) {
+function SectionTitle({ title }: { title: string }) {
   return (
-    <div className="liquid-glass-soft rounded-[1.35rem] p-4">
-      <div className="liquid-content">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
-          {label}
-        </p>
+    <div className="flex items-center gap-3">
+      <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.25)]" />
 
-        <p className="mt-2 truncate text-lg font-bold text-[#f5f0e8]">
-          {value}
-        </p>
-      </div>
+      <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
+        {title}
+      </h2>
+    </div>
+  );
+}
+
+function HeroStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1rem] px-3 py-2 sm:border-r sm:border-[#f5f0e8]/10 sm:last:border-r-0">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
+        {label}
+      </p>
+
+      <p className="mt-1.5 truncate text-lg font-bold text-[#f5f0e8]">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function CompactStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1rem] px-3 py-2">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/70">
+        {label}
+      </p>
+
+      <p className="mt-1.5 truncate text-base font-bold text-[#f5f0e8]">
+        {value}
+      </p>
     </div>
   );
 }
@@ -236,49 +261,33 @@ function CreditCardRow({ card }: { card: ManualCreditCard }) {
   const utilization = limit > 0 ? Math.round((balance / limit) * 100) : 0;
 
   return (
-    <div className="liquid-glass-soft rounded-[1.35rem] p-4">
-      <div className="liquid-content">
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="truncate text-lg font-semibold text-[#f5f0e8]">
-              {card.name || "Untitled Card"}
-            </p>
-
-            <p className="mt-1 text-sm text-stone-400">{utilization}% used</p>
-          </div>
-
-          <p className="shrink-0 text-xl font-bold text-[#f5f0e8]">
-            {formatMoney(balance)}
+    <div className="group border-t border-[#f5f0e8]/10 px-3 py-4 transition last:border-b hover:bg-[#f5f0e8]/4">
+      <div className="mb-3 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="truncate text-base font-semibold text-[#f5f0e8]">
+            {card.name || "Untitled Card"}
           </p>
+
+          <p className="mt-1 text-sm text-stone-400">{utilization}% used</p>
         </div>
 
-        <div className="mb-4 h-2 overflow-hidden rounded-full bg-black/30">
-          <div
-            className="liquid-progress h-full rounded-full bg-[#c7ad75]"
-            style={{ width: `${Math.min(utilization, 100)}%` }}
-          />
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-3">
-          <InfoBox label="Limit" value={formatMoney(limit)} />
-          <InfoBox label="Credit Left" value={formatMoney(available)} />
-          <InfoBox label="Status" value={card.status || "Good"} />
-        </div>
+        <p className="shrink-0 text-lg font-bold text-[#f5f0e8]">
+          {formatMoney(balance)}
+        </p>
       </div>
-    </div>
-  );
-}
 
-function InfoBox({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[1.15rem] border border-[#f5f0e8]/10 bg-[#11100d]/50 p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
-        {label}
-      </p>
+      <div className="mb-3 h-2 overflow-hidden rounded-full bg-black/30">
+        <div
+          className="liquid-progress h-full rounded-full bg-[#c7ad75]"
+          style={{ width: `${Math.min(utilization, 100)}%` }}
+        />
+      </div>
 
-      <p className="mt-2 truncate text-base font-bold text-[#f5f0e8]">
-        {value}
-      </p>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <CompactStat label="Limit" value={formatMoney(limit)} />
+        <CompactStat label="Credit Left" value={formatMoney(available)} />
+        <CompactStat label="Status" value={card.status || "Good"} />
+      </div>
     </div>
   );
 }
@@ -295,19 +304,17 @@ function EmptyState({
   actionHref: string;
 }) {
   return (
-    <div className="liquid-glass-soft rounded-[1.35rem] border-dashed p-5">
-      <div className="liquid-content">
-        <p className="text-lg font-semibold text-[#f5f0e8]">{title}</p>
+    <div className="rounded-[1.25rem] border border-dashed border-[#f5f0e8]/12 bg-[#11100d]/20 p-4">
+      <p className="text-lg font-semibold text-[#f5f0e8]">{title}</p>
 
-        <p className="mt-2 text-sm leading-6 text-stone-400">{text}</p>
+      <p className="mt-2 text-sm leading-6 text-stone-400">{text}</p>
 
-        <Link
-          href={actionHref}
-          className="pressable mt-4 flex rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-3 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
-        >
-          <span className="w-full">{actionLabel}</span>
-        </Link>
-      </div>
+      <Link
+        href={actionHref}
+        className="pressable mt-4 flex rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-3 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
+      >
+        <span className="w-full">{actionLabel}</span>
+      </Link>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import AuthGate from "@/components/AuthGate";
+import WelcomeScreen from "@/components/WelcomeScreen";
 
 export const metadata: Metadata = {
   title: "leftovr",
@@ -29,7 +30,8 @@ const themeScript = `
       "slate",
       "classic-light",
       "forest-light",
-      "slate-light"
+      "slate-light",
+      "july-fourth"
     ];
 
     var savedTheme = window.localStorage.getItem(themeStorageKey);
@@ -57,7 +59,10 @@ export default function RootLayout({
       </head>
 
       <body>
-        <AuthGate>{children}</AuthGate>
+        <AuthGate>
+          {children}
+          <WelcomeScreen />
+        </AuthGate>
       </body>
     </html>
   );
