@@ -5,7 +5,7 @@ import Link from "next/link";
 import TopNav from "../components/TopNav";
 import { PageShell, Pill } from "../components/Layout";
 import { financeSummary, bills, creditCards } from "../data/bandData";
-import { getAutoBillStatus } from "../lib/billStatus";
+import { getAutoBillStatus, sortBillsByDueDay } from "../lib/billStatus";
 
 type ManualFinanceData = {
   checkingBalance: string;
@@ -130,12 +130,14 @@ export default function DashboardPage() {
   const checkingBalance = parseMoney(manualData.checkingBalance);
   const savingsBalance = parseMoney(manualData.savingsBalance);
 
-  const upcomingBills = manualBills.filter(
-    (bill) => getAutoBillStatus(bill.dueDate) === "Upcoming"
+  const upcomingBills = sortBillsByDueDay(
+    manualBills.filter(
+      (bill) => getAutoBillStatus(bill.dueDate) === "Upcoming"
+    )
   );
 
-  const otherBills = manualBills.filter(
-    (bill) => getAutoBillStatus(bill.dueDate) === "Paid"
+  const otherBills = sortBillsByDueDay(
+    manualBills.filter((bill) => getAutoBillStatus(bill.dueDate) === "Paid")
   );
 
   const upcomingBillTotal = upcomingBills.reduce(
@@ -153,19 +155,19 @@ export default function DashboardPage() {
     0
   );
 
-const availableCredit = cardLimitTotal - cardBalanceTotal;
+  const availableCredit = cardLimitTotal - cardBalanceTotal;
 
-const cardUtilization =
-  cardLimitTotal > 0
-    ? Math.round((cardBalanceTotal / cardLimitTotal) * 100)
-    : 0;
+  const cardUtilization =
+    cardLimitTotal > 0
+      ? Math.round((cardBalanceTotal / cardLimitTotal) * 100)
+      : 0;
 
-const sortedManualCards = [...manualCards].sort(
-  (firstCard, secondCard) =>
-    parseMoney(secondCard.balance) - parseMoney(firstCard.balance)
-);
+  const sortedManualCards = [...manualCards].sort(
+    (firstCard, secondCard) =>
+      parseMoney(secondCard.balance) - parseMoney(firstCard.balance)
+  );
 
-const moneyLeftAfterBills = checkingBalance - upcomingBillTotal;
+  const moneyLeftAfterBills = checkingBalance - upcomingBillTotal;
 
   return (
     <PageShell>

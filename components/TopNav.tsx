@@ -1,9 +1,12 @@
 "use client";
 
+import type { CSSProperties, ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
 import LogoMark from "./LogoMark";
+
+const drawerCloseDelay = 340;
 
 const mainNavItems = [
   { label: "Dashboard", href: "/", icon: DashboardIcon },
@@ -19,7 +22,36 @@ const utilityNavItems = [
 
 export default function TopNav() {
   const pathname = usePathname();
-  const [isOpen, setIsOpen] = useState(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [isDrawerMounted, setIsDrawerMounted] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  const clearCloseTimer = useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
+
+  const openMenu = useCallback(() => {
+    clearCloseTimer();
+    setIsDrawerMounted(true);
+
+    window.requestAnimationFrame(() => {
+      setIsDrawerOpen(true);
+    });
+  }, [clearCloseTimer]);
+
+  const closeMenu = useCallback(() => {
+    clearCloseTimer();
+    setIsDrawerOpen(false);
+
+    closeTimerRef.current = setTimeout(() => {
+      setIsDrawerMounted(false);
+      closeTimerRef.current = null;
+    }, drawerCloseDelay);
+  }, [clearCloseTimer]);
 
   function isActiveRoute(href: string) {
     if (href === "/") {
@@ -29,14 +61,51 @@ export default function TopNav() {
     return pathname.startsWith(href);
   }
 
-  function closeMenu() {
-    setIsOpen(false);
-  }
+  useEffect(() => {
+    return () => {
+      clearCloseTimer();
+    };
+  }, [clearCloseTimer]);
+
+  useEffect(() => {
+    if (!isDrawerMounted) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    const previousPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth =
+      window.innerWidth - document.documentElement.clientWidth;
+
+    document.body.style.overflow = "hidden";
+
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        closeMenu();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.paddingRight = previousPaddingRight;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeMenu, isDrawerMounted]);
 
   return (
     <>
-      <nav className="sticky top-4 z-40 mb-5">
-        <div className="liquid-glass-soft rounded-[1.75rem] px-4 py-3">
+      <nav
+        className={`sticky top-4 z-40 mb-5 transition duration-300 ${
+          isDrawerMounted ? "top-nav-drawer-open" : ""
+        }`}
+      >
+        <div className="liquid-glass-soft top-app-bar rounded-[1.85rem] px-3.5 py-3">
           <div className="liquid-content flex items-center justify-between gap-4">
             <Link
               href="/"
@@ -58,34 +127,45 @@ export default function TopNav() {
 
             <button
               type="button"
-              onClick={() => setIsOpen(true)}
-              className="inline-flex items-center gap-3 px-1 py-2 text-sm font-semibold text-[#f5f0e8] transition hover:text-[#c7ad75]"
+              onClick={openMenu}
+              className="app-menu-button pressable"
               aria-label="Open navigation menu"
+              aria-expanded={isDrawerOpen}
+              aria-controls="main-navigation-drawer"
             >
-              <span className="hidden sm:inline">Menu</span>
-
-              <span className="grid gap-1.5">
-                <span className="block h-0.5 w-5 rounded-full bg-current" />
-                <span className="block h-0.5 w-5 rounded-full bg-current" />
-                <span className="block h-0.5 w-5 rounded-full bg-current" />
+              <span className="app-menu-icon" aria-hidden="true">
+                <span className="app-menu-line app-menu-line-top" />
+                <span className="app-menu-line app-menu-line-middle" />
+                <span className="app-menu-line app-menu-line-bottom" />
               </span>
             </button>
           </div>
         </div>
       </nav>
 
-      {isOpen && (
-        <div className="fixed inset-0 z-50">
+      {isDrawerMounted && (
+        <div
+          id="main-navigation-drawer"
+          className="drawer-layer fixed inset-0 z-[90]"
+          data-drawer-state={isDrawerOpen ? "open" : "closed"}
+          aria-hidden={!isDrawerOpen}
+        >
           <button
             type="button"
-            className="drawer-backdrop absolute inset-0 bg-black/55 backdrop-blur-sm"
+            className="drawer-backdrop absolute inset-0 appearance-none border-0 p-0"
             onClick={closeMenu}
             aria-label="Close navigation menu"
           />
 
-          <aside className="liquid-glass drawer-panel-right relative ml-auto flex h-full w-[88vw] max-w-[390px] rounded-l-[2rem] border-y-0 border-r-0 p-4 shadow-2xl shadow-black/40 sm:p-5">
+          <aside
+            className="liquid-glass drawer-panel-right relative ml-auto flex h-full w-[88vw] max-w-[390px] rounded-l-[2rem] border-y-0 border-r-0 px-4 pb-4 pt-5 shadow-2xl shadow-black/40 sm:px-5 sm:pb-5 sm:pt-6"
+            aria-label="Navigation menu"
+          >
             <div className="liquid-content flex min-h-0 w-full flex-col">
-              <div className="mb-6 flex items-center justify-between gap-4">
+              <div
+                className="drawer-menu-item mb-6 flex items-center justify-between gap-4"
+                style={{ "--menu-item-index": 0 } as CSSProperties}
+              >
                 <Link
                   href="/"
                   onClick={closeMenu}
@@ -107,29 +187,20 @@ export default function TopNav() {
                 <button
                   type="button"
                   onClick={closeMenu}
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-[#f5f0e8]/12 bg-[#f5f0e8]/6 text-stone-300 transition hover:border-[#c7ad75]/35 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+                  className="drawer-close-button pressable"
                   aria-label="Close navigation menu"
                 >
-                  <svg
-                    className="h-4 w-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M6 6l12 12M18 6 6 18"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                    />
-                  </svg>
+                  <span className="drawer-close-icon" aria-hidden="true">
+                    <span />
+                    <span />
+                  </span>
                 </button>
               </div>
 
               <div className="flex min-h-0 flex-1 flex-col">
                 <div className="min-h-0 overflow-y-auto pr-1">
                   <MenuSection label="Main">
-                    {mainNavItems.map((item) => {
+                    {mainNavItems.map((item, index) => {
                       const active = isActiveRoute(item.href);
                       const Icon = item.icon;
 
@@ -141,6 +212,7 @@ export default function TopNav() {
                           onClick={closeMenu}
                           icon={<Icon />}
                           label={item.label}
+                          index={index + 1}
                         />
                       );
                     })}
@@ -149,7 +221,7 @@ export default function TopNav() {
 
                 <div className="mt-auto pt-6">
                   <MenuSection label="App">
-                    {utilityNavItems.map((item) => {
+                    {utilityNavItems.map((item, index) => {
                       const active = isActiveRoute(item.href);
                       const Icon = item.icon;
 
@@ -161,12 +233,21 @@ export default function TopNav() {
                           onClick={closeMenu}
                           icon={<Icon />}
                           label={item.label}
+                          index={mainNavItems.length + index + 1}
                         />
                       );
                     })}
                   </MenuSection>
 
-                  <div className="mt-6 rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#11100d]/35 p-4">
+                  <div
+                    className="drawer-menu-item mt-6 rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#11100d]/35 p-4"
+                    style={
+                      {
+                        "--menu-item-index":
+                          mainNavItems.length + utilityNavItems.length + 1,
+                      } as CSSProperties
+                    }
+                  >
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c7ad75]/75">
                       v1.1.1 Beta
                     </p>
@@ -190,7 +271,7 @@ function MenuSection({
   children,
 }: {
   label: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <section>
@@ -209,18 +290,21 @@ function MenuLink({
   onClick,
   icon,
   label,
+  index,
 }: {
   href: string;
   active: boolean;
   onClick: () => void;
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
+  index: number;
 }) {
   return (
     <Link
       href={href}
       onClick={onClick}
-      className={`pressable flex items-center justify-between gap-4 rounded-[1.25rem] border px-4 py-3.5 transition ${
+      style={{ "--menu-item-index": index } as CSSProperties}
+      className={`drawer-menu-item pressable flex items-center justify-between gap-4 rounded-[1.25rem] border px-4 py-3.5 transition ${
         active
           ? "border-[#c7ad75]/38 bg-[#c7ad75]/15 text-[#f5f0e8]"
           : "border-[#f5f0e8]/10 bg-[#11100d]/28 text-stone-300 hover:border-[#c7ad75]/25 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"

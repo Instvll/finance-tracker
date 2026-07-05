@@ -16,6 +16,52 @@ export function getDueDayFromDate(value: string) {
   return day;
 }
 
+export function sortBillsByDueDay<T extends { name: string; dueDate: string }>(
+  bills: T[]
+) {
+  return [...bills].sort((firstBill, secondBill) => {
+    const firstDueDay = getDueDayFromDate(firstBill.dueDate);
+    const secondDueDay = getDueDayFromDate(secondBill.dueDate);
+
+    if (firstDueDay && secondDueDay) {
+      return firstDueDay - secondDueDay;
+    }
+
+    if (firstDueDay && !secondDueDay) {
+      return -1;
+    }
+
+    if (!firstDueDay && secondDueDay) {
+      return 1;
+    }
+
+    return firstBill.name.localeCompare(secondBill.name);
+  });
+}
+
+export function sortIndexedBillsByDueDay<
+  T extends { name: string; dueDate: string },
+>(bills: { bill: T; index: number }[]) {
+  return [...bills].sort((firstBill, secondBill) => {
+    const firstDueDay = getDueDayFromDate(firstBill.bill.dueDate);
+    const secondDueDay = getDueDayFromDate(secondBill.bill.dueDate);
+
+    if (firstDueDay && secondDueDay) {
+      return firstDueDay - secondDueDay;
+    }
+
+    if (firstDueDay && !secondDueDay) {
+      return -1;
+    }
+
+    if (!firstDueDay && secondDueDay) {
+      return 1;
+    }
+
+    return firstBill.bill.name.localeCompare(secondBill.bill.name);
+  });
+}
+
 function getDaysInMonth(year: number, monthIndex: number) {
   return new Date(year, monthIndex + 1, 0).getDate();
 }

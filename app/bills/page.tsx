@@ -5,7 +5,7 @@ import Link from "next/link";
 import TopNav from "../../components/TopNav";
 import { PageShell, Pill } from "../../components/Layout";
 import { bills } from "../../data/bandData";
-import { getAutoBillStatus } from "../../lib/billStatus";
+import { getAutoBillStatus, sortBillsByDueDay } from "../../lib/billStatus";
 
 type ManualBill = {
   name: string;
@@ -65,12 +65,14 @@ export default function BillsPage() {
     setManualBills(readBillsStorage());
   }, []);
 
-  const upcomingBills = manualBills.filter(
-    (bill) => getAutoBillStatus(bill.dueDate) === "Upcoming"
+  const upcomingBills = sortBillsByDueDay(
+    manualBills.filter(
+      (bill) => getAutoBillStatus(bill.dueDate) === "Upcoming"
+    )
   );
 
-  const otherBills = manualBills.filter(
-    (bill) => getAutoBillStatus(bill.dueDate) === "Paid"
+  const otherBills = sortBillsByDueDay(
+    manualBills.filter((bill) => getAutoBillStatus(bill.dueDate) === "Paid")
   );
 
   const upcomingTotal = upcomingBills.reduce(

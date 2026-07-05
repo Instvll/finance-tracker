@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import TopNav from "../../components/TopNav";
 import { PageShell, Pill } from "../../components/Layout";
 import { bills, creditCards, financeSummary } from "../../data/bandData";
+import { sortIndexedBillsByDueDay } from "../../lib/billStatus";
 
 type EditorTab = "overview" | "bills" | "cards";
 
@@ -289,6 +290,10 @@ export default function ManualPage() {
     },
   ];
 
+  const sortedManualBills = sortIndexedBillsByDueDay(
+    manualBills.map((bill, index) => ({ bill, index }))
+  );
+
   const sortedManualCards = manualCards
     .map((card, index) => ({ card, index }))
     .sort(
@@ -462,7 +467,7 @@ export default function ManualPage() {
 
               <div className="grid">
                 {manualBills.length > 0 ? (
-                  manualBills.map((bill, index) => (
+                  sortedManualBills.map(({ bill, index }) => (
                     <BillEditorRow
                       key={`bill-${index}`}
                       bill={bill}
