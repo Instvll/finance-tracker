@@ -73,25 +73,45 @@ export default function BackupSettingsPage() {
     return window.localStorage.getItem(key) || fallback;
   }
 
+  function parseStoredJson<T>(value: string, fallback: T) {
+    try {
+      return JSON.parse(value) as T;
+    } catch {
+      return fallback;
+    }
+  }
+
   async function backUpThisDevice() {
     if (!user) {
-      setMessage("You need to be signed in before backing up.");
+      setMessage("Sign in before backing up.");
       return;
     }
 
     setIsBackingUp(true);
     setMessage("");
 
-    const dashboardData = readStorageValue(summaryStorageKey, "{}");
-    const billsData = readStorageValue(billsStorageKey, "[]");
-    const cardsData = readStorageValue(cardsStorageKey, "[]");
+    const dashboardData = parseStoredJson(
+      readStorageValue(summaryStorageKey, "{}"),
+      {}
+    );
+
+    const billsData = parseStoredJson(
+      readStorageValue(billsStorageKey, "[]"),
+      []
+    );
+
+    const cardsData = parseStoredJson(
+      readStorageValue(cardsStorageKey, "[]"),
+      []
+    );
+
     const manualLastSaved = window.localStorage.getItem(lastSavedStorageKey);
 
     const { error } = await supabase.from("finance_data").upsert({
       user_id: user.id,
-      dashboard_data: JSON.parse(dashboardData),
-      bills_data: JSON.parse(billsData),
-      cards_data: JSON.parse(cardsData),
+      dashboard_data: dashboardData,
+      bills_data: billsData,
+      cards_data: cardsData,
       plan_data: {},
       notes_data: [],
       manual_last_saved: manualLastSaved,
@@ -112,7 +132,7 @@ export default function BackupSettingsPage() {
 
   async function restoreBackup() {
     if (!user) {
-      setMessage("You need to be signed in before restoring.");
+      setMessage("Sign in before restoring.");
       return;
     }
 
@@ -168,15 +188,15 @@ export default function BackupSettingsPage() {
       setLastSaved(data.updated_at);
     }
 
-    setMessage("Restore complete. Go back to the Dashboard to view your data.");
+    setMessage("Restore complete.");
     setIsRestoring(false);
   }
 
   const accountStatus = isLoading
-    ? "Checking account..."
+    ? "Checking"
     : user?.email
-      ? "Signed in"
-      : "Not signed in";
+      ? "Signed In"
+      : "Signed Out";
 
   return (
     <PageShell>
@@ -197,33 +217,28 @@ export default function BackupSettingsPage() {
           <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
             Data & Backup
           </h1>
-
-          <p className="mt-2 max-w-xl text-sm leading-6 text-stone-400">
-            Manually back up or restore the tracker data saved on this device.
-          </p>
         </header>
 
         <section className="liquid-glass motion-card motion-card-delay-1 rounded-[1.85rem] p-4">
           <div className="liquid-content grid gap-3">
+            <div className="mb-1 flex items-center justify-between gap-4">
+              <SectionTitle title="Manual Backup" />
+
+              <span className="shrink-0 rounded-full border border-[#f5f0e8]/10 bg-[#f5f0e8]/6 px-2.5 py-1 text-xs font-semibold text-stone-400">
+                {accountStatus}
+              </span>
+            </div>
+
             <div className="grid gap-3 sm:grid-cols-2">
-              <InfoItem label="Account" value={accountStatus} />
+              <InfoItem
+                label="Account"
+                value={user?.email || accountStatus}
+              />
 
               <InfoItem label="Local Save" value={formatSavedTime(lastSaved)} />
             </div>
 
-            <InfoItem
-              label="Backup Type"
-              value="Manual"
-              detail="You choose when to back up or restore."
-            />
-
-            {message && (
-              <div className="rounded-[1.25rem] border border-[#c7ad75]/25 bg-[#c7ad75]/12 px-4 py-3">
-                <p className="text-sm font-semibold text-[#f5f0e8]">
-                  {message}
-                </p>
-              </div>
-            )}
+            {message ? <StatusMessage message={message} /> : null}
 
             <div className="grid gap-3 sm:grid-cols-2">
               <button
@@ -232,7 +247,7 @@ export default function BackupSettingsPage() {
                 disabled={isBackingUp || isRestoring || !user}
                 className="pressable rounded-full border border-[#c7ad75]/30 bg-[#c7ad75]/14 px-5 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/22 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isBackingUp ? "Backing Up..." : "Back Up This Device"}
+                {isBackingUp ? "Backing Up..." : "Back Up"}
               </button>
 
               <button
@@ -241,14 +256,15 @@ export default function BackupSettingsPage() {
                 disabled={isBackingUp || isRestoring || !user}
                 className="pressable rounded-full border border-[#f5f0e8]/12 bg-[#f5f0e8]/6 px-5 py-3 text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isRestoring ? "Restoring..." : "Restore Backup"}
+                {isRestoring ? "Restoring..." : "Restore"}
               </button>
             </div>
 
-            <p className="text-xs leading-5 text-stone-500">
-              Backup and restore only affect your tracker data. Theme choice is
-              still saved locally on each device.
-            </p>
+            <div className="rounded-[1.2rem] border border-[#f5f0e8]/10 bg-[#11100d]/20 px-3.5 py-3">
+              <p className="text-sm text-stone-400">
+                Themes stay local to each device.
+              </p>
+            </div>
           </div>
         </section>
       </div>
@@ -268,26 +284,36 @@ function BackLink() {
   );
 }
 
-function InfoItem({
-  label,
-  value,
-  detail,
-}: {
-  label: string;
-  value: string;
-  detail?: string;
-}) {
+function SectionTitle({ title }: { title: string }) {
   return (
-    <div className="rounded-[1.15rem] border border-[#f5f0e8]/10 bg-[#11100d]/20 px-3 py-3">
+    <div className="flex min-w-0 items-center gap-3">
+      <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.25)]" />
+
+      <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
+        {title}
+      </h2>
+    </div>
+  );
+}
+
+function InfoItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#11100d]/22 p-3.5">
       <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
         {label}
       </p>
 
-      <p className="mt-1.5 break-words text-base font-bold text-[#f5f0e8]">
+      <p className="mt-1.5 break-words text-base font-semibold text-[#f5f0e8]">
         {value}
       </p>
+    </div>
+  );
+}
 
-      {detail && <p className="mt-1.5 text-sm text-stone-400">{detail}</p>}
+function StatusMessage({ message }: { message: string }) {
+  return (
+    <div className="rounded-[1.25rem] border border-[#c7ad75]/25 bg-[#c7ad75]/12 px-4 py-3">
+      <p className="text-sm font-semibold text-[#f5f0e8]">{message}</p>
     </div>
   );
 }

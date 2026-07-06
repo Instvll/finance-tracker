@@ -1,5 +1,6 @@
 "use client";
 
+import type { FormEvent } from "react";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -15,7 +16,7 @@ export default function SignupPage() {
   const [message, setMessage] = useState("");
   const [isWorking, setIsWorking] = useState(false);
 
-  async function handleSignup(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSignup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setIsWorking(true);
@@ -45,15 +46,15 @@ export default function SignupPage() {
       <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-md flex-col justify-center">
         <section className="liquid-glass-accent motion-card rounded-[2rem] p-6 shadow-2xl sm:p-7">
           <div className="liquid-content">
-            <div className="mb-8 flex items-center justify-between gap-4">
+            <div className="mb-7 flex items-center justify-between gap-4">
               <Link
                 href="/login"
-                className="flex items-center gap-3 transition hover:opacity-85"
+                className="flex min-w-0 items-center gap-3 transition hover:opacity-85"
               >
                 <LogoMark />
 
-                <div>
-                  <p className="text-sm font-semibold lowercase tracking-[0.24em] text-[#f5f0e8]">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold lowercase tracking-[0.24em] text-[#f5f0e8]">
                     leftovr
                   </p>
 
@@ -63,12 +64,12 @@ export default function SignupPage() {
                 </div>
               </Link>
 
-              <span className="rounded-full border border-[#c7ad75]/30 bg-[#c7ad75]/10 px-3 py-1 text-xs font-semibold text-[#f5f0e8]">
-                v1.1.1
+              <span className="shrink-0 rounded-full border border-[#c7ad75]/30 bg-[#c7ad75]/10 px-3 py-1 text-xs font-semibold text-[#f5f0e8]">
+                v1.2.0
               </span>
             </div>
 
-            <div className="mb-7">
+            <div className="mb-6">
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#c7ad75]/75">
                 Get Started
               </p>
@@ -76,16 +77,11 @@ export default function SignupPage() {
               <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#f5f0e8]">
                 Create your account
               </h1>
-
-              <p className="mt-3 text-sm leading-6 text-stone-400">
-                Set up your private leftovr account to save your finance tracker
-                data and use backup tools.
-              </p>
             </div>
 
             <form onSubmit={handleSignup} className="grid gap-4">
-              <label className="grid gap-2">
-                <span className="text-sm font-semibold text-[#f5f0e8]">
+              <label className="grid gap-2 rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#11100d]/24 p-3">
+                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
                   Email
                 </span>
 
@@ -96,12 +92,12 @@ export default function SignupPage() {
                   required
                   autoComplete="email"
                   placeholder="you@example.com"
-                  className="rounded-2xl border border-[#f5f0e8]/12 bg-[#11100d]/45 px-4 py-3 text-sm text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-[#c7ad75]/55"
+                  className="w-full rounded-full border border-[#f5f0e8]/12 bg-[#11100d]/55 px-4 py-3 text-base font-semibold text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-[#c7ad75]/45 focus:bg-[#11100d]/75"
                 />
               </label>
 
-              <label className="grid gap-2">
-                <span className="text-sm font-semibold text-[#f5f0e8]">
+              <label className="grid gap-2 rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#11100d]/24 p-3">
+                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
                   Password
                 </span>
 
@@ -113,33 +109,34 @@ export default function SignupPage() {
                   minLength={6}
                   autoComplete="new-password"
                   placeholder="Create a password"
-                  className="rounded-2xl border border-[#f5f0e8]/12 bg-[#11100d]/45 px-4 py-3 text-sm text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-[#c7ad75]/55"
+                  className="w-full rounded-full border border-[#f5f0e8]/12 bg-[#11100d]/55 px-4 py-3 text-base font-semibold text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-[#c7ad75]/45 focus:bg-[#11100d]/75"
                 />
               </label>
 
-              <div className="rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#11100d]/30 px-4 py-3">
+              <div className="rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#11100d]/24 px-4 py-3">
                 <p className="text-xs leading-5 text-stone-400">
-                  Use a password you do not use anywhere else. Stronger password
-                  guidance is planned for a future beta update.
+                  Use a password you do not use anywhere else.
                 </p>
               </div>
 
-              {message && (
-                <div className="rounded-2xl border border-[#c7ad75]/25 bg-[#c7ad75]/10 px-4 py-3 text-sm leading-6 text-[#f5f0e8]">
-                  {message}
+              {message ? (
+                <div className="rounded-[1.25rem] border border-[#c7ad75]/25 bg-[#c7ad75]/12 px-4 py-3">
+                  <p className="text-sm font-semibold leading-6 text-[#f5f0e8]">
+                    {message}
+                  </p>
                 </div>
-              )}
+              ) : null}
 
               <button
                 type="submit"
                 disabled={isWorking}
-                className="pressable mt-2 rounded-2xl border border-[#c7ad75]/35 bg-[#c7ad75]/18 px-4 py-3 text-sm font-semibold text-[#f5f0e8] shadow-[0_12px_30px_rgba(0,0,0,0.22)] transition hover:bg-[#c7ad75]/24 disabled:cursor-not-allowed disabled:opacity-60"
+                className="pressable mt-1 rounded-full border border-[#c7ad75]/35 bg-[#c7ad75]/18 px-4 py-3.5 text-sm font-semibold text-[#f5f0e8] shadow-[0_12px_30px_rgba(0,0,0,0.22)] transition hover:bg-[#c7ad75]/24 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isWorking ? "Creating account..." : "Create Account"}
+                {isWorking ? "Creating Account..." : "Create Account"}
               </button>
             </form>
 
-            <div className="mt-6 rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#11100d]/35 p-4">
+            <div className="mt-5 rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#11100d]/30 p-4">
               <p className="text-sm leading-6 text-stone-400">
                 Already have an account?{" "}
                 <Link
@@ -152,11 +149,6 @@ export default function SignupPage() {
             </div>
           </div>
         </section>
-
-        <p className="mx-auto mt-6 max-w-sm text-center text-xs leading-5 text-stone-500">
-          leftovr is a private beta finance tracker built for simple manual
-          tracking and cleaner money visibility.
-        </p>
       </div>
     </main>
   );

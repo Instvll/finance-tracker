@@ -103,7 +103,7 @@ export default function BillsPage() {
               Bill Tracker
             </p>
 
-            <Pill>v1.1.1 Beta</Pill>
+            <Pill>v1.2 Beta</Pill>
           </div>
 
           <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
@@ -116,18 +116,12 @@ export default function BillsPage() {
             <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#c7ad75]/10 blur-3xl" />
             <div className="absolute -bottom-20 left-10 h-44 w-44 rounded-full bg-[#f5f0e8]/5 blur-3xl" />
 
-            <div className="relative mb-5 flex items-start justify-between gap-4">
-              <div>
-                <div className="mb-2 flex items-center gap-3">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.35)]" />
+            <div className="relative mb-3 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.35)]" />
 
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f5f0e8]">
-                    Due Soon
-                  </p>
-                </div>
-
-                <p className="text-sm text-stone-400">
-                  Bills due within the next 7 days.
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f5f0e8]">
+                  Due Soon
                 </p>
               </div>
 
@@ -138,7 +132,7 @@ export default function BillsPage() {
               {formatMoney(upcomingTotal)}
             </p>
 
-            <div className="relative mt-5 rounded-[1.45rem] border border-[#f5f0e8]/10 bg-[#11100d]/25 p-2">
+            <div className="relative mt-4 rounded-[1.45rem] border border-[#f5f0e8]/10 bg-[#11100d]/25 p-2">
               <div className="grid gap-1 sm:grid-cols-3 sm:gap-0">
                 <HeroStat label="Tracked" value={String(manualBills.length)} />
 
@@ -156,19 +150,26 @@ export default function BillsPage() {
         <section className="grid gap-4">
           <section className="liquid-glass motion-card motion-card-delay-2 rounded-[1.85rem] p-4">
             <div className="liquid-content">
-              <div className="mb-4 flex items-center justify-between gap-4">
-                <SectionTitle title="Upcoming Bills" />
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <SectionTitle title="Upcoming Bills" />
+
+                  <p className="mt-2 text-sm text-stone-400">
+                    {upcomingBills.length} due within 7 days •{" "}
+                    {formatMoney(upcomingTotal)}
+                  </p>
+                </div>
 
                 <Link
                   href="/manual?tab=bills"
-                  className="pressable rounded-full border border-[#f5f0e8]/10 px-3 py-1 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+                  className="pressable shrink-0 rounded-full border border-[#f5f0e8]/10 px-3 py-1 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
                 >
                   Edit
                 </Link>
               </div>
 
               {upcomingBills.length > 0 ? (
-                <div className="grid">
+                <div className="grid gap-2">
                   {upcomingBills.map((bill, index) => (
                     <BillRow key={`upcoming-${index}`} bill={bill} />
                   ))}
@@ -179,7 +180,7 @@ export default function BillsPage() {
                   text={
                     hasBills
                       ? "No bills are due within the next 7 days."
-                      : "Add your first bill in the Editor to start tracking upcoming expenses."
+                      : "Add your first bill in the Editor."
                   }
                   actionLabel="Add Bill"
                   actionHref="/manual?tab=bills"
@@ -199,7 +200,9 @@ export default function BillsPage() {
                   <SectionTitle title="Other Bills" />
 
                   <p className="mt-2 text-sm text-stone-400">
-                    Bills outside the current 7-day window.
+                    {otherBills.length} bill
+                    {otherBills.length === 1 ? "" : "s"} •{" "}
+                    {formatMoney(otherTotal)}
                   </p>
                 </div>
 
@@ -208,16 +211,8 @@ export default function BillsPage() {
                 </span>
               </button>
 
-              <div className="mt-4 rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#11100d]/25 p-2">
-                <div className="grid grid-cols-2 gap-1">
-                  <CompactStat label="Count" value={String(otherBills.length)} />
-
-                  <CompactStat label="Total" value={formatMoney(otherTotal)} />
-                </div>
-              </div>
-
               {showOtherBills && (
-                <div className="mt-4 grid pt-1">
+                <div className="mt-4 grid gap-2 pt-1">
                   {otherBills.length > 0 ? (
                     otherBills.map((bill, index) => (
                       <BillRow key={`other-${index}`} bill={bill} muted />
@@ -263,20 +258,6 @@ function HeroStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function CompactStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[1rem] px-3 py-2">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/70">
-        {label}
-      </p>
-
-      <p className="mt-1.5 truncate text-lg font-bold text-[#f5f0e8]">
-        {value}
-      </p>
-    </div>
-  );
-}
-
 function BillRow({
   bill,
   muted = false,
@@ -287,7 +268,13 @@ function BillRow({
   const amount = parseMoney(bill.amount);
 
   return (
-    <div className="group border-t border-[#f5f0e8]/10 px-3 py-4 transition last:border-b hover:bg-[#f5f0e8]/4">
+    <div
+      className={`rounded-[1.2rem] border px-3.5 py-3.5 transition hover:bg-[#f5f0e8]/6 ${
+        muted
+          ? "border-[#f5f0e8]/10 bg-[#11100d]/20"
+          : "border-[#c7ad75]/18 bg-[#11100d]/25"
+      }`}
+    >
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
           <p
@@ -298,18 +285,32 @@ function BillRow({
             {bill.name || "Untitled Bill"}
           </p>
 
-          <p className="mt-1 text-sm text-stone-400">
-            Due {bill.dueDate || "TBD"}
-          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-[#f5f0e8]/10 bg-[#f5f0e8]/6 px-2.5 py-1 text-xs font-semibold text-stone-400">
+              Due {bill.dueDate || "TBD"}
+            </span>
+
+            {bill.paymentMethod ? (
+              <span className="rounded-full border border-[#f5f0e8]/10 bg-[#11100d]/25 px-2.5 py-1 text-xs font-semibold text-stone-500">
+                {bill.paymentMethod}
+              </span>
+            ) : null}
+          </div>
         </div>
 
-        <p
-          className={`shrink-0 text-lg font-bold ${
-            muted ? "text-stone-300" : "text-[#f5f0e8]"
-          }`}
-        >
-          {formatMoney(amount)}
-        </p>
+        <div className="shrink-0 text-right">
+          <p
+            className={`text-lg font-bold tracking-tight ${
+              muted ? "text-stone-300" : "text-[#f5f0e8]"
+            }`}
+          >
+            {formatMoney(amount)}
+          </p>
+
+          <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/65">
+            Monthly
+          </p>
+        </div>
       </div>
     </div>
   );

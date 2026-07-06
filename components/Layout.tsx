@@ -4,30 +4,24 @@ export function PageShell({ children }: { children: React.ReactNode }) {
       <div className="mx-auto max-w-5xl">
         {children}
 
-        <footer className="mt-12 border-t border-[#f5f0e8]/10 pt-6">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold lowercase tracking-[0.24em] text-[#f5f0e8]">
+        <footer className="mt-10 border-t border-[#f5f0e8]/10 pt-5">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold lowercase tracking-[0.24em] text-[#f5f0e8]">
                 leftovr
               </p>
 
-              <p className="mt-2 max-w-md text-xs leading-5 text-stone-500">
-                Simple personal finance tracking.
+              <p className="mt-1 text-xs text-stone-500">
+                Simple finance tracking.
               </p>
             </div>
 
-            <div className="sm:text-right">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#c7ad75]/75">
-                v1.1.1 Beta
-              </p>
-
-              <a
-  href="/whats-new"
-  className="mt-2 inline-flex text-xs leading-5 text-stone-500 transition hover:text-[#f5f0e8]"
->
-  View what&apos;s new
-</a>
-            </div>
+            <a
+              href="/whats-new"
+              className="pressable shrink-0 rounded-full border border-[#f5f0e8]/10 bg-[#11100d]/25 px-3 py-1.5 text-xs font-semibold text-stone-400 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+            >
+              v1.2 Beta
+            </a>
           </div>
         </footer>
       </div>

@@ -7,12 +7,32 @@ import { PageShell, Pill } from "../../../components/Layout";
 
 const patchNotes = [
   {
-    version: "v1.1.1 Beta",
-    title: "Post-Launch Polish",
+    version: "v1.2 Beta",
+    title: "Refined Experience",
     date: "Current Build",
     badge: "Latest",
     summary:
-      "A focused polish update that makes leftovr feel cleaner, smoother, more app-like, and easier to use across every core page.",
+      "A cleaner, calmer polish update focused on layout, readability, mobile views, and a more refined app experience.",
+    highlights: [
+      "Cleaned up Dashboard lists with softer bill and credit card cells.",
+      "Tightened the Dashboard hero card and reduced extra helper copy.",
+      "Removed unnecessary visual clutter across Bills, Credit Cards, Settings, and Editor.",
+      "Redesigned the Credit Cards page with clearer card modules and better hierarchy.",
+      "Improved the Bills page with cleaner upcoming and other bill sections.",
+      "Simplified the Editor by removing the large hero card and making the page feel more focused.",
+      "Added a mobile-friendly Editor segmented control while keeping richer section cards on desktop.",
+      "Cleaned up Appearance and theme selection with clearer active states and polished theme cells.",
+      "Refined Settings, Profile, Data & Backup, and About pages to better match the app’s new style.",
+      "Updated What’s New and Patch Notes to better reflect the v1.2 polish direction.",
+    ],
+  },
+  {
+    version: "v1.1.1 Beta",
+    title: "Post-Launch Polish",
+    date: "Previous Build",
+    badge: "Archived",
+    summary:
+      "A focused polish update that made leftovr cleaner, smoother, more app-like, and easier to use across core pages.",
     highlights: [
       "Fixed iPhone input zoom behavior when editing numbers and text fields.",
       "Fixed saved themes loading incorrectly when reopening the app from a cold start.",
@@ -91,20 +111,16 @@ export default function PatchNotesPage() {
               Version History
             </p>
 
-            <Pill>v1.1.1 Beta</Pill>
+            <Pill>v1.2 Beta</Pill>
           </div>
 
           <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
             Patch Notes
           </h1>
-
-          <p className="mt-2 max-w-xl text-sm leading-6 text-stone-400">
-            Full update history for leftovr private beta builds.
-          </p>
         </header>
 
         <section className="liquid-glass motion-card motion-card-delay-1 rounded-[1.85rem] p-4">
-          <div className="liquid-content grid gap-1">
+          <div className="liquid-content grid gap-2">
             {patchNotes.map((patch) => {
               const isOpen = openVersion === patch.version;
 
@@ -144,15 +160,29 @@ function PatchNoteRow({
   isOpen: boolean;
   onToggle: () => void;
 }) {
+  const isLatest = patch.badge === "Latest";
+
   return (
-    <div className="border-t border-[#f5f0e8]/10 px-3 py-4 first:border-t-0 last:border-b last:border-[#f5f0e8]/10">
+    <article
+      className={`rounded-[1.35rem] border p-3.5 transition ${
+        isOpen
+          ? "border-[#c7ad75]/30 bg-[#c7ad75]/10"
+          : "border-[#f5f0e8]/10 bg-[#11100d]/22 hover:border-[#c7ad75]/24 hover:bg-[#f5f0e8]/5"
+      }`}
+    >
       <button
         type="button"
         onClick={onToggle}
         className="flex w-full items-start justify-between gap-4 text-left"
       >
         <div className="flex min-w-0 gap-3">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/10 text-[#c7ad75]">
+          <div
+            className={`grid h-10 w-10 shrink-0 place-items-center rounded-full border text-[#c7ad75] shadow-[inset_0_1px_0_rgba(245,240,232,0.08)] ${
+              isLatest
+                ? "border-[#c7ad75]/30 bg-[#c7ad75]/12"
+                : "border-[#f5f0e8]/10 bg-[#11100d]/25"
+            }`}
+          >
             <ReleaseIcon />
           </div>
 
@@ -162,7 +192,13 @@ function PatchNoteRow({
                 {patch.version}
               </p>
 
-              <span className="rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/10 px-2.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-[#c7ad75]">
+              <span
+                className={`rounded-full border px-2.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.16em] ${
+                  isLatest
+                    ? "border-[#c7ad75]/25 bg-[#c7ad75]/12 text-[#c7ad75]"
+                    : "border-[#f5f0e8]/10 bg-[#f5f0e8]/6 text-stone-400"
+                }`}
+              >
                 {patch.badge}
               </span>
             </div>
@@ -187,7 +223,7 @@ function PatchNoteRow({
       </button>
 
       {isOpen && (
-        <div className="mt-4 grid pt-1">
+        <div className="mt-4 grid gap-2">
           {patch.highlights.map((highlight, index) => (
             <ReleaseItem
               key={`${patch.version}-${highlight}`}
@@ -197,13 +233,13 @@ function PatchNoteRow({
           ))}
         </div>
       )}
-    </div>
+    </article>
   );
 }
 
 function ReleaseItem({ number, text }: { number: number; text: string }) {
   return (
-    <div className="border-t border-[#f5f0e8]/10 px-1 py-3 first:border-t-0 last:border-b last:border-[#f5f0e8]/10">
+    <div className="rounded-[1.15rem] border border-[#f5f0e8]/10 bg-[#11100d]/24 px-3.5 py-3">
       <div className="flex gap-3">
         <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/10 text-xs font-bold text-[#c7ad75]">
           {number}

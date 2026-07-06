@@ -25,25 +25,26 @@ export default function AppearanceSettingsPage() {
           <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
             Appearance
           </h1>
-
-          <p className="mt-2 max-w-xl text-sm leading-6 text-stone-400">
-            Choose how leftovr looks on this device.
-          </p>
         </header>
 
         <section className="grid gap-4">
           <ThemeSelector />
 
           <section className="liquid-glass motion-card motion-card-delay-2 rounded-[1.85rem] p-4">
-            <div className="liquid-content">
-              <p className="text-sm font-semibold text-[#f5f0e8]">
-                Device-only setting
-              </p>
+            <div className="liquid-content flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[#f5f0e8]">
+                  Device-only theme
+                </p>
 
-              <p className="mt-2 text-sm leading-6 text-stone-400">
-                Appearance is saved on this device only. Your backup saves your
-                finance data, but not your selected theme yet.
-              </p>
+                <p className="mt-1 text-sm text-stone-400">
+                  Your selected theme is saved on this device.
+                </p>
+              </div>
+
+              <span className="shrink-0 rounded-full border border-[#f5f0e8]/10 bg-[#f5f0e8]/6 px-3 py-1 text-xs font-semibold text-stone-300">
+                Local
+              </span>
             </div>
           </section>
         </section>

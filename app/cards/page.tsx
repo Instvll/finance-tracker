@@ -60,7 +60,6 @@ function readCardsStorage() {
 export default function CardsPage() {
   const [manualCards, setManualCards] =
     useState<ManualCreditCard[]>(defaultManualCards);
-  const [showCardList, setShowCardList] = useState(false);
 
   useEffect(() => {
     setManualCards(readCardsStorage());
@@ -78,15 +77,15 @@ export default function CardsPage() {
 
   const availableCredit = totalLimit - totalBalance;
 
-const utilization =
-  totalLimit > 0 ? Math.round((totalBalance / totalLimit) * 100) : 0;
+  const utilization =
+    totalLimit > 0 ? Math.round((totalBalance / totalLimit) * 100) : 0;
 
-const sortedManualCards = [...manualCards].sort(
-  (firstCard, secondCard) =>
-    parseMoney(secondCard.balance) - parseMoney(firstCard.balance)
-);
+  const sortedManualCards = [...manualCards].sort(
+    (firstCard, secondCard) =>
+      parseMoney(secondCard.balance) - parseMoney(firstCard.balance)
+  );
 
-const hasCards = manualCards.length > 0;
+  const hasCards = manualCards.length > 0;
 
   return (
     <PageShell>
@@ -99,7 +98,7 @@ const hasCards = manualCards.length > 0;
               Card Tracker
             </p>
 
-            <Pill>v1.1.1 Beta</Pill>
+            <Pill>v1.2 Beta</Pill>
           </div>
 
           <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
@@ -112,18 +111,12 @@ const hasCards = manualCards.length > 0;
             <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#c7ad75]/10 blur-3xl" />
             <div className="absolute -bottom-20 left-10 h-44 w-44 rounded-full bg-[#f5f0e8]/5 blur-3xl" />
 
-            <div className="relative mb-5 flex items-start justify-between gap-4">
-              <div>
-                <div className="mb-2 flex items-center gap-3">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.35)]" />
+            <div className="relative mb-3 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.35)]" />
 
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f5f0e8]">
-                    Card Balance
-                  </p>
-                </div>
-
-                <p className="text-sm text-stone-400">
-                  Total balance across tracked cards.
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f5f0e8]">
+                  Card Balance
                 </p>
               </div>
 
@@ -134,80 +127,64 @@ const hasCards = manualCards.length > 0;
               {formatMoney(totalBalance)}
             </p>
 
-            <div className="relative mt-5 h-2 overflow-hidden rounded-full bg-black/30">
+            <div className="relative mt-4 h-2 overflow-hidden rounded-full bg-black/30">
               <div
                 className="liquid-progress h-full rounded-full bg-[#c7ad75]"
                 style={{ width: `${Math.min(utilization, 100)}%` }}
               />
             </div>
 
-            <div className="relative mt-5 rounded-[1.45rem] border border-[#f5f0e8]/10 bg-[#11100d]/25 p-2">
-              <div className="grid gap-1 sm:grid-cols-3 sm:gap-0">
+            <div className="relative mt-4 rounded-[1.45rem] border border-[#f5f0e8]/10 bg-[#11100d]/25 p-2">
+              <div className="grid gap-1 sm:grid-cols-2 sm:gap-0">
                 <HeroStat
                   label="Credit Left"
                   value={formatMoney(availableCredit)}
                 />
 
                 <HeroStat label="Total Limit" value={formatMoney(totalLimit)} />
-
-                <HeroStat label="Cards" value={String(manualCards.length)} />
               </div>
             </div>
           </div>
         </section>
 
-        <section className="grid gap-4">
-          <section className="liquid-glass motion-card motion-card-delay-2 rounded-[1.85rem] p-4">
-            <div className="liquid-content">
-              <button
-                type="button"
-                onClick={() => setShowCardList((current) => !current)}
-                className="flex w-full items-center justify-between gap-4 text-left"
+        <section className="liquid-glass motion-card motion-card-delay-2 rounded-[1.85rem] p-4">
+          <div className="liquid-content">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <SectionTitle title="Cards" />
+
+                <p className="mt-2 text-sm text-stone-400">
+                  {hasCards
+                    ? `${manualCards.length} card${
+                        manualCards.length === 1 ? "" : "s"
+                      } tracked • ${utilization}% used`
+                    : "No cards added yet"}
+                </p>
+              </div>
+
+              <Link
+                href="/manual?tab=cards"
+                className="pressable shrink-0 rounded-full border border-[#f5f0e8]/10 px-3 py-1 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
               >
-                <div className="min-w-0">
-                  <SectionTitle title="Card List" />
-
-                  <p className="mt-2 text-sm text-stone-400">
-                    {hasCards
-                      ? `${manualCards.length} card${
-                          manualCards.length === 1 ? "" : "s"
-                        } tracked.`
-                      : "No cards added yet."}
-                  </p>
-                </div>
-
-                <span className="pressable shrink-0 rounded-full border border-[#f5f0e8]/10 px-3 py-1 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]">
-                  {showCardList ? "Hide" : "View"}
-                </span>
-              </button>
-
-              {showCardList && (
-                <div className="mt-4 grid pt-1">
-                  {manualCards.length > 0 ? (
-                    sortedManualCards.map((card, index) => (
-  <CreditCardRow key={`card-${index}`} card={card} />
-))
-                  ) : (
-                    <EmptyState
-                      title="No credit cards yet"
-                      text="Add your first card in the Editor to start tracking balances, limits, and utilization."
-                      actionLabel="Add Card"
-                      actionHref="/manual?tab=cards"
-                    />
-                  )}
-
-                  {manualCards.length > 0 && (
-                    <Link
-                      href="/manual?tab=cards"
-                      className="pressable mt-2 rounded-full border border-[#f5f0e8]/10 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
-                    >
-                      Edit Credit Cards
-                    </Link>
-                  )}
-                </div>
-              )}
+                Edit
+              </Link>
             </div>
-          </section>
+
+            {hasCards ? (
+              <div className="grid gap-3">
+                {sortedManualCards.map((card, index) => (
+                  <CreditCardRow key={`card-${index}`} card={card} />
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                title="No credit cards yet"
+                text="Add your first card in the Editor."
+                actionLabel="Add Card"
+                actionHref="/manual?tab=cards"
+              />
+            )}
+          </div>
         </section>
       </div>
     </PageShell>
@@ -240,20 +217,6 @@ function HeroStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function CompactStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[1rem] px-3 py-2">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/70">
-        {label}
-      </p>
-
-      <p className="mt-1.5 truncate text-base font-bold text-[#f5f0e8]">
-        {value}
-      </p>
-    </div>
-  );
-}
-
 function CreditCardRow({ card }: { card: ManualCreditCard }) {
   const balance = parseMoney(card.balance);
   const limit = parseMoney(card.limit);
@@ -261,22 +224,30 @@ function CreditCardRow({ card }: { card: ManualCreditCard }) {
   const utilization = limit > 0 ? Math.round((balance / limit) * 100) : 0;
 
   return (
-    <div className="group border-t border-[#f5f0e8]/10 px-3 py-4 transition last:border-b hover:bg-[#f5f0e8]/4">
+    <div className="rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#11100d]/25 p-4 transition hover:bg-[#f5f0e8]/6">
       <div className="mb-3 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="truncate text-base font-semibold text-[#f5f0e8]">
             {card.name || "Untitled Card"}
           </p>
 
-          <p className="mt-1 text-sm text-stone-400">{utilization}% used</p>
+          <p className="mt-1 text-sm text-stone-400">
+            {utilization}% of limit used
+          </p>
         </div>
 
-        <p className="shrink-0 text-lg font-bold text-[#f5f0e8]">
-          {formatMoney(balance)}
-        </p>
+        <div className="shrink-0 text-right">
+          <p className="text-lg font-bold tracking-tight text-[#f5f0e8]">
+            {formatMoney(balance)}
+          </p>
+
+          <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/65">
+            Balance
+          </p>
+        </div>
       </div>
 
-      <div className="mb-3 h-2 overflow-hidden rounded-full bg-black/30">
+      <div className="mb-4 h-2 overflow-hidden rounded-full bg-black/30">
         <div
           className="liquid-progress h-full rounded-full bg-[#c7ad75]"
           style={{ width: `${Math.min(utilization, 100)}%` }}
@@ -284,10 +255,24 @@ function CreditCardRow({ card }: { card: ManualCreditCard }) {
       </div>
 
       <div className="grid gap-2 sm:grid-cols-3">
-        <CompactStat label="Limit" value={formatMoney(limit)} />
-        <CompactStat label="Credit Left" value={formatMoney(available)} />
-        <CompactStat label="Status" value={card.status || "Good"} />
+        <CardMetric label="Limit" value={formatMoney(limit)} />
+        <CardMetric label="Credit Left" value={formatMoney(available)} />
+        <CardMetric label="Status" value={card.status || "Good"} />
       </div>
+    </div>
+  );
+}
+
+function CardMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1rem] border border-[#f5f0e8]/10 bg-[#11100d]/25 px-3 py-2.5">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/70">
+        {label}
+      </p>
+
+      <p className="mt-1.5 truncate text-sm font-bold text-[#f5f0e8]">
+        {value}
+      </p>
     </div>
   );
 }

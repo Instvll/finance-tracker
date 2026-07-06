@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import TopNav from "../../components/TopNav";
 import { PageShell, Pill } from "../../components/Layout";
@@ -7,7 +8,7 @@ import { PageShell, Pill } from "../../components/Layout";
 const settingsItems = [
   {
     title: "Profile",
-    description: "Account details and sign out.",
+    description: "Account and sign out.",
     status: "Account",
     href: "/account/profile",
     icon: <ProfileIcon />,
@@ -21,15 +22,15 @@ const settingsItems = [
   },
   {
     title: "Data & Backup",
-    description: "Back up or restore this device.",
-    status: "Manual backup",
+    description: "Backup and restore.",
+    status: "Manual",
     href: "/account/backup",
     icon: <BackupIcon />,
   },
   {
     title: "About leftovr",
-    description: "Version, build, and safety info.",
-    status: "v1.1.1 Beta",
+    description: "Version and app details.",
+    status: "v1.2",
     href: "/account/about",
     icon: <InfoIcon />,
   },
@@ -47,33 +48,27 @@ export default function AccountPage() {
               App Settings
             </p>
 
-            <Pill>v1.1.1 Beta</Pill>
+            <Pill>v1.2 Beta</Pill>
           </div>
 
           <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
             Settings
           </h1>
-
-          <p className="mt-2 max-w-xl text-sm leading-6 text-stone-400">
-            Choose a section to manage your account, appearance, or data.
-          </p>
         </header>
 
-        <section className="grid gap-4">
-          <section className="liquid-glass motion-card motion-card-delay-1 rounded-[1.85rem] p-4">
-            <div className="liquid-content grid gap-1">
-              {settingsItems.map((item) => (
-                <SettingsLinkRow
-                  key={item.href}
-                  title={item.title}
-                  description={item.description}
-                  status={item.status}
-                  href={item.href}
-                  icon={item.icon}
-                />
-              ))}
-            </div>
-          </section>
+        <section className="liquid-glass motion-card motion-card-delay-1 rounded-[1.85rem] p-4">
+          <div className="liquid-content grid gap-2">
+            {settingsItems.map((item) => (
+              <SettingsLinkRow
+                key={item.href}
+                title={item.title}
+                description={item.description}
+                status={item.status}
+                href={item.href}
+                icon={item.icon}
+              />
+            ))}
+          </div>
         </section>
       </div>
     </PageShell>
@@ -91,32 +86,38 @@ function SettingsLinkRow({
   description: string;
   status: string;
   href: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
 }) {
   return (
     <Link
       href={href}
-      className="group flex items-center justify-between gap-4 rounded-[1.35rem] px-3 py-3 transition hover:bg-[#c7ad75]/8"
+      className="pressable group rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#11100d]/22 p-3.5 transition hover:border-[#c7ad75]/24 hover:bg-[#f5f0e8]/6"
     >
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/10 text-[#c7ad75]">
-          {icon}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/10 text-[#c7ad75] shadow-[inset_0_1px_0_rgba(245,240,232,0.08)]">
+            {icon}
+          </div>
+
+          <div className="min-w-0">
+            <p className="truncate text-base font-semibold text-[#f5f0e8]">
+              {title}
+            </p>
+
+            <p className="mt-1 truncate text-sm text-stone-400">
+              {description}
+            </p>
+          </div>
         </div>
 
-        <div className="min-w-0">
-          <p className="text-base font-semibold text-[#f5f0e8]">{title}</p>
-
-          <p className="mt-1 text-sm leading-5 text-stone-400">
-            {description}
-          </p>
-
-          <p className="mt-1.5 truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/70">
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="hidden rounded-full border border-[#f5f0e8]/10 bg-[#f5f0e8]/6 px-2.5 py-1 text-xs font-semibold text-stone-400 sm:inline-flex">
             {status}
-          </p>
+          </span>
+
+          <ArrowIcon />
         </div>
       </div>
-
-      <ArrowIcon />
     </Link>
   );
 }
@@ -148,6 +149,7 @@ function ProfileIcon() {
         stroke="currentColor"
         strokeWidth="1.8"
       />
+
       <path
         d="M4.5 20a7.5 7.5 0 0 1 15 0"
         stroke="currentColor"
@@ -167,6 +169,7 @@ function AppearanceIcon() {
         strokeWidth="1.8"
         strokeLinejoin="round"
       />
+
       <path
         d="M7.6 10.2h.01M9.9 6.9h.01M14.1 6.9h.01M16.4 10.2h.01"
         stroke="currentColor"
@@ -186,6 +189,7 @@ function BackupIcon() {
         strokeWidth="1.8"
         strokeLinejoin="round"
       />
+
       <path
         d="M12 12v7M9.5 14.5 12 12l2.5 2.5"
         stroke="currentColor"
@@ -205,6 +209,7 @@ function InfoIcon() {
         stroke="currentColor"
         strokeWidth="1.8"
       />
+
       <path
         d="M12 10v6M12 7.5h.01"
         stroke="currentColor"

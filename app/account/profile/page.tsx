@@ -49,6 +49,8 @@ export default function ProfileSettingsPage() {
       ? user.email
       : "Not signed in";
 
+  const statusLabel = isLoading ? "Checking" : user ? "Signed In" : "Signed Out";
+
   return (
     <PageShell>
       <TopNav />
@@ -68,21 +70,33 @@ export default function ProfileSettingsPage() {
           <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
             Profile
           </h1>
-
-          <p className="mt-2 max-w-xl text-sm leading-6 text-stone-400">
-            View your signed-in account and manage your session.
-          </p>
         </header>
 
         <section className="liquid-glass motion-card motion-card-delay-1 rounded-[1.85rem] p-4">
           <div className="liquid-content grid gap-3">
-            <InfoItem label="Email" value={accountStatus} />
+            <div className="rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#11100d]/22 p-3.5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c7ad75]/75">
+                    Email
+                  </p>
+
+                  <p className="mt-2 break-words text-base font-semibold text-[#f5f0e8]">
+                    {accountStatus}
+                  </p>
+                </div>
+
+                <span className="shrink-0 rounded-full border border-[#f5f0e8]/10 bg-[#f5f0e8]/6 px-2.5 py-1 text-xs font-semibold text-stone-400">
+                  {statusLabel}
+                </span>
+              </div>
+            </div>
 
             <button
               type="button"
               onClick={signOut}
               disabled={!user}
-              className="pressable w-full rounded-full border border-[#f5f0e8]/12 bg-[#f5f0e8]/6 px-4 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8] disabled:cursor-not-allowed disabled:opacity-50"
+              className="pressable w-full rounded-full border border-red-300/20 bg-red-400/8 px-4 py-3 text-center text-sm font-semibold text-red-100 transition hover:bg-red-400/12 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Sign Out
             </button>
@@ -102,19 +116,5 @@ function BackLink() {
       <span aria-hidden="true">←</span>
       Settings
     </Link>
-  );
-}
-
-function InfoItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[1.15rem] border border-[#f5f0e8]/10 bg-[#11100d]/20 px-3 py-3">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
-        {label}
-      </p>
-
-      <p className="mt-1.5 break-words text-base font-bold text-[#f5f0e8]">
-        {value}
-      </p>
-    </div>
   );
 }
