@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 type ThemeId =
@@ -99,14 +100,8 @@ export default function ThemeSelector() {
   const activeTheme =
     themes.find((theme) => theme.id === selectedTheme) || themes[0];
 
-  const darkThemes = themes.filter((theme) => theme.category === "Dark");
-  const lightThemes = themes.filter((theme) => theme.category === "Light");
-  const specialThemes = themes.filter(
-    (theme) => theme.category === "Special"
-  );
-
   return (
-    <section className="grid gap-4">
+    <section className="grid gap-4 overflow-hidden">
       <section className="liquid-glass motion-card motion-card-delay-1 rounded-[1.85rem] p-4">
         <div className="liquid-content">
           <div className="mb-4 flex items-center justify-between gap-4">
@@ -118,13 +113,13 @@ export default function ThemeSelector() {
           </div>
 
           <div className="rounded-[1.35rem] border border-[#c7ad75]/22 bg-[#c7ad75]/10 p-3.5">
-            <div className="flex items-center justify-between gap-4">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 overflow-hidden">
               <div className="min-w-0">
                 <p className="truncate text-base font-semibold text-[#f5f0e8]">
                   {activeTheme.name}
                 </p>
 
-                <p className="mt-1 text-sm text-stone-400">
+                <p className="mt-1 truncate text-sm text-stone-400">
                   {activeTheme.description}
                 </p>
               </div>
@@ -136,24 +131,24 @@ export default function ThemeSelector() {
       </section>
 
       <section className="liquid-glass motion-card motion-card-delay-2 rounded-[1.85rem] p-4">
-        <div className="liquid-content grid gap-6">
+        <div className="liquid-content grid gap-6 overflow-hidden">
           <ThemeGroup
             title="Dark"
-            themes={darkThemes}
+            themes={themes.filter((theme) => theme.category === "Dark")}
             selectedTheme={selectedTheme}
             onChooseTheme={chooseTheme}
           />
 
           <ThemeGroup
             title="Light"
-            themes={lightThemes}
+            themes={themes.filter((theme) => theme.category === "Light")}
             selectedTheme={selectedTheme}
             onChooseTheme={chooseTheme}
           />
 
           <ThemeGroup
             title="Special"
-            themes={specialThemes}
+            themes={themes.filter((theme) => theme.category === "Special")}
             selectedTheme={selectedTheme}
             onChooseTheme={chooseTheme}
           />
@@ -175,7 +170,7 @@ function ThemeGroup({
   onChooseTheme: (themeId: ThemeId) => void;
 }) {
   return (
-    <div>
+    <div className="min-w-0 overflow-hidden">
       <div className="mb-3 flex items-center justify-between gap-4">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#c7ad75]/80">
           {title}
@@ -201,7 +196,7 @@ function ThemeGroup({
                   : "border-[#f5f0e8]/10 bg-[#11100d]/22 hover:border-[#c7ad75]/24 hover:bg-[#f5f0e8]/6"
               }`}
             >
-              <div className="flex items-center justify-between gap-4">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 overflow-hidden">
                 <div className="flex min-w-0 items-center gap-3">
                   <div
                     className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border transition ${
@@ -245,7 +240,7 @@ function ThemeGroup({
 function SectionTitle({ title }: { title: string }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.25)]" />
+      <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.25)]" />
 
       <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
         {title}
@@ -256,11 +251,11 @@ function SectionTitle({ title }: { title: string }) {
 
 function ThemePreview({ dots }: { dots: string[] }) {
   return (
-    <div className="flex shrink-0 overflow-hidden rounded-full border border-[#f5f0e8]/10 bg-[#11100d]/25 p-1">
+    <div className="flex max-w-[76px] shrink-0 overflow-hidden rounded-full border border-[#f5f0e8]/10 bg-[#11100d]/25 p-1">
       {dots.map((dot) => (
         <span
           key={dot}
-          className="-ml-1 first:ml-0 h-5 w-5 rounded-full border border-white/20 shadow-sm"
+          className="-ml-1 h-5 w-5 shrink-0 rounded-full border border-white/20 shadow-sm first:ml-0"
           style={{ backgroundColor: dot }}
         />
       ))}

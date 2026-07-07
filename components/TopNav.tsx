@@ -249,7 +249,7 @@ export default function TopNav() {
                     }
                   >
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c7ad75]/75">
-                      v1.1.1 Beta
+                      v1.2 Beta
                     </p>
 
                     <p className="mt-2 text-sm leading-6 text-stone-400">

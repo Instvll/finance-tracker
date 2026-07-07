@@ -810,3 +810,16 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
     transform: none;
   }
 }
+.hero-glass-card {
+  overflow: hidden;
+  isolation: isolate;
+  transform: translateZ(0);
+  clip-path: inset(0 round 2.15rem);
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+  mask-image: linear-gradient(#fff, #fff);
+}
+
+.hero-glass-card::before,
+.hero-glass-card::after {
+  border-radius: inherit;
+}

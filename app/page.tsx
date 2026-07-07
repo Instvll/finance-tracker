@@ -187,14 +187,14 @@ export default function DashboardPage() {
         </h1>
       </header>
 
-      <section className="liquid-glass-accent motion-card motion-card-delay-1 mb-4 rounded-[2.15rem]">
+      <section className="liquid-glass-accent hero-glass-card motion-card motion-card-delay-1 mb-4 rounded-[2.15rem]">
         <div className="liquid-content relative p-4 sm:p-5">
           <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#c7ad75]/10 blur-3xl" />
           <div className="absolute -bottom-20 left-10 h-44 w-44 rounded-full bg-[#f5f0e8]/5 blur-3xl" />
 
           <div className="relative mb-3 flex items-center justify-between gap-4">
   <div className="flex items-center gap-3">
-    <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.35)]" />
+    <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.35)]" />
 
     <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f5f0e8]">
       Available Balance After Upcoming Bills
@@ -368,7 +368,7 @@ export default function DashboardPage() {
 function SectionTitle({ title }: { title: string }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.25)]" />
+      <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.25)]" />
 
       <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
         {title}
