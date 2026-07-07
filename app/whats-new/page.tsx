@@ -45,7 +45,7 @@ export default function WhatsNewPage() {
           </h1>
         </header>
 
-        <section className="liquid-glass-accent motion-card motion-card-delay-1 mb-4 rounded-[2.15rem]">
+        <section className="liquid-glass-accent hero-glass-card motion-card motion-card-delay-1 mb-4 rounded-[2.15rem]">
           <div className="liquid-content relative p-4 sm:p-5">
             <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#c7ad75]/10 blur-3xl" />
             <div className="absolute -bottom-20 left-10 h-44 w-44 rounded-full bg-[#f5f0e8]/5 blur-3xl" />
