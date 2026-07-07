@@ -24,6 +24,7 @@ const patchNotes = [
       "Cleaned up Appearance and theme selection with clearer active states and polished theme cells.",
       "Refined Settings, Profile, Data & Backup, and About pages to better match the app’s new style.",
       "Updated What’s New and Patch Notes to better reflect the v1.2 polish direction.",
+      "Refined the app’s theme identity with a new leftovr Classic look, added Mocha as the original warm theme, and tuned Forest and Slate to feel more distinct.",
     ],
   },
   {

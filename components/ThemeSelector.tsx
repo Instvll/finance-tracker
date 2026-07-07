@@ -1,13 +1,14 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 type ThemeId =
   | "classic"
+  | "mocha"
   | "forest"
   | "slate"
   | "classic-light"
+  | "mocha-light"
   | "forest-light"
   | "slate-light"
   | "july-fourth";
@@ -29,26 +30,40 @@ const themes: ThemeOption[] = [
     id: "classic",
     name: "leftovr Classic",
     category: "Dark",
-    description: "Charcoal, gold, and warm cream.",
+    description: "Obsidian charcoal, soft mint, and warm off-white.",
+    dots: ["#080d0f", "#8fd8b8", "#f4f8f5"],
+  },
+  {
+    id: "mocha",
+    name: "Mocha",
+    category: "Dark",
+    description: "Warm charcoal, muted gold, and cream.",
     dots: ["#11100d", "#c7ad75", "#f5f0e8"],
   },
   {
     id: "forest",
     name: "Forest",
     category: "Dark",
-    description: "Deep green and soft natural tones.",
-    dots: ["#0f1712", "#8fae86", "#f2efe6"],
+    description: "Deep pine, olive, and warm cream.",
+    dots: ["#0f130d", "#a6b36f", "#f2efe2"],
   },
   {
     id: "slate",
     name: "Slate",
     category: "Dark",
-    description: "Dark navy with cool blue accents.",
-    dots: ["#0f141c", "#8ea7c8", "#eef3f8"],
+    description: "Cool steel, blue-gray, and crisp white.",
+    dots: ["#0c1018", "#9fb3d1", "#eef4fb"],
   },
   {
     id: "classic-light",
-    name: "Classic Light",
+    name: "leftovr Light",
+    category: "Light",
+    description: "Soft stone, clean white, and refined mint.",
+    dots: ["#f6f7f4", "#3f8f78", "#101816"],
+  },
+  {
+    id: "mocha-light",
+    name: "Mocha Light",
     category: "Light",
     description: "Warm cream with muted gold.",
     dots: ["#f7f2e9", "#9f7a32", "#261f15"],
@@ -57,15 +72,15 @@ const themes: ThemeOption[] = [
     id: "forest-light",
     name: "Forest Light",
     category: "Light",
-    description: "Soft sage with deep green detail.",
-    dots: ["#eff5ec", "#5f7f55", "#172316"],
+    description: "Warm parchment, olive, and earthy beige.",
+    dots: ["#f4f0e4", "#6f7f38", "#1f2418"],
   },
   {
     id: "slate-light",
     name: "Slate Light",
     category: "Light",
-    description: "Cool white with slate accents.",
-    dots: ["#edf3f8", "#55749c", "#121a24"],
+    description: "Clean steel white with cool slate detail.",
+    dots: ["#f1f4f8", "#5d7291", "#111820"],
   },
   {
     id: "july-fourth",

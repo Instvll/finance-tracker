@@ -26,9 +26,11 @@ const themeScript = `
     var themeStorageKey = "leftovr-theme";
     var allowedThemes = [
       "classic",
+      "mocha",
       "forest",
       "slate",
       "classic-light",
+      "mocha-light",
       "forest-light",
       "slate-light",
       "july-fourth"

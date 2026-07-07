@@ -60,7 +60,7 @@ export default function WelcomeScreen() {
             </div>
 
             <span className="rounded-full border border-[#c7ad75]/30 bg-[#c7ad75]/10 px-3 py-1 text-xs font-semibold text-[#f5f0e8]">
-              v1.1.1
+              v1.2
             </span>
           </div>
 
