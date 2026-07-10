@@ -116,25 +116,25 @@ export default function ThemeSelector() {
     themes.find((theme) => theme.id === selectedTheme) || themes[0];
 
   return (
-    <section className="grid gap-4 overflow-hidden">
-      <section className="liquid-glass motion-card motion-card-delay-1 rounded-[1.85rem] p-4">
+    <section className="grid gap-3 overflow-hidden">
+      <section className="liquid-glass motion-card motion-card-delay-1 rounded-[1.7rem] p-3.5">
         <div className="liquid-content">
-          <div className="mb-4 flex items-center justify-between gap-4">
+          <div className="mb-3 flex items-center justify-between gap-4">
             <SectionTitle title="Active Theme" />
 
-            <span className="shrink-0 rounded-full border border-[#c7ad75]/30 bg-[#c7ad75]/12 px-3 py-1 text-xs font-semibold text-[#f5f0e8]">
+            <span className="shrink-0 rounded-full border border-[#c7ad75]/30 bg-[#c7ad75]/12 px-3 py-0.5 text-xs font-semibold text-[#f5f0e8]">
               Active
             </span>
           </div>
 
-          <div className="rounded-[1.35rem] border border-[#c7ad75]/22 bg-[#c7ad75]/10 p-3.5">
+          <div className="rounded-[1.15rem] border border-[#c7ad75]/22 bg-[#c7ad75]/10 px-3 py-2.5">
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 overflow-hidden">
               <div className="min-w-0">
                 <p className="truncate text-base font-semibold text-[#f5f0e8]">
                   {activeTheme.name}
                 </p>
 
-                <p className="mt-1 truncate text-sm text-stone-400">
+                <p className="mt-0.5 truncate text-sm text-stone-400">
                   {activeTheme.description}
                 </p>
               </div>
@@ -145,8 +145,8 @@ export default function ThemeSelector() {
         </div>
       </section>
 
-      <section className="liquid-glass motion-card motion-card-delay-2 rounded-[1.85rem] p-4">
-        <div className="liquid-content grid gap-6 overflow-hidden">
+      <section className="liquid-glass motion-card motion-card-delay-2 rounded-[1.7rem] p-3.5">
+        <div className="liquid-content grid gap-4 overflow-hidden">
           <ThemeGroup
             title="Dark"
             themes={themes.filter((theme) => theme.category === "Dark")}
@@ -186,7 +186,7 @@ function ThemeGroup({
 }) {
   return (
     <div className="min-w-0 overflow-hidden">
-      <div className="mb-3 flex items-center justify-between gap-4">
+      <div className="mb-2.5 flex items-center justify-between gap-4">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#c7ad75]/80">
           {title}
         </p>
@@ -205,7 +205,7 @@ function ThemeGroup({
               key={theme.id}
               type="button"
               onClick={() => onChooseTheme(theme.id)}
-              className={`pressable group rounded-[1.35rem] border p-3.5 text-left transition ${
+              className={`pressable group rounded-[1.15rem] border px-3 py-2.5 text-left transition ${
                 active
                   ? "border-[#c7ad75]/34 bg-[#c7ad75]/12 shadow-[inset_0_1px_0_rgba(245,240,232,0.08)]"
                   : "border-[#f5f0e8]/10 bg-[#11100d]/22 hover:border-[#c7ad75]/24 hover:bg-[#f5f0e8]/6"
@@ -214,7 +214,7 @@ function ThemeGroup({
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 overflow-hidden">
                 <div className="flex min-w-0 items-center gap-3">
                   <div
-                    className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border transition ${
+                    className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border transition ${
                       active
                         ? "border-[#c7ad75]/38 bg-[#c7ad75]/14 text-[#c7ad75]"
                         : "border-[#f5f0e8]/10 bg-[#11100d]/25 text-stone-500 group-hover:text-[#c7ad75]"
@@ -236,7 +236,7 @@ function ThemeGroup({
                       ) : null}
                     </div>
 
-                    <p className="mt-1 truncate text-sm text-stone-400">
+                    <p className="mt-0.5 truncate text-sm text-stone-400">
                       {theme.description}
                     </p>
                   </div>
@@ -266,11 +266,11 @@ function SectionTitle({ title }: { title: string }) {
 
 function ThemePreview({ dots }: { dots: string[] }) {
   return (
-    <div className="flex max-w-[76px] shrink-0 overflow-hidden rounded-full border border-[#f5f0e8]/10 bg-[#11100d]/25 p-1">
+    <div className="flex max-w-[64px] shrink-0 overflow-hidden rounded-full border border-[#f5f0e8]/10 bg-[#11100d]/25 p-0.5">
       {dots.map((dot) => (
         <span
           key={dot}
-          className="-ml-1 h-5 w-5 shrink-0 rounded-full border border-white/20 shadow-sm first:ml-0"
+          className="-ml-1 h-4 w-4 shrink-0 rounded-full border border-white/20 shadow-sm first:ml-0"
           style={{ backgroundColor: dot }}
         />
       ))}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import TopNav from "../../components/TopNav";
 import { PageShell, Pill } from "../../components/Layout";
@@ -60,9 +60,16 @@ function readCardsStorage() {
 export default function CardsPage() {
   const [manualCards, setManualCards] =
     useState<ManualCreditCard[]>(defaultManualCards);
+  const [barsReady, setBarsReady] = useState(false);
 
   useEffect(() => {
     setManualCards(readCardsStorage());
+
+    const animationDelay = window.setTimeout(() => {
+      setBarsReady(true);
+    }, 160);
+
+    return () => window.clearTimeout(animationDelay);
   }, []);
 
   const totalBalance = manualCards.reduce(
@@ -92,13 +99,13 @@ export default function CardsPage() {
       <TopNav />
 
       <div className="min-h-[70vh]">
-        <header className="-mt-1 mb-4 motion-card sm:-mt-2">
+        <header className="-mt-1 mb-3 motion-card sm:-mt-2">
           <div className="mb-2 flex items-center justify-between gap-4">
             <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
               Card Tracker
             </p>
 
-            <Pill>v1.2 Beta</Pill>
+            <Pill>v1.2.2 Beta</Pill>
           </div>
 
           <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
@@ -106,16 +113,16 @@ export default function CardsPage() {
           </h1>
         </header>
 
-        <section className="liquid-glass-accent hero-glass-card motion-card motion-card-delay-1 mb-4 rounded-[2.15rem]">
-          <div className="liquid-content relative p-4 sm:p-5">
-            <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#c7ad75]/10 blur-3xl" />
-            <div className="absolute -bottom-20 left-10 h-44 w-44 rounded-full bg-[#f5f0e8]/5 blur-3xl" />
+        <section className="liquid-glass-accent hero-glass-card motion-card motion-card-delay-1 mb-3 rounded-[2rem]">
+          <div className="liquid-content relative p-3.5 sm:p-5">
+            <div className="absolute -right-16 -top-16 h-36 w-36 rounded-full bg-[#c7ad75]/10 blur-3xl" />
+            <div className="absolute -bottom-16 left-10 h-36 w-36 rounded-full bg-[#f5f0e8]/5 blur-3xl" />
 
-            <div className="relative mb-3 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.35)]" />
+            <div className="relative mb-2.5 flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.35)]" />
 
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f5f0e8]">
+                <p className="min-w-0 text-xs font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
                   Card Balance
                 </p>
               </div>
@@ -123,18 +130,17 @@ export default function CardsPage() {
               <Pill>{utilization}% used</Pill>
             </div>
 
-            <p className="relative break-words text-6xl font-bold tracking-tight text-[#f5f0e8] sm:text-7xl">
+            <p className="relative break-words text-5xl font-bold tracking-tight text-[#f5f0e8] sm:text-7xl">
               {formatMoney(totalBalance)}
             </p>
 
-            <div className="relative mt-4 h-2 overflow-hidden rounded-full bg-black/30">
-              <div
-                className="liquid-progress h-full rounded-full bg-[#c7ad75]"
-                style={{ width: `${Math.min(utilization, 100)}%` }}
-              />
-            </div>
+            <UtilizationBar
+              utilization={utilization}
+              isReady={barsReady}
+              className="relative mt-3 bg-black/30"
+            />
 
-            <div className="relative mt-4 rounded-[1.45rem] border border-[#f5f0e8]/10 bg-[#11100d]/25 p-2">
+            <div className="relative mt-3 rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#11100d]/25 p-1.5">
               <div className="grid gap-1 sm:grid-cols-2 sm:gap-0">
                 <HeroStat
                   label="Credit Left"
@@ -147,13 +153,13 @@ export default function CardsPage() {
           </div>
         </section>
 
-        <section className="liquid-glass motion-card motion-card-delay-2 rounded-[1.85rem] p-4">
+        <section className="liquid-glass motion-card motion-card-delay-2 rounded-[1.7rem] p-3.5">
           <div className="liquid-content">
-            <div className="mb-4 flex items-start justify-between gap-4">
+            <div className="mb-3 flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <SectionTitle title="Cards" />
 
-                <p className="mt-2 text-sm text-stone-400">
+                <p className="mt-1.5 text-sm text-stone-400">
                   {hasCards
                     ? `${manualCards.length} card${
                         manualCards.length === 1 ? "" : "s"
@@ -166,21 +172,25 @@ export default function CardsPage() {
                 href="/manual?tab=cards"
                 className="pressable shrink-0 rounded-full border border-[#f5f0e8]/10 px-3 py-1 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
               >
-                Edit
+                Manage
               </Link>
             </div>
 
             {hasCards ? (
-              <div className="grid gap-3">
+              <div className="grid gap-2">
                 {sortedManualCards.map((card, index) => (
-                  <CreditCardRow key={`card-${index}`} card={card} />
+                  <CreditCardRow
+                    key={`card-${index}`}
+                    card={card}
+                    barsReady={barsReady}
+                  />
                 ))}
               </div>
             ) : (
               <EmptyState
                 title="No credit cards yet"
                 text="Add your first card in the Editor."
-                actionLabel="Add Card"
+                actionLabel="Open Editor"
                 actionHref="/manual?tab=cards"
               />
             )}
@@ -194,7 +204,7 @@ export default function CardsPage() {
 function SectionTitle({ title }: { title: string }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.25)]" />
+      <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.25)]" />
 
       <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
         {title}
@@ -205,35 +215,77 @@ function SectionTitle({ title }: { title: string }) {
 
 function HeroStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1rem] px-3 py-2 sm:border-r sm:border-[#f5f0e8]/10 sm:last:border-r-0">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
+    <div className="rounded-[0.95rem] px-3 py-1.5 sm:border-r sm:border-[#f5f0e8]/10 sm:last:border-r-0">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
         {label}
       </p>
 
-      <p className="mt-1.5 truncate text-lg font-bold text-[#f5f0e8]">
+      <p className="mt-1 truncate text-base font-bold text-[#f5f0e8]">
         {value}
       </p>
     </div>
   );
 }
 
-function CreditCardRow({ card }: { card: ManualCreditCard }) {
+function UtilizationBar({
+  utilization,
+  isReady,
+  className = "",
+}: {
+  utilization: number;
+  isReady: boolean;
+  className?: string;
+}) {
+  const safeUtilization = Math.min(Math.max(utilization, 0), 100);
+  const scale = safeUtilization / 100;
+
+  return (
+    <div className={`h-1.5 overflow-hidden rounded-full ${className}`}>
+      <div
+        className="liquid-progress h-full origin-left rounded-full bg-[#c7ad75]"
+        style={{
+          transform: `scaleX(${isReady ? scale : 0})`,
+          transition: "transform 1150ms cubic-bezier(0.22, 1.08, 0.34, 1)",
+          willChange: "transform",
+        }}
+      />
+    </div>
+  );
+}
+
+function CreditCardRow({
+  card,
+  barsReady,
+}: {
+  card: ManualCreditCard;
+  barsReady: boolean;
+}) {
   const balance = parseMoney(card.balance);
   const limit = parseMoney(card.limit);
-  const available = limit - balance;
+  const minimumPayment = parseMoney(card.minimumPayment);
   const utilization = limit > 0 ? Math.round((balance / limit) * 100) : 0;
 
   return (
-    <div className="rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#11100d]/25 p-4 transition hover:bg-[#f5f0e8]/6">
-      <div className="mb-3 flex items-start justify-between gap-4">
+    <div className="rounded-[1.15rem] border border-[#f5f0e8]/10 bg-[#11100d]/20 p-3 transition hover:border-[#c7ad75]/18 hover:bg-[#f5f0e8]/6">
+      <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="truncate text-base font-semibold text-[#f5f0e8]">
             {card.name || "Untitled Card"}
           </p>
 
-          <p className="mt-1 text-sm text-stone-400">
-            {utilization}% of limit used
-          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <InfoChip>{utilization}% used</InfoChip>
+
+            {card.dueDate ? <InfoChip>Due {card.dueDate}</InfoChip> : null}
+
+            {minimumPayment > 0 ? (
+              <InfoChip>Min {formatMoney(minimumPayment)}</InfoChip>
+            ) : null}
+
+            {card.status !== "Good" ? (
+              <StatusChip status={card.status} />
+            ) : null}
+          </div>
         </div>
 
         <div className="shrink-0 text-right">
@@ -241,39 +293,50 @@ function CreditCardRow({ card }: { card: ManualCreditCard }) {
             {formatMoney(balance)}
           </p>
 
-          <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/65">
+          <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/65">
             Balance
           </p>
         </div>
       </div>
 
-      <div className="mb-4 h-2 overflow-hidden rounded-full bg-black/30">
-        <div
-          className="liquid-progress h-full rounded-full bg-[#c7ad75]"
-          style={{ width: `${Math.min(utilization, 100)}%` }}
-        />
-      </div>
+      <UtilizationBar
+        utilization={utilization}
+        isReady={barsReady}
+        className="mt-3 bg-black/25"
+      />
 
-      <div className="grid gap-2 sm:grid-cols-3">
-        <CardMetric label="Limit" value={formatMoney(limit)} />
-        <CardMetric label="Credit Left" value={formatMoney(available)} />
-        <CardMetric label="Status" value={card.status || "Good"} />
+      <div className="mt-2 flex items-center justify-between gap-3 text-xs text-stone-400">
+        <span className="truncate">Limit {formatMoney(limit)}</span>
+        <span className="shrink-0">
+          Credit left {formatMoney(Math.max(limit - balance, 0))}
+        </span>
       </div>
     </div>
   );
 }
 
-function CardMetric({ label, value }: { label: string; value: string }) {
+function InfoChip({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded-[1rem] border border-[#f5f0e8]/10 bg-[#11100d]/25 px-3 py-2.5">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/70">
-        {label}
-      </p>
+    <span className="rounded-full border border-[#f5f0e8]/10 bg-[#11100d]/25 px-2.5 py-1 text-xs font-medium text-stone-400">
+      {children}
+    </span>
+  );
+}
 
-      <p className="mt-1.5 truncate text-sm font-bold text-[#f5f0e8]">
-        {value}
-      </p>
-    </div>
+function StatusChip({ status }: { status: ManualCreditCard["status"] }) {
+  const tone =
+    status === "Pay Down"
+      ? "border-[#c7ad75]/25 bg-[#c7ad75]/12 text-[#f5f0e8]"
+      : status === "Watch"
+      ? "border-[#c7ad75]/20 bg-[#c7ad75]/10 text-[#f5f0e8]"
+      : "border-[#f5f0e8]/10 bg-[#11100d]/25 text-stone-400";
+
+  return (
+    <span
+      className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${tone}`}
+    >
+      {status}
+    </span>
   );
 }
 
@@ -289,14 +352,14 @@ function EmptyState({
   actionHref: string;
 }) {
   return (
-    <div className="rounded-[1.25rem] border border-dashed border-[#f5f0e8]/12 bg-[#11100d]/20 p-4">
-      <p className="text-lg font-semibold text-[#f5f0e8]">{title}</p>
+    <div className="rounded-[1.15rem] border border-dashed border-[#f5f0e8]/12 bg-[#11100d]/20 p-3.5">
+      <p className="text-base font-semibold text-[#f5f0e8]">{title}</p>
 
-      <p className="mt-2 text-sm leading-6 text-stone-400">{text}</p>
+      <p className="mt-1.5 text-sm leading-6 text-stone-400">{text}</p>
 
       <Link
         href={actionHref}
-        className="pressable mt-4 flex rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-3 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
+        className="pressable mt-3 flex rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-2.5 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
       >
         <span className="w-full">{actionLabel}</span>
       </Link>

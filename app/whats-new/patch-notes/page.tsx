@@ -7,10 +7,30 @@ import { PageShell, Pill } from "../../../components/Layout";
 
 const patchNotes = [
   {
-    version: "v1.2 Beta",
-    title: "Refined Experience",
+    version: "v1.2.2 Beta",
+    title: "Refinement & Motion",
     date: "Current Build",
     badge: "Latest",
+    summary:
+      "A focused polish update that tightens the app’s pages, smooths navigation, improves credit card layout, and fixes light-theme button contrast.",
+    highlights: [
+      "Tightened spacing and visual hierarchy across core pages for a cleaner overall UI.",
+      "Improved page motion so navigation feels smoother and more app-like.",
+      "Refined the side menu animation for a cleaner open and close experience.",
+      "Improved the Credit Cards page with clearer layout, better spacing, and a calmer card structure.",
+      "Adjusted the Credit Cards mobile layout so utilization details and status pills sit more cleanly.",
+      "Refined credit card utilization animation with a slightly slower, smoother, more natural feel.",
+      "Improved Editor feedback with clearer saved states.",
+      "Added safer delete confirmation behavior for bills and credit cards in the Editor.",
+      "Fixed red action buttons not appearing correctly while using light themes.",
+      "Cleaned up small copy, button states, and visual details across the app.",
+    ],
+  },
+  {
+    version: "v1.2 Beta",
+    title: "Refined Experience",
+    date: "Previous Build",
+    badge: "Archived",
     summary:
       "A cleaner, calmer polish update focused on layout, readability, mobile views, and a more refined app experience.",
     highlights: [
@@ -100,19 +120,19 @@ export default function PatchNotesPage() {
       <div className="min-h-[70vh]">
         <Link
           href="/whats-new"
-          className="motion-card mb-4 inline-flex items-center gap-2 text-sm font-semibold text-stone-400 transition hover:text-[#c7ad75]"
+          className="motion-card mb-3 inline-flex items-center gap-2 text-sm font-semibold text-stone-400 transition hover:text-[#c7ad75]"
         >
           <span aria-hidden="true">←</span>
           What&apos;s New
         </Link>
 
-        <header className="-mt-1 mb-4 motion-card sm:-mt-2">
+        <header className="-mt-1 mb-3 motion-card sm:-mt-2">
           <div className="mb-2 flex items-center justify-between gap-4">
             <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
               Version History
             </p>
 
-            <Pill>v1.2 Beta</Pill>
+            <Pill>v1.2.2 Beta</Pill>
           </div>
 
           <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
@@ -120,7 +140,7 @@ export default function PatchNotesPage() {
           </h1>
         </header>
 
-        <section className="liquid-glass motion-card motion-card-delay-1 rounded-[1.85rem] p-4">
+        <section className="liquid-glass motion-card motion-card-delay-1 rounded-[1.7rem] p-3.5">
           <div className="liquid-content grid gap-2">
             {patchNotes.map((patch) => {
               const isOpen = openVersion === patch.version;
@@ -165,7 +185,7 @@ function PatchNoteRow({
 
   return (
     <article
-      className={`rounded-[1.35rem] border p-3.5 transition ${
+      className={`rounded-[1.15rem] border p-3 transition ${
         isOpen
           ? "border-[#c7ad75]/30 bg-[#c7ad75]/10"
           : "border-[#f5f0e8]/10 bg-[#11100d]/22 hover:border-[#c7ad75]/24 hover:bg-[#f5f0e8]/5"
@@ -174,11 +194,11 @@ function PatchNoteRow({
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-start justify-between gap-4 text-left"
+        className="flex w-full items-start justify-between gap-3 text-left"
       >
         <div className="flex min-w-0 gap-3">
           <div
-            className={`grid h-10 w-10 shrink-0 place-items-center rounded-full border text-[#c7ad75] shadow-[inset_0_1px_0_rgba(245,240,232,0.08)] ${
+            className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border text-[#c7ad75] shadow-[inset_0_1px_0_rgba(245,240,232,0.08)] ${
               isLatest
                 ? "border-[#c7ad75]/30 bg-[#c7ad75]/12"
                 : "border-[#f5f0e8]/10 bg-[#11100d]/25"
@@ -188,7 +208,7 @@ function PatchNoteRow({
           </div>
 
           <div className="min-w-0">
-            <div className="mb-1 flex flex-wrap items-center gap-2">
+            <div className="mb-0.5 flex flex-wrap items-center gap-2">
               <p className="text-base font-semibold text-[#f5f0e8]">
                 {patch.version}
               </p>
@@ -208,11 +228,11 @@ function PatchNoteRow({
               {patch.title}
             </p>
 
-            <p className="mt-1.5 text-sm leading-6 text-stone-400">
+            <p className="mt-1 text-sm leading-6 text-stone-400">
               {patch.summary}
             </p>
 
-            <p className="mt-1.5 truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/70">
+            <p className="mt-1 truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/70">
               {patch.date}
             </p>
           </div>
@@ -224,7 +244,7 @@ function PatchNoteRow({
       </button>
 
       {isOpen && (
-        <div className="mt-4 grid gap-2">
+        <div className="mt-3 grid gap-2">
           {patch.highlights.map((highlight, index) => (
             <ReleaseItem
               key={`${patch.version}-${highlight}`}
@@ -240,7 +260,7 @@ function PatchNoteRow({
 
 function ReleaseItem({ number, text }: { number: number; text: string }) {
   return (
-    <div className="rounded-[1.15rem] border border-[#f5f0e8]/10 bg-[#11100d]/24 px-3.5 py-3">
+    <div className="rounded-[1.05rem] border border-[#f5f0e8]/10 bg-[#11100d]/24 px-3.5 py-2.5">
       <div className="flex gap-3">
         <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/10 text-xs font-bold text-[#c7ad75]">
           {number}

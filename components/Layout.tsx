@@ -20,7 +20,7 @@ export function PageShell({ children }: { children: React.ReactNode }) {
               href="/whats-new"
               className="pressable shrink-0 rounded-full border border-[#f5f0e8]/10 bg-[#11100d]/25 px-3 py-1.5 text-xs font-semibold text-stone-400 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
             >
-              v1.2 Beta
+              v1.2.2 Beta
             </a>
           </div>
         </footer>

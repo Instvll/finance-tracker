@@ -1,12 +1,14 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import LogoMark from "@/components/LogoMark";
 import { supabase } from "../lib/supabase/client";
 
 const publicRoutes = ["/login", "/signup"];
 
-export default function AuthGate({ children }: { children: React.ReactNode }) {
+export default function AuthGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -23,6 +25,10 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         window.location.hostname === "127.0.0.1";
 
       if (isLocalhost) {
+        if (!isMounted) {
+          return;
+        }
+
         setIsAllowed(true);
         setIsCheckingAuth(false);
         return;
@@ -69,17 +75,33 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (isCheckingAuth) {
     return (
-      <main className="min-h-screen bg-[#11100d] px-4 py-6 text-[#f5f0e8]">
-        <div className="mx-auto flex min-h-[70vh] max-w-5xl items-center justify-center">
-          <div className="rounded-[2rem] border border-[#f5f0e8]/12 bg-[#1d1b17] p-6 text-center shadow-xl shadow-black/10">
-            <p className="text-xs font-semibold lowercase tracking-[0.35em] text-stone-400">
-              leftovr
-            </p>
+      <main className="min-h-screen bg-[#11100d] px-4 py-5 text-[#f5f0e8] sm:px-6 sm:py-6">
+        <div className="mx-auto flex min-h-[calc(100vh-2.5rem)] w-full max-w-md flex-col justify-center sm:min-h-[calc(100vh-3rem)]">
+          <section className="liquid-glass-accent hero-glass-card motion-card rounded-[2rem] p-5 text-center shadow-2xl sm:p-6">
+            <div className="liquid-content">
+              <div className="mx-auto mb-4 flex w-fit items-center justify-center">
+                <LogoMark />
+              </div>
 
-            <p className="mt-3 text-sm text-stone-300">
-              Checking your session...
-            </p>
-          </div>
+              <p className="text-sm font-semibold lowercase tracking-[0.24em] text-[#f5f0e8]">
+                leftovr
+              </p>
+
+              <p className="mt-1 text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[#c7ad75]/75">
+                Private Beta
+              </p>
+
+              <div className="mt-5 rounded-[1.15rem] border border-[#f5f0e8]/10 bg-[#11100d]/30 px-3.5 py-3">
+                <p className="text-sm font-semibold text-[#f5f0e8]">
+                  Opening leftovr...
+                </p>
+
+                <p className="mt-1 text-sm leading-6 text-stone-400">
+                  Checking your session.
+                </p>
+              </div>
+            </div>
+          </section>
         </div>
       </main>
     );

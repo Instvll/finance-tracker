@@ -205,7 +205,7 @@ export default function BackupSettingsPage() {
       <div className="min-h-[70vh]">
         <BackLink />
 
-        <header className="mb-4 motion-card">
+        <header className="mb-3 motion-card">
           <div className="mb-2 flex items-center justify-between gap-4">
             <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
               Settings
@@ -219,33 +219,30 @@ export default function BackupSettingsPage() {
           </h1>
         </header>
 
-        <section className="liquid-glass motion-card motion-card-delay-1 rounded-[1.85rem] p-4">
-          <div className="liquid-content grid gap-3">
-            <div className="mb-1 flex items-center justify-between gap-4">
+        <section className="liquid-glass motion-card motion-card-delay-1 rounded-[1.7rem] p-3.5">
+          <div className="liquid-content grid gap-2.5">
+            <div className="mb-0.5 flex items-center justify-between gap-4">
               <SectionTitle title="Manual Backup" />
 
-              <span className="shrink-0 rounded-full border border-[#f5f0e8]/10 bg-[#f5f0e8]/6 px-2.5 py-1 text-xs font-semibold text-stone-400">
+              <span className="shrink-0 rounded-full border border-[#f5f0e8]/10 bg-[#f5f0e8]/6 px-2.5 py-0.5 text-xs font-semibold text-stone-400">
                 {accountStatus}
               </span>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <InfoItem
-                label="Account"
-                value={user?.email || accountStatus}
-              />
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              <InfoItem label="Account" value={user?.email || accountStatus} />
 
               <InfoItem label="Local Save" value={formatSavedTime(lastSaved)} />
             </div>
 
             {message ? <StatusMessage message={message} /> : null}
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-2.5 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={backUpThisDevice}
                 disabled={isBackingUp || isRestoring || !user}
-                className="pressable rounded-full border border-[#c7ad75]/30 bg-[#c7ad75]/14 px-5 py-3 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/22 disabled:cursor-not-allowed disabled:opacity-50"
+                className="pressable rounded-full border border-[#c7ad75]/30 bg-[#c7ad75]/14 px-5 py-2.5 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/22 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isBackingUp ? "Backing Up..." : "Back Up"}
               </button>
@@ -254,13 +251,13 @@ export default function BackupSettingsPage() {
                 type="button"
                 onClick={restoreBackup}
                 disabled={isBackingUp || isRestoring || !user}
-                className="pressable rounded-full border border-[#f5f0e8]/12 bg-[#f5f0e8]/6 px-5 py-3 text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8] disabled:cursor-not-allowed disabled:opacity-50"
+                className="pressable rounded-full border border-[#f5f0e8]/12 bg-[#f5f0e8]/6 px-5 py-2.5 text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isRestoring ? "Restoring..." : "Restore"}
               </button>
             </div>
 
-            <div className="rounded-[1.2rem] border border-[#f5f0e8]/10 bg-[#11100d]/20 px-3.5 py-3">
+            <div className="rounded-[1.05rem] border border-[#f5f0e8]/10 bg-[#11100d]/20 px-3.5 py-2.5">
               <p className="text-sm text-stone-400">
                 Themes stay local to each device.
               </p>
@@ -276,7 +273,7 @@ function BackLink() {
   return (
     <Link
       href="/account"
-      className="motion-card mb-4 inline-flex items-center gap-2 text-sm font-semibold text-stone-400 transition hover:text-[#c7ad75]"
+      className="motion-card mb-3 inline-flex items-center gap-2 text-sm font-semibold text-stone-400 transition hover:text-[#c7ad75]"
     >
       <span aria-hidden="true">←</span>
       Settings
@@ -287,7 +284,7 @@ function BackLink() {
 function SectionTitle({ title }: { title: string }) {
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.25)]" />
+      <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.25)]" />
 
       <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
         {title}
@@ -298,7 +295,7 @@ function SectionTitle({ title }: { title: string }) {
 
 function InfoItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#11100d]/22 p-3.5">
+    <div className="rounded-[1.15rem] border border-[#f5f0e8]/10 bg-[#11100d]/22 px-3.5 py-3">
       <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
         {label}
       </p>
@@ -312,7 +309,7 @@ function InfoItem({ label, value }: { label: string; value: string }) {
 
 function StatusMessage({ message }: { message: string }) {
   return (
-    <div className="rounded-[1.25rem] border border-[#c7ad75]/25 bg-[#c7ad75]/12 px-4 py-3">
+    <div className="rounded-[1.15rem] border border-[#c7ad75]/25 bg-[#c7ad75]/12 px-3.5 py-2.5">
       <p className="text-sm font-semibold text-[#f5f0e8]">{message}</p>
     </div>
   );

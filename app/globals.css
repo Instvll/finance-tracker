@@ -446,30 +446,32 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
 
 /* Motion utilities */
 .motion-card {
-  animation: motion-card-in 260ms var(--motion-apple) both;
+  animation: motion-card-in 440ms var(--motion-apple) both;
 }
 
 .motion-card-delay-1 {
-  animation-delay: 15ms;
+  animation-delay: 40ms;
 }
 
 .motion-card-delay-2 {
-  animation-delay: 30ms;
+  animation-delay: 75ms;
 }
 
 .motion-card-delay-3 {
-  animation-delay: 45ms;
+  animation-delay: 110ms;
 }
 
-@keyframes motion-card-in {
+@keyframes page-transition-in {
   from {
-    opacity: 0.94;
-    transform: translateY(3px) scale(0.998);
+    opacity: 0;
+    transform: translateY(6px) scale(0.996);
+    filter: blur(0.8px);
   }
 
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+    filter: blur(0);
   }
 }
 
@@ -504,8 +506,8 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
 }
 
 .top-nav-drawer-open {
-  opacity: 0;
-  transform: translateY(-8px) scale(0.985);
+  opacity: 1;
+  transform: none;
   pointer-events: none;
 }
 
@@ -808,9 +810,29 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
   background: color-mix(in srgb, var(--theme-accent) 35%, transparent);
   color: var(--theme-text);
 }
+.page-transition {
+  animation: page-transition-in 360ms var(--motion-apple) backwards;
+  transform-origin: center top;
+  will-change: opacity;
+}
+
+@keyframes page-transition-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.996);
+    filter: blur(0.4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
 
 /* Respect reduced motion settings */
 @media (prefers-reduced-motion: reduce) {
+  .page-transition,
   .motion-card,
   .motion-card-delay-1,
   .motion-card-delay-2,

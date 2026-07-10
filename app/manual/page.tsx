@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import TopNav from "../../components/TopNav";
 import { PageShell, Pill } from "../../components/Layout";
 import { bills, creditCards, financeSummary } from "../../data/bandData";
@@ -128,8 +128,13 @@ export default function ManualPage() {
     useState<ManualCreditCard[]>(defaultManualCards);
   const [lastSaved, setLastSaved] = useState("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showSavedConfirmation, setShowSavedConfirmation] = useState(false);
   const [editingBills, setEditingBills] = useState<number[]>([]);
   const [editingCards, setEditingCards] = useState<number[]>([]);
+
+  const savedConfirmationTimeout = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
 
   useEffect(() => {
     setManualData(readJsonStorage(summaryStorageKey, defaultManualData));
@@ -149,6 +154,19 @@ export default function ManualPage() {
     }
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (savedConfirmationTimeout.current) {
+        clearTimeout(savedConfirmationTimeout.current);
+      }
+    };
+  }, []);
+
+  function markUnsaved() {
+    setShowSavedConfirmation(false);
+    setHasUnsavedChanges(true);
+  }
+
   function chooseTab(tab: EditorTab) {
     setActiveTab(tab);
 
@@ -162,7 +180,7 @@ export default function ManualPage() {
       [field]: value,
     }));
 
-    setHasUnsavedChanges(true);
+    markUnsaved();
   }
 
   function updateBill(index: number, field: keyof ManualBill, value: string) {
@@ -172,7 +190,7 @@ export default function ManualPage() {
       )
     );
 
-    setHasUnsavedChanges(true);
+    markUnsaved();
   }
 
   function updateCard(
@@ -186,7 +204,7 @@ export default function ManualPage() {
       )
     );
 
-    setHasUnsavedChanges(true);
+    markUnsaved();
   }
 
   function addBill() {
@@ -204,7 +222,7 @@ export default function ManualPage() {
     ]);
 
     setEditingBills((current) => [...current, nextIndex]);
-    setHasUnsavedChanges(true);
+    markUnsaved();
     chooseTab("bills");
   }
 
@@ -219,7 +237,7 @@ export default function ManualPage() {
         .map((billIndex) => (billIndex > index ? billIndex - 1 : billIndex))
     );
 
-    setHasUnsavedChanges(true);
+    markUnsaved();
   }
 
   function toggleBillEditing(index: number) {
@@ -246,7 +264,7 @@ export default function ManualPage() {
     ]);
 
     setEditingCards((current) => [...current, nextIndex]);
-    setHasUnsavedChanges(true);
+    markUnsaved();
     chooseTab("cards");
   }
 
@@ -261,7 +279,7 @@ export default function ManualPage() {
         .map((cardIndex) => (cardIndex > index ? cardIndex - 1 : cardIndex))
     );
 
-    setHasUnsavedChanges(true);
+    markUnsaved();
   }
 
   function toggleCardEditing(index: number) {
@@ -282,8 +300,17 @@ export default function ManualPage() {
 
     setLastSaved(savedTime);
     setHasUnsavedChanges(false);
+    setShowSavedConfirmation(true);
     setEditingBills([]);
     setEditingCards([]);
+
+    if (savedConfirmationTimeout.current) {
+      clearTimeout(savedConfirmationTimeout.current);
+    }
+
+    savedConfirmationTimeout.current = setTimeout(() => {
+      setShowSavedConfirmation(false);
+    }, 2400);
   }
 
   const sortedManualBills = sortIndexedBillsByDueDay(
@@ -317,18 +344,34 @@ export default function ManualPage() {
       ? Math.round((cardBalanceTotal / cardLimitTotal) * 100)
       : 0;
 
+  const saveStatusTitle = hasUnsavedChanges
+    ? "Changes ready"
+    : showSavedConfirmation
+      ? "Saved"
+      : "Up to date";
+
+  const saveStatusDetail = hasUnsavedChanges
+    ? lastSaved
+      ? `Last saved ${formatSavedTime(lastSaved)}`
+      : "Save when ready."
+    : showSavedConfirmation
+      ? "Everything is current."
+      : lastSaved
+        ? `Last saved ${formatSavedTime(lastSaved)}`
+        : "Everything is current.";
+
   return (
     <PageShell>
       <TopNav />
 
       <div className="min-h-[70vh]">
-        <header className="-mt-1 mb-4 motion-card sm:-mt-2">
+        <header className="-mt-1 mb-3 motion-card sm:-mt-2">
           <div className="mb-2 flex items-center justify-between gap-4">
             <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
               Data Editor
             </p>
 
-            <Pill>{hasUnsavedChanges ? "Unsaved" : "Saved"}</Pill>
+            <Pill>{hasUnsavedChanges ? "Ready" : "Saved"}</Pill>
           </div>
 
           <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
@@ -336,17 +379,38 @@ export default function ManualPage() {
           </h1>
         </header>
 
-        <section className="motion-card motion-card-delay-1 mb-4 grid gap-3 sm:grid-cols-[1fr_auto]">
-          <div className="liquid-glass-soft rounded-[1.55rem] p-3">
+        <section className="motion-card motion-card-delay-1 mb-3 grid gap-2.5 sm:grid-cols-[1fr_auto]">
+          <div
+            aria-live="polite"
+            className={`liquid-glass-soft rounded-[1.35rem] p-2.5 transition-all duration-300 ${
+              hasUnsavedChanges
+                ? "shadow-[inset_0_0_0_1px_rgba(199,173,117,0.18),0_12px_28px_rgba(0,0,0,0.1)]"
+                : showSavedConfirmation
+                  ? "shadow-[inset_0_0_0_1px_rgba(245,240,232,0.1),0_12px_28px_rgba(0,0,0,0.08)]"
+                  : "shadow-[inset_0_0_0_1px_rgba(245,240,232,0.04)]"
+            }`}
+          >
             <div className="liquid-content flex items-center justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-[#f5f0e8]">
-                  {hasUnsavedChanges ? "Unsaved changes" : "All changes saved"}
-                </p>
+              <div className="flex min-w-0 items-center gap-3">
+                <span
+                  className={`h-2.5 w-2.5 shrink-0 rounded-full transition-all duration-300 ${
+                    hasUnsavedChanges
+                      ? "scale-100 bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.34)]"
+                      : showSavedConfirmation
+                        ? "scale-110 bg-[#f5f0e8]/85 shadow-[0_0_18px_rgba(245,240,232,0.22)]"
+                        : "scale-90 bg-[#f5f0e8]/24"
+                  }`}
+                />
 
-                <p className="mt-1 text-xs text-stone-500">
-                  {formatSavedTime(lastSaved)}
-                </p>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-[#f5f0e8] transition-colors duration-300">
+                    {saveStatusTitle}
+                  </p>
+
+                  <p className="mt-0.5 text-xs text-stone-500 transition-colors duration-300">
+                    {saveStatusDetail}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -355,17 +419,19 @@ export default function ManualPage() {
             type="button"
             onClick={saveChanges}
             disabled={!hasUnsavedChanges}
-            className={`pressable rounded-full border px-5 py-3 text-sm font-semibold transition sm:min-w-36 ${
+            className={`pressable rounded-full border px-5 py-2.5 text-sm font-semibold transition-all duration-300 sm:min-w-36 ${
               hasUnsavedChanges
-                ? "border-[#c7ad75]/35 bg-[#c7ad75]/18 text-[#f5f0e8] hover:bg-[#c7ad75]/24"
-                : "border-[#f5f0e8]/10 bg-[#f5f0e8]/6 text-stone-500"
+                ? "border-[#c7ad75]/42 bg-[#c7ad75]/18 text-[#f5f0e8] shadow-[inset_0_1px_0_rgba(245,240,232,0.1),0_14px_28px_rgba(0,0,0,0.16)] hover:bg-[#c7ad75]/24"
+                : showSavedConfirmation
+                  ? "border-[#f5f0e8]/12 bg-[#f5f0e8]/8 text-[#f5f0e8]/75 shadow-[inset_0_1px_0_rgba(245,240,232,0.08)]"
+                  : "border-[#f5f0e8]/10 bg-[#f5f0e8]/5 text-stone-500"
             }`}
           >
-            Save
+            {hasUnsavedChanges ? "Save" : "Saved"}
           </button>
         </section>
 
-        <section className="motion-card motion-card-delay-2 mb-4">
+        <section className="motion-card motion-card-delay-2 mb-3">
           <div className="liquid-glass rounded-full p-1.5 sm:hidden">
             <div className="liquid-content grid grid-cols-3 gap-1">
               <EditorSegmentButton
@@ -388,7 +454,7 @@ export default function ManualPage() {
             </div>
           </div>
 
-          <div className="hidden gap-3 sm:grid sm:grid-cols-3">
+          <div className="hidden gap-2.5 sm:grid sm:grid-cols-3">
             <EditorSectionButton
               title="Main Numbers"
               value={formatMoney(manualData.checkingBalance)}
@@ -416,11 +482,11 @@ export default function ManualPage() {
         </section>
 
         {activeTab === "overview" && (
-          <section className="liquid-glass motion-card motion-card-delay-3 rounded-[1.85rem] p-4">
+          <section className="liquid-glass motion-card motion-card-delay-3 rounded-[1.7rem] p-3.5">
             <div className="liquid-content">
               <SectionHeading title="Main Numbers" />
 
-              <div className="mt-4 grid gap-3">
+              <div className="mt-3 grid gap-2.5">
                 <MoneyInput
                   label="Checking Balance"
                   value={manualData.checkingBalance}
@@ -455,15 +521,15 @@ export default function ManualPage() {
         )}
 
         {activeTab === "bills" && (
-          <section className="liquid-glass motion-card motion-card-delay-3 rounded-[1.85rem] p-4">
+          <section className="liquid-glass motion-card motion-card-delay-3 rounded-[1.7rem] p-3.5">
             <div className="liquid-content">
-              <div className="mb-4 flex items-center justify-between gap-4">
+              <div className="mb-3 flex items-center justify-between gap-4">
                 <SectionHeading title="Bills" />
 
                 <button
                   type="button"
                   onClick={addBill}
-                  className="pressable shrink-0 rounded-full border border-[#c7ad75]/30 bg-[#c7ad75]/14 px-4 py-2.5 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/22"
+                  className="pressable shrink-0 rounded-full border border-[#c7ad75]/30 bg-[#c7ad75]/14 px-4 py-2 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/22"
                 >
                   Add
                 </button>
@@ -484,7 +550,10 @@ export default function ManualPage() {
                     />
                   ))
                 ) : (
-                  <EmptyState title="No bills yet" text="Tap Add to start." />
+                  <EmptyState
+                    title="No bills yet"
+                    text="Add your first bill to start building your monthly view."
+                  />
                 )}
               </div>
             </div>
@@ -492,15 +561,15 @@ export default function ManualPage() {
         )}
 
         {activeTab === "cards" && (
-          <section className="liquid-glass motion-card motion-card-delay-3 rounded-[1.85rem] p-4">
+          <section className="liquid-glass motion-card motion-card-delay-3 rounded-[1.7rem] p-3.5">
             <div className="liquid-content">
-              <div className="mb-4 flex items-center justify-between gap-4">
+              <div className="mb-3 flex items-center justify-between gap-4">
                 <SectionHeading title="Credit Cards" />
 
                 <button
                   type="button"
                   onClick={addCard}
-                  className="pressable shrink-0 rounded-full border border-[#c7ad75]/30 bg-[#c7ad75]/14 px-4 py-2.5 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/22"
+                  className="pressable shrink-0 rounded-full border border-[#c7ad75]/30 bg-[#c7ad75]/14 px-4 py-2 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/22"
                 >
                   Add
                 </button>
@@ -523,7 +592,7 @@ export default function ManualPage() {
                 ) : (
                   <EmptyState
                     title="No credit cards yet"
-                    text="Tap Add to start."
+                    text="Add a card when you want leftovr to track utilization and payoff pressure."
                   />
                 )}
               </div>
@@ -531,6 +600,28 @@ export default function ManualPage() {
           </section>
         )}
       </div>
+
+      {showSavedConfirmation && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-5 z-50 flex justify-center px-4 pb-[env(safe-area-inset-bottom)]">
+          <div
+            role="status"
+            aria-live="polite"
+            className="liquid-glass-soft w-full max-w-[22rem] rounded-[1.35rem] border border-[#f5f0e8]/10 p-3 shadow-[0_18px_42px_rgba(0,0,0,0.28)]"
+          >
+            <div className="liquid-content flex items-center gap-3">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#f5f0e8]/85 shadow-[0_0_18px_rgba(245,240,232,0.22)]" />
+
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[#f5f0e8]">Saved</p>
+
+                <p className="mt-0.5 text-xs text-stone-500">
+                  Everything is current.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </PageShell>
   );
 }
@@ -547,10 +638,11 @@ function EditorSegmentButton({
   return (
     <button
       type="button"
+      aria-pressed={active}
       onClick={onClick}
-      className={`pressable rounded-full px-3 py-2.5 text-sm font-semibold transition ${
+      className={`pressable rounded-full px-3 py-2 text-sm font-semibold transition ${
         active
-          ? "bg-[#c7ad75]/18 text-[#f5f0e8] shadow-[inset_0_0_0_1px_rgba(199,173,117,0.22)]"
+          ? "bg-[#c7ad75]/20 text-[#f5f0e8] shadow-[inset_0_0_0_1px_rgba(199,173,117,0.26),inset_0_1px_0_rgba(245,240,232,0.08)]"
           : "text-stone-400 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
       }`}
     >
@@ -575,30 +667,33 @@ function EditorSectionButton({
   return (
     <button
       type="button"
+      aria-pressed={active}
       onClick={onClick}
-      className={`pressable rounded-[1.45rem] border p-3.5 text-left transition ${
+      className={`pressable rounded-[1.25rem] border p-3 text-left transition ${
         active
-          ? "border-[#c7ad75]/34 bg-[#c7ad75]/12 shadow-[inset_0_1px_0_rgba(245,240,232,0.08)]"
+          ? "border-[#c7ad75]/38 bg-[#c7ad75]/13 shadow-[inset_0_1px_0_rgba(245,240,232,0.09),0_16px_28px_rgba(0,0,0,0.13)]"
           : "border-[#f5f0e8]/10 bg-[#11100d]/22 hover:border-[#c7ad75]/24 hover:bg-[#f5f0e8]/5"
       }`}
     >
-      <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="mb-2.5 flex items-center justify-between gap-3">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c7ad75]/75">
           {title}
         </p>
 
         <span
-          className={`h-2.5 w-2.5 rounded-full ${
-            active ? "bg-[#c7ad75]" : "bg-[#f5f0e8]/18"
+          className={`h-2.5 w-2.5 shrink-0 rounded-full transition ${
+            active
+              ? "bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.28)]"
+              : "bg-[#f5f0e8]/18"
           }`}
         />
       </div>
 
-      <p className="truncate text-2xl font-bold tracking-tight text-[#f5f0e8]">
+      <p className="truncate text-xl font-bold tracking-tight text-[#f5f0e8]">
         {value}
       </p>
 
-      <p className="mt-1 text-sm text-stone-400">{detail}</p>
+      <p className="mt-0.5 text-sm text-stone-400">{detail}</p>
     </button>
   );
 }
@@ -606,7 +701,7 @@ function EditorSectionButton({
 function SectionHeading({ title }: { title: string }) {
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.25)]" />
+      <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.25)]" />
 
       <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
         {title}
@@ -628,11 +723,24 @@ function BillEditorRow({
   onRemove: () => void;
   onChange: (field: keyof ManualBill, value: string) => void;
 }) {
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setShowRemoveConfirm(false);
+    }
+  }, [isEditing]);
+
+  function confirmRemove() {
+    setShowRemoveConfirm(false);
+    onRemove();
+  }
+
   return (
     <article
-      className={`rounded-[1.25rem] border p-3.5 transition hover:bg-[#f5f0e8]/5 ${
+      className={`rounded-[1.15rem] border p-3 transition hover:bg-[#f5f0e8]/5 ${
         isEditing
-          ? "border-[#c7ad75]/28 bg-[#c7ad75]/10"
+          ? "border-[#c7ad75]/30 bg-[#c7ad75]/10 shadow-[inset_0_1px_0_rgba(245,240,232,0.08)]"
           : "border-[#f5f0e8]/10 bg-[#11100d]/22"
       }`}
     >
@@ -642,12 +750,12 @@ function BillEditorRow({
             {bill.name || "Untitled Bill"}
           </p>
 
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-[#f5f0e8]/10 bg-[#f5f0e8]/6 px-2.5 py-1 text-xs font-semibold text-stone-400">
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-[#f5f0e8]/10 bg-[#f5f0e8]/6 px-2.5 py-0.5 text-xs font-semibold text-stone-400">
               {formatMoney(bill.amount)}
             </span>
 
-            <span className="rounded-full border border-[#f5f0e8]/10 bg-[#11100d]/25 px-2.5 py-1 text-xs font-semibold text-stone-400">
+            <span className="rounded-full border border-[#f5f0e8]/10 bg-[#11100d]/25 px-2.5 py-0.5 text-xs font-semibold text-stone-400">
               Due {bill.dueDate || "TBD"}
             </span>
           </div>
@@ -655,16 +763,34 @@ function BillEditorRow({
 
         <button
           type="button"
+          aria-expanded={isEditing}
+          aria-label={`${isEditing ? "Close editor for" : "Edit"} ${
+            bill.name || "bill"
+          }`}
           onClick={onToggleEditing}
-          className="pressable shrink-0 rounded-full border border-[#f5f0e8]/10 px-3 py-1.5 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+          className={`pressable shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition ${
+            isEditing
+              ? "border-[#c7ad75]/30 bg-[#c7ad75]/12 text-[#f5f0e8]"
+              : "border-[#f5f0e8]/10 text-stone-300 hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+          }`}
         >
           {isEditing ? "Done" : "Edit"}
         </button>
       </div>
 
       {isEditing && (
-        <div className="mt-4 rounded-[1.15rem] border border-[#f5f0e8]/10 bg-[#11100d]/28 p-3">
-          <div className="grid gap-3">
+        <div className="mt-3 rounded-[1.05rem] border border-[#f5f0e8]/10 bg-[#11100d]/30 p-2.5 shadow-[inset_0_1px_0_rgba(245,240,232,0.04)]">
+          <div className="mb-2.5 flex items-center justify-between gap-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/70">
+              Editing Bill
+            </p>
+
+            <p className="text-xs font-medium text-stone-500">
+              Save when ready
+            </p>
+          </div>
+
+          <div className="grid gap-2.5">
             <TextInput
               label="Bill Name"
               value={bill.name}
@@ -693,13 +819,43 @@ function BillEditorRow({
             />
           </div>
 
-          <button
-            type="button"
-            onClick={onRemove}
-            className="pressable mt-3 w-full rounded-full border border-red-300/20 px-4 py-3 text-sm font-semibold text-red-200 transition hover:bg-red-400/10"
-          >
-            Remove Bill
-          </button>
+          {showRemoveConfirm ? (
+            <div className="mt-2.5 rounded-[1rem] border border-[#dc2626]/28 bg-[#dc2626]/8 p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+              <p className="text-sm font-semibold text-[#f5f0e8]">
+                Remove this bill?
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-stone-500">
+                This change will be saved when you tap Save.
+              </p>
+
+              <div className="mt-2.5 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowRemoveConfirm(false)}
+                  className="pressable rounded-full border border-[#f5f0e8]/10 bg-[#f5f0e8]/5 px-4 py-2 text-sm font-semibold text-stone-300 transition hover:border-[#f5f0e8]/16 hover:bg-[#f5f0e8]/8 hover:text-[#f5f0e8]"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={confirmRemove}
+                  className="pressable rounded-full border border-[#dc2626]/42 bg-[#dc2626]/14 px-4 py-2 text-sm font-bold text-[#ef4444] transition hover:border-[#dc2626]/58 hover:bg-[#dc2626]/20"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowRemoveConfirm(true)}
+              className="pressable mt-2.5 w-full rounded-full border border-[#dc2626]/38 bg-[#dc2626]/10 px-4 py-2.5 text-sm font-bold text-[#ef4444] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_10px_24px_rgba(127,29,29,0.08)] transition hover:border-[#dc2626]/58 hover:bg-[#dc2626]/15"
+            >
+              Remove Bill
+            </button>
+          )}
         </div>
       )}
     </article>
@@ -719,39 +875,60 @@ function CardEditorRow({
   onRemove: () => void;
   onChange: (field: keyof ManualCreditCard, value: string) => void;
 }) {
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setShowRemoveConfirm(false);
+    }
+  }, [isEditing]);
+
+  function confirmRemove() {
+    setShowRemoveConfirm(false);
+    onRemove();
+  }
+
   const balance = parseMoney(card.balance);
   const limit = parseMoney(card.limit);
   const utilization = limit > 0 ? Math.round((balance / limit) * 100) : 0;
 
   return (
     <article
-      className={`rounded-[1.25rem] border p-3.5 transition hover:bg-[#f5f0e8]/5 ${
+      className={`rounded-[1.15rem] border p-3 transition hover:bg-[#f5f0e8]/5 ${
         isEditing
-          ? "border-[#c7ad75]/28 bg-[#c7ad75]/10"
+          ? "border-[#c7ad75]/30 bg-[#c7ad75]/10 shadow-[inset_0_1px_0_rgba(245,240,232,0.08)]"
           : "border-[#f5f0e8]/10 bg-[#11100d]/22"
       }`}
     >
-      <div className="mb-3 flex items-start justify-between gap-4">
+      <div className="mb-2.5 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="truncate text-base font-semibold text-[#f5f0e8]">
             {card.name || "Untitled Card"}
           </p>
 
-          <p className="mt-1 text-sm text-stone-400">
+          <p className="mt-0.5 text-sm text-stone-400">
             {utilization}% used • {formatMoney(card.balance)}
           </p>
         </div>
 
         <button
           type="button"
+          aria-expanded={isEditing}
+          aria-label={`${isEditing ? "Close editor for" : "Edit"} ${
+            card.name || "card"
+          }`}
           onClick={onToggleEditing}
-          className="pressable shrink-0 rounded-full border border-[#f5f0e8]/10 px-3 py-1.5 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+          className={`pressable shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition ${
+            isEditing
+              ? "border-[#c7ad75]/30 bg-[#c7ad75]/12 text-[#f5f0e8]"
+              : "border-[#f5f0e8]/10 text-stone-300 hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+          }`}
         >
           {isEditing ? "Done" : "Edit"}
         </button>
       </div>
 
-      <div className="h-2 overflow-hidden rounded-full bg-black/30">
+      <div className="h-1.5 overflow-hidden rounded-full bg-black/30">
         <div
           className="liquid-progress h-full rounded-full bg-[#c7ad75]"
           style={{ width: `${Math.min(utilization, 100)}%` }}
@@ -759,8 +936,18 @@ function CardEditorRow({
       </div>
 
       {isEditing && (
-        <div className="mt-4 rounded-[1.15rem] border border-[#f5f0e8]/10 bg-[#11100d]/28 p-3">
-          <div className="grid gap-3">
+        <div className="mt-3 rounded-[1.05rem] border border-[#f5f0e8]/10 bg-[#11100d]/30 p-2.5 shadow-[inset_0_1px_0_rgba(245,240,232,0.04)]">
+          <div className="mb-2.5 flex items-center justify-between gap-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/70">
+              Editing Card
+            </p>
+
+            <p className="text-xs font-medium text-stone-500">
+              Save when ready
+            </p>
+          </div>
+
+          <div className="grid gap-2.5">
             <TextInput
               label="Card Name"
               value={card.name}
@@ -803,13 +990,43 @@ function CardEditorRow({
             />
           </div>
 
-          <button
-            type="button"
-            onClick={onRemove}
-            className="pressable mt-3 w-full rounded-full border border-red-300/20 px-4 py-3 text-sm font-semibold text-red-200 transition hover:bg-red-400/10"
-          >
-            Remove Card
-          </button>
+          {showRemoveConfirm ? (
+            <div className="mt-2.5 rounded-[1rem] border border-[#dc2626]/28 bg-[#dc2626]/8 p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+              <p className="text-sm font-semibold text-[#f5f0e8]">
+                Remove this card?
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-stone-500">
+                This change will be saved when you tap Save.
+              </p>
+
+              <div className="mt-2.5 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowRemoveConfirm(false)}
+                  className="pressable rounded-full border border-[#f5f0e8]/10 bg-[#f5f0e8]/5 px-4 py-2 text-sm font-semibold text-stone-300 transition hover:border-[#f5f0e8]/16 hover:bg-[#f5f0e8]/8 hover:text-[#f5f0e8]"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={confirmRemove}
+                  className="pressable rounded-full border border-[#dc2626]/42 bg-[#dc2626]/14 px-4 py-2 text-sm font-bold text-[#ef4444] transition hover:border-[#dc2626]/58 hover:bg-[#dc2626]/20"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowRemoveConfirm(true)}
+              className="pressable mt-2.5 w-full rounded-full border border-[#dc2626]/38 bg-[#dc2626]/10 px-4 py-2.5 text-sm font-bold text-[#ef4444] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_10px_24px_rgba(127,29,29,0.08)] transition hover:border-[#dc2626]/58 hover:bg-[#dc2626]/15"
+            >
+              Remove Card
+            </button>
+          )}
         </div>
       )}
     </article>
@@ -826,8 +1043,8 @@ function MoneyInput({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="grid gap-2 rounded-[1.15rem] border border-[#f5f0e8]/10 bg-[#11100d]/20 p-3">
-      <span className="block text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
+    <label className="grid gap-1.5 rounded-[1.05rem] border border-[#f5f0e8]/10 bg-[#11100d]/20 p-2.5 transition-within:border-[#c7ad75]/24">
+      <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/75">
         {label}
       </span>
 
@@ -837,7 +1054,7 @@ function MoneyInput({
         value={value}
         onFocus={() => clearZeroOnFocus(value, onChange)}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-full border border-[#f5f0e8]/12 bg-[#11100d]/55 px-4 py-3 text-base font-semibold text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-[#c7ad75]/45 focus:bg-[#11100d]/75"
+        className="w-full rounded-full border border-[#f5f0e8]/12 bg-[#11100d]/55 px-4 py-2.5 text-base font-semibold text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-[#c7ad75]/45 focus:bg-[#11100d]/75"
       />
     </label>
   );
@@ -855,8 +1072,8 @@ function TextInput({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="grid gap-2 rounded-[1.15rem] border border-[#f5f0e8]/10 bg-[#11100d]/20 p-3">
-      <span className="block text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
+    <label className="grid gap-1.5 rounded-[1.05rem] border border-[#f5f0e8]/10 bg-[#11100d]/20 p-2.5">
+      <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/75">
         {label}
       </span>
 
@@ -865,7 +1082,7 @@ function TextInput({
         value={value}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-full border border-[#f5f0e8]/12 bg-[#11100d]/55 px-4 py-3 text-base font-semibold text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-[#c7ad75]/45 focus:bg-[#11100d]/75"
+        className="w-full rounded-full border border-[#f5f0e8]/12 bg-[#11100d]/55 px-4 py-2.5 text-base font-semibold text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-[#c7ad75]/45 focus:bg-[#11100d]/75"
       />
     </label>
   );
@@ -883,15 +1100,15 @@ function SelectInput({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="grid gap-2 rounded-[1.15rem] border border-[#f5f0e8]/10 bg-[#11100d]/20 p-3">
-      <span className="block text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
+    <label className="grid gap-1.5 rounded-[1.05rem] border border-[#f5f0e8]/10 bg-[#11100d]/20 p-2.5">
+      <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/75">
         {label}
       </span>
 
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-full border border-[#f5f0e8]/12 bg-[#11100d]/55 px-4 py-3 text-base font-semibold text-[#f5f0e8] outline-none transition focus:border-[#c7ad75]/45 focus:bg-[#11100d]/75"
+        className="w-full rounded-full border border-[#f5f0e8]/12 bg-[#11100d]/55 px-4 py-2.5 text-base font-semibold text-[#f5f0e8] outline-none transition focus:border-[#c7ad75]/45 focus:bg-[#11100d]/75"
       >
         {options.map((option) => (
           <option key={option} value={option}>
@@ -905,10 +1122,16 @@ function SelectInput({
 
 function EmptyState({ title, text }: { title: string; text: string }) {
   return (
-    <div className="rounded-[1.25rem] border border-dashed border-[#f5f0e8]/12 bg-[#11100d]/20 p-4">
-      <p className="text-lg font-semibold text-[#f5f0e8]">{title}</p>
+    <div className="rounded-[1.15rem] border border-dashed border-[#f5f0e8]/12 bg-[#11100d]/20 p-3.5">
+      <div className="flex items-start gap-3">
+        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#c7ad75]/60 shadow-[0_0_12px_rgba(199,173,117,0.18)]" />
 
-      <p className="mt-2 text-sm leading-6 text-stone-400">{text}</p>
+        <div className="min-w-0">
+          <p className="text-base font-semibold text-[#f5f0e8]">{title}</p>
+
+          <p className="mt-1.5 text-sm leading-6 text-stone-400">{text}</p>
+        </div>
+      </div>
     </div>
   );
 }

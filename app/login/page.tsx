@@ -39,11 +39,11 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#11100d] px-4 py-6 text-[#f5f0e8] sm:px-6">
-      <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-md flex-col justify-center">
-        <section className="liquid-glass-accent motion-card rounded-[2rem] p-6 shadow-2xl sm:p-7">
+    <main className="min-h-screen bg-[#11100d] px-4 py-5 text-[#f5f0e8] sm:px-6 sm:py-6">
+      <div className="mx-auto flex min-h-[calc(100vh-2.5rem)] w-full max-w-md flex-col justify-center sm:min-h-[calc(100vh-3rem)]">
+        <section className="liquid-glass-accent hero-glass-card motion-card rounded-[2rem] p-5 shadow-2xl sm:p-6">
           <div className="liquid-content">
-            <div className="mb-7 flex items-center justify-between gap-4">
+            <div className="mb-5 flex items-center justify-between gap-4">
               <Link
                 href="/"
                 className="flex min-w-0 items-center gap-3 transition hover:opacity-85"
@@ -55,30 +55,30 @@ export default function LoginPage() {
                     leftovr
                   </p>
 
-                  <p className="mt-1 text-[0.62rem] uppercase tracking-[0.24em] text-[#c7ad75]/75">
+                  <p className="mt-0.5 text-[0.62rem] uppercase tracking-[0.24em] text-[#c7ad75]/75">
                     Private Beta
                   </p>
                 </div>
               </Link>
 
-              <span className="shrink-0 rounded-full border border-[#c7ad75]/30 bg-[#c7ad75]/10 px-3 py-1 text-xs font-semibold text-[#f5f0e8]">
-                v1.2
+              <span className="shrink-0 rounded-full border border-[#c7ad75]/30 bg-[#c7ad75]/10 px-3 py-0.5 text-xs font-semibold text-[#f5f0e8]">
+                v1.2.2 Beta
               </span>
             </div>
 
-            <div className="mb-6">
+            <div className="mb-4">
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#c7ad75]/75">
                 Welcome Back
               </p>
 
-              <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#f5f0e8]">
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#f5f0e8]">
                 Sign in to leftovr
               </h1>
             </div>
 
-            <form onSubmit={handleLogin} className="grid gap-4">
-              <label className="grid gap-2 rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#11100d]/24 p-3">
-                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
+            <form onSubmit={handleLogin} className="grid gap-3">
+              <label className="grid gap-1.5 rounded-[1.15rem] border border-[#f5f0e8]/10 bg-[#11100d]/24 p-2.5">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/75">
                   Email
                 </span>
 
@@ -89,28 +89,28 @@ export default function LoginPage() {
                   required
                   autoComplete="email"
                   placeholder="you@example.com"
-                  className="w-full rounded-full border border-[#f5f0e8]/12 bg-[#11100d]/55 px-4 py-3 text-base font-semibold text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-[#c7ad75]/45 focus:bg-[#11100d]/75"
+                  className="w-full rounded-full border border-[#f5f0e8]/12 bg-[#11100d]/55 px-4 py-2.5 text-base font-semibold text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-[#c7ad75]/45 focus:bg-[#11100d]/75"
                 />
               </label>
 
-              <label className="grid gap-2 rounded-[1.25rem] border border-[#f5f0e8]/10 bg-[#11100d]/24 p-3">
-                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
-                  Password
-                </span>
+              <label className="grid gap-1.5 rounded-[1.15rem] border border-[#f5f0e8]/10 bg-[#11100d]/24 p-2.5">
+  <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/75">
+    Password
+  </span>
 
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  required
-                  autoComplete="current-password"
-                  placeholder="Enter your password"
-                  className="w-full rounded-full border border-[#f5f0e8]/12 bg-[#11100d]/55 px-4 py-3 text-base font-semibold text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-[#c7ad75]/45 focus:bg-[#11100d]/75"
-                />
-              </label>
+  <input
+    type="password"
+    value={password}
+    onChange={(event) => setPassword(event.target.value)}
+    required
+    autoComplete="current-password"
+    placeholder="Enter your password"
+    className="w-full rounded-full border border-[#f5f0e8]/12 bg-[#11100d]/55 px-4 py-2.5 text-base font-semibold text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-[#c7ad75]/45 focus:bg-[#11100d]/75"
+  />
+</label>
 
               {message ? (
-                <div className="rounded-[1.25rem] border border-[#c7ad75]/25 bg-[#c7ad75]/12 px-4 py-3">
+                <div className="rounded-[1.15rem] border border-[#c7ad75]/25 bg-[#c7ad75]/12 px-3.5 py-2.5">
                   <p className="text-sm font-semibold leading-6 text-[#f5f0e8]">
                     {message}
                   </p>
@@ -120,13 +120,13 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="pressable mt-1 rounded-full border border-[#c7ad75]/35 bg-[#c7ad75]/18 px-4 py-3.5 text-sm font-semibold text-[#f5f0e8] shadow-[0_12px_30px_rgba(0,0,0,0.22)] transition hover:bg-[#c7ad75]/24 disabled:cursor-not-allowed disabled:opacity-60"
+                className="pressable rounded-full border border-[#c7ad75]/35 bg-[#c7ad75]/18 px-4 py-3 text-sm font-semibold text-[#f5f0e8] shadow-[0_12px_30px_rgba(0,0,0,0.22)] transition hover:bg-[#c7ad75]/24 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isLoading ? "Signing In..." : "Sign In"}
               </button>
             </form>
 
-            <div className="mt-5 rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#11100d]/30 p-4">
+            <div className="mt-4 rounded-[1.15rem] border border-[#f5f0e8]/10 bg-[#11100d]/30 px-3.5 py-3">
               <p className="text-sm leading-6 text-stone-400">
                 New to leftovr?{" "}
                 <Link

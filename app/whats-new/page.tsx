@@ -1,19 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import TopNav from "../../components/TopNav";
 import { PageShell, Pill } from "../../components/Layout";
 
 const latestUpdate = {
-  version: "v1.2 Beta",
-  title: "Refined Experience",
+  version: "v1.2.2",
+  title: "Refinement & Motion",
   summary:
-    "A cleaner, calmer polish update focused on layout, readability, mobile views, and a more refined app experience.",
+    "A focused polish update that tightens the main pages, smooths navigation, improves editing feedback, and makes the app feel cleaner across themes.",
   highlights: [
-    "Cleaner Dashboard, Bills, Credit Cards, Editor, and Settings layouts.",
-    "Improved mobile Editor controls and softer app-style list cells.",
-    "Tighter copy, clearer sections, smoother navigation, and stronger visual hierarchy.",
+    "Tightened the Dashboard, Bills, Credit Cards, Editor, and Settings pages for a cleaner, more consistent feel.",
+    "Improved page and menu animations so moving through the app feels smoother and more polished.",
+    "Refined the Credit Cards layout, added slightly better Editor feedback, and fixed light-theme button visibility issues.",
   ],
 };
 
@@ -31,7 +31,7 @@ export default function WhatsNewPage() {
       <TopNav />
 
       <div className="min-h-[70vh]">
-        <header className="-mt-1 mb-4 motion-card sm:-mt-2">
+        <header className="-mt-1 mb-3 motion-card sm:-mt-2">
           <div className="mb-2 flex items-center justify-between gap-4">
             <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
               Release Notes
@@ -45,17 +45,17 @@ export default function WhatsNewPage() {
           </h1>
         </header>
 
-        <section className="liquid-glass-accent hero-glass-card motion-card motion-card-delay-1 mb-4 rounded-[2.15rem]">
-          <div className="liquid-content relative p-4 sm:p-5">
-            <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#c7ad75]/10 blur-3xl" />
-            <div className="absolute -bottom-20 left-10 h-44 w-44 rounded-full bg-[#f5f0e8]/5 blur-3xl" />
+        <section className="liquid-glass-accent hero-glass-card motion-card motion-card-delay-1 mb-3 rounded-[2rem]">
+          <div className="liquid-content relative p-3.5 sm:p-5">
+            <div className="absolute -right-16 -top-16 h-36 w-36 rounded-full bg-[#c7ad75]/10 blur-3xl" />
+            <div className="absolute -bottom-16 left-10 h-36 w-36 rounded-full bg-[#f5f0e8]/5 blur-3xl" />
 
-            <div className="relative mb-4 flex items-start justify-between gap-4">
+            <div className="relative mb-3 flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="mb-2 flex items-center gap-3">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.35)]" />
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.35)]" />
 
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f5f0e8]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
                     Latest Update
                   </p>
                 </div>
@@ -64,7 +64,7 @@ export default function WhatsNewPage() {
                   {latestUpdate.title}
                 </h2>
 
-                <p className="mt-1 text-sm font-semibold text-stone-300">
+                <p className="mt-0.5 text-sm font-semibold text-stone-300">
                   {latestUpdate.version}
                 </p>
               </div>
@@ -76,7 +76,7 @@ export default function WhatsNewPage() {
               {latestUpdate.summary}
             </p>
 
-            <div className="relative mt-4 grid gap-2">
+            <div className="relative mt-3 grid gap-2">
               {latestUpdate.highlights.map((highlight) => (
                 <HighlightRow key={highlight} text={highlight} />
               ))}
@@ -84,10 +84,10 @@ export default function WhatsNewPage() {
           </div>
         </section>
 
-        <section className="grid gap-4">
+        <section className="grid gap-3">
           <Link
             href="/whats-new/patch-notes"
-            className="pressable liquid-glass motion-card motion-card-delay-2 rounded-[1.85rem] p-4 transition hover:border-[#c7ad75]/30"
+            className="pressable group liquid-glass motion-card motion-card-delay-2 rounded-[1.7rem] p-3.5 transition hover:border-[#c7ad75]/30"
           >
             <div className="liquid-content">
               <div className="flex items-center justify-between gap-4">
@@ -101,14 +101,14 @@ export default function WhatsNewPage() {
                       Patch Notes
                     </p>
 
-                    <p className="mt-1 truncate text-sm text-stone-400">
+                    <p className="mt-0.5 truncate text-sm text-stone-400">
                       Full version history.
                     </p>
                   </div>
                 </div>
 
                 <div className="flex shrink-0 items-center gap-2">
-                  <span className="hidden rounded-full border border-[#f5f0e8]/10 bg-[#f5f0e8]/6 px-2.5 py-1 text-xs font-semibold text-stone-400 sm:inline-flex">
+                  <span className="hidden rounded-full border border-[#f5f0e8]/10 bg-[#f5f0e8]/6 px-2.5 py-0.5 text-xs font-semibold text-stone-400 sm:inline-flex">
                     History
                   </span>
 
@@ -118,7 +118,7 @@ export default function WhatsNewPage() {
             </div>
           </Link>
 
-          <section className="liquid-glass motion-card motion-card-delay-3 rounded-[1.85rem] p-4">
+          <section className="liquid-glass motion-card motion-card-delay-3 rounded-[1.7rem] p-3.5">
             <div className="liquid-content">
               <button
                 type="button"
@@ -135,7 +135,7 @@ export default function WhatsNewPage() {
                       Tester Notes
                     </p>
 
-                    <p className="mt-1 truncate text-sm text-stone-400">
+                    <p className="mt-0.5 truncate text-sm text-stone-400">
                       Private beta reminders.
                     </p>
                   </div>
@@ -147,7 +147,7 @@ export default function WhatsNewPage() {
               </button>
 
               {showTesterNotes && (
-                <div className="mt-4 grid gap-2">
+                <div className="mt-3 grid gap-2">
                   {testerNotes.map((note, index) => (
                     <TesterNoteRow
                       key={note}
@@ -162,7 +162,7 @@ export default function WhatsNewPage() {
 
           <Link
             href="/"
-            className="pressable motion-card motion-card-delay-3 rounded-full border border-[#f5f0e8]/10 bg-[#11100d]/25 px-5 py-3 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+            className="pressable motion-card motion-card-delay-3 rounded-full border border-[#f5f0e8]/10 bg-[#11100d]/25 px-5 py-2.5 text-center text-sm font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
           >
             Back to Dashboard
           </Link>
@@ -174,7 +174,7 @@ export default function WhatsNewPage() {
 
 function HighlightRow({ text }: { text: string }) {
   return (
-    <div className="rounded-[1.2rem] border border-[#f5f0e8]/10 bg-[#11100d]/22 px-3.5 py-3">
+    <div className="rounded-[1.1rem] border border-[#f5f0e8]/10 bg-[#11100d]/22 px-3.5 py-2.5">
       <div className="flex gap-3">
         <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#c7ad75]" />
 
@@ -186,7 +186,7 @@ function HighlightRow({ text }: { text: string }) {
 
 function TesterNoteRow({ number, text }: { number: number; text: string }) {
   return (
-    <div className="rounded-[1.2rem] border border-[#f5f0e8]/10 bg-[#11100d]/22 px-3.5 py-3">
+    <div className="rounded-[1.1rem] border border-[#f5f0e8]/10 bg-[#11100d]/22 px-3.5 py-2.5">
       <div className="flex gap-3">
         <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/10 text-xs font-bold text-[#c7ad75]">
           {number}
@@ -198,9 +198,9 @@ function TesterNoteRow({ number, text }: { number: number; text: string }) {
   );
 }
 
-function IconBubble({ children }: { children: React.ReactNode }) {
+function IconBubble({ children }: { children: ReactNode }) {
   return (
-    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/10 text-[#c7ad75] shadow-[inset_0_1px_0_rgba(245,240,232,0.08)]">
+    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/10 text-[#c7ad75] shadow-[inset_0_1px_0_rgba(245,240,232,0.08)]">
       {children}
     </div>
   );
