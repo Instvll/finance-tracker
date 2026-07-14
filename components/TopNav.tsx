@@ -5,9 +5,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import LogoMark from "./LogoMark";
+import { supabase } from "../lib/supabase/client";
 
-const drawerCloseDelay = 340;
-const drawerNavigationDelay = 360;
+const drawerCloseDelay = 290;
+const drawerNavigationDelay = 95;
 
 const mainNavItems = [
   { label: "Dashboard", href: "/", icon: DashboardIcon },
@@ -29,6 +30,10 @@ export default function TopNav() {
 
   const [isDrawerMounted, setIsDrawerMounted] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [accountEmail, setAccountEmail] = useState("");
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState("");
 
   const clearCloseTimer = useCallback(() => {
     if (closeTimerRef.current) {
@@ -47,6 +52,8 @@ export default function TopNav() {
   const openMenu = useCallback(() => {
     clearCloseTimer();
     clearNavigationTimer();
+    setShowSignOutConfirm(false);
+    setSignOutError("");
     setIsDrawerMounted(true);
 
     window.requestAnimationFrame(() => {
@@ -56,6 +63,8 @@ export default function TopNav() {
 
   const closeMenu = useCallback(() => {
     clearCloseTimer();
+    setShowSignOutConfirm(false);
+    setSignOutError("");
     setIsDrawerOpen(false);
 
     closeTimerRef.current = setTimeout(() => {
@@ -92,6 +101,62 @@ export default function TopNav() {
   }
 
   useEffect(() => {
+    const routes = [...mainNavItems, ...utilityNavItems]
+      .map((item) => item.href)
+      .filter((href) => href !== pathname);
+
+    routes.forEach((href) => {
+      router.prefetch(href);
+    });
+  }, [pathname, router]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadAccount() {
+      const { data } = await supabase.auth.getUser();
+
+      if (isMounted) {
+        setAccountEmail(data.user?.email ?? "");
+      }
+    }
+
+    loadAccount();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (isMounted) {
+        setAccountEmail(session?.user?.email ?? "");
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  async function signOut() {
+    if (isSigningOut) {
+      return;
+    }
+
+    setIsSigningOut(true);
+    setSignOutError("");
+
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      setIsSigningOut(false);
+      setSignOutError("Couldn’t sign out. Please try again.");
+      return;
+    }
+
+    window.location.href = "/login";
+  }
+
+  useEffect(() => {
     return () => {
       clearCloseTimer();
       clearNavigationTimer();
@@ -115,9 +180,17 @@ export default function TopNav() {
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        closeMenu();
+      if (event.key !== "Escape") {
+        return;
       }
+
+      if (showSignOutConfirm) {
+        setShowSignOutConfirm(false);
+        setSignOutError("");
+        return;
+      }
+
+      closeMenu();
     }
 
     window.addEventListener("keydown", handleKeyDown);
@@ -127,7 +200,7 @@ export default function TopNav() {
       document.body.style.paddingRight = previousPaddingRight;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [closeMenu, isDrawerMounted]);
+  }, [closeMenu, isDrawerMounted, showSignOutConfirm]);
 
   return (
     <>
@@ -197,14 +270,14 @@ export default function TopNav() {
             />
 
             <aside
-              className="liquid-glass drawer-panel-right relative ml-auto flex h-dvh w-[88vw] max-w-[390px] rounded-l-[2rem] border-y-0 border-r-0 px-4 pb-4 pt-5 shadow-2xl shadow-black/40 sm:px-5 sm:pb-5 sm:pt-6"
+              className="liquid-glass drawer-panel-right relative ml-auto flex h-dvh w-[88vw] max-w-[390px] rounded-l-[2rem] border-y-0 border-r-0 px-4 pb-4 pt-[1.15rem] shadow-2xl shadow-black/40 sm:px-5 sm:pb-5 sm:pt-5"
               aria-label="Navigation menu"
               onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => event.stopPropagation()}
             >
               <div className="liquid-content flex min-h-0 w-full flex-col">
                 <div
-                  className="drawer-menu-item mb-6 flex items-center justify-between gap-4"
+                  className="drawer-menu-item mb-5 flex items-center justify-between gap-4"
                   style={{ "--menu-item-index": 0 } as CSSProperties}
                 >
                   <DrawerLogoLink href="/" onNavigate={navigateFromDrawer} />
@@ -223,7 +296,7 @@ export default function TopNav() {
                 </div>
 
                 <div className="flex min-h-0 flex-1 flex-col">
-                  <div className="min-h-0 overflow-y-auto pr-1">
+                  <div className="drawer-menu-scroll min-h-0 overflow-y-auto pr-1">
                     <MenuSection label="Main">
                       {mainNavItems.map((item, index) => {
                         const active = isActiveRoute(item.href);
@@ -244,7 +317,7 @@ export default function TopNav() {
                     </MenuSection>
                   </div>
 
-                  <div className="mt-auto pt-6">
+                  <div className="mt-auto pt-5">
                     <MenuSection label="App">
                       {utilityNavItems.map((item, index) => {
                         const active = isActiveRoute(item.href);
@@ -265,7 +338,7 @@ export default function TopNav() {
                     </MenuSection>
 
                     <div
-                      className="drawer-menu-item mt-6 rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#11100d]/35 p-4"
+                      className="drawer-menu-item mt-4 border-t border-[#f5f0e8]/8 pt-3.5"
                       style={
                         {
                           "--menu-item-index":
@@ -273,17 +346,128 @@ export default function TopNav() {
                         } as CSSProperties
                       }
                     >
-                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c7ad75]/75">
-                        v1.2.2 Beta
-                      </p>
+                      <div className="drawer-account-card">
+                        <div className="liquid-content relative flex min-w-0 items-center gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="drawer-account-status-dot" />
 
-                      <p className="mt-2 text-sm leading-6 text-stone-400">
-                        Refined experience. Theme identity and mobile polish.
-                      </p>
+                              <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/70">
+                                Signed in
+                              </p>
+                            </div>
+
+                            <p className="mt-1 truncate text-[13px] font-semibold leading-5 text-[#f5f0e8]">
+                              {accountEmail || "Account connected"}
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSignOutError("");
+                              setShowSignOutConfirm(true);
+                            }}
+                            className="drawer-account-signout pressable"
+                            aria-label="Sign out"
+                            title="Sign out"
+                          >
+                            <PowerIcon />
+                          </button>
+                        </div>
+
+                        <div className="liquid-content relative mt-2 flex min-w-0 items-center gap-1.5">
+                          <p className="shrink-0 text-[9px] font-semibold uppercase tracking-[0.16em] text-[#c7ad75]/60">
+                            v1.3 Beta
+                          </p>
+
+                          <span className="text-[9px] text-stone-600" aria-hidden="true">
+                            •
+                          </span>
+
+                          <p className="truncate text-[9px] font-medium text-stone-500">
+                            Clearer by Payday
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
+
+              {showSignOutConfirm ? (
+                <div
+                  className="absolute inset-0 z-20 flex items-end bg-black/25 p-4"
+                  onClick={() => {
+                    if (!isSigningOut) {
+                      setShowSignOutConfirm(false);
+                      setSignOutError("");
+                    }
+                  }}
+                >
+                  <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="sign-out-title"
+                    className="liquid-glass-soft w-full rounded-[1.5rem] border border-[#f5f0e8]/12 p-4 shadow-[0_24px_56px_rgba(0,0,0,0.34)]"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div className="liquid-content">
+                      <div className="flex items-start gap-3">
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#c7ad75]/24 bg-[#c7ad75]/10 text-[#c7ad75]">
+                          <PowerIcon />
+                        </span>
+
+                        <div className="min-w-0">
+                          <h2
+                            id="sign-out-title"
+                            className="text-base font-semibold text-[#f5f0e8]"
+                          >
+                            Sign out of leftovr?
+                          </h2>
+
+                          <p className="mt-1 text-sm leading-6 text-stone-400">
+                            You’ll need to sign in again to access your account.
+                            Financial data stored on this device will remain here.
+                          </p>
+                        </div>
+                      </div>
+
+                      {signOutError ? (
+                        <p
+                          role="alert"
+                          className="mt-3 rounded-[0.95rem] border border-[#dc2626]/24 bg-[#dc2626]/8 px-3 py-2 text-sm text-[#ef4444]"
+                        >
+                          {signOutError}
+                        </p>
+                      ) : null}
+
+                      <div className="mt-4 grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowSignOutConfirm(false);
+                            setSignOutError("");
+                          }}
+                          disabled={isSigningOut}
+                          className="pressable rounded-full border border-[#f5f0e8]/10 bg-[#f5f0e8]/5 px-4 py-2.5 text-sm font-semibold text-stone-300 transition hover:border-[#f5f0e8]/16 hover:bg-[#f5f0e8]/8 hover:text-[#f5f0e8] disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={signOut}
+                          disabled={isSigningOut}
+                          className="pressable rounded-full border border-[#c7ad75]/34 bg-[#c7ad75]/14 px-4 py-2.5 text-sm font-semibold text-[#f5f0e8] transition hover:border-[#c7ad75]/46 hover:bg-[#c7ad75]/20 disabled:opacity-60"
+                        >
+                          {isSigningOut ? "Signing Out…" : "Sign Out"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </aside>
           </div>
         </>
@@ -339,11 +523,9 @@ function MenuSection({
 }) {
   return (
     <section>
-      <p className="mb-3 px-1 text-xs font-semibold uppercase tracking-[0.24em] text-[#c7ad75]/75">
-        {label}
-      </p>
+      <p className="drawer-section-label">{label}</p>
 
-      <div className="grid gap-2">{children}</div>
+      <div className="grid gap-1.5">{children}</div>
     </section>
   );
 }
@@ -377,32 +559,30 @@ function MenuLink({
     <Link
       href={href}
       onClick={handleClick}
+      aria-current={active ? "page" : undefined}
       style={{ "--menu-item-index": index } as CSSProperties}
-      className={`drawer-menu-item pressable flex items-center justify-between gap-4 rounded-[1.25rem] border px-4 py-3.5 transition ${
-        active
-          ? "border-[#c7ad75]/38 bg-[#c7ad75]/15 text-[#f5f0e8] shadow-[inset_0_1px_0_rgba(245,240,232,0.08)]"
-          : "border-[#f5f0e8]/10 bg-[#11100d]/28 text-stone-300 hover:border-[#c7ad75]/25 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+      className={`drawer-menu-item drawer-nav-link pressable ${
+        active ? "drawer-nav-link-active" : ""
       }`}
     >
       <span className="flex min-w-0 items-center gap-3">
         <span
-          className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl border transition ${
-            active
-              ? "border-[#c7ad75]/28 bg-[#c7ad75]/12 text-[#c7ad75]"
-              : "border-[#f5f0e8]/10 bg-[#f5f0e8]/5 text-stone-400"
+          className={`drawer-nav-icon ${
+            active ? "drawer-nav-icon-active" : ""
           }`}
         >
           {icon}
         </span>
 
-        <span className="truncate text-sm font-semibold">{label}</span>
+        <span className="drawer-nav-label truncate">{label}</span>
       </span>
 
-      {active ? (
-        <span className="h-2 w-2 shrink-0 rounded-full bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.35)]" />
-      ) : (
-        <span className="h-2 w-2 shrink-0 rounded-full bg-transparent" />
-      )}
+      <span
+        className={`drawer-nav-dot ${
+          active ? "drawer-nav-dot-active" : ""
+        }`}
+        aria-hidden="true"
+      />
     </Link>
   );
 }
@@ -415,6 +595,53 @@ function shouldUseDefaultLinkBehavior(event: MouseEvent<HTMLAnchorElement>) {
     event.altKey ||
     event.button !== 0 ||
     event.currentTarget.target === "_blank"
+  );
+}
+
+function AccountIcon() {
+  return (
+    <svg
+      className="h-4 w-4 shrink-0"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M4.5 21a7.5 7.5 0 0 1 15 0"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function PowerIcon() {
+  return (
+    <svg
+      className="h-4 w-4 shrink-0"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M12 3v9"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+      />
+      <path
+        d="M6.7 6.8a8 8 0 1 0 10.6 0"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 

@@ -4,25 +4,48 @@ export function PageShell({ children }: { children: React.ReactNode }) {
       <div className="mx-auto max-w-5xl">
         {children}
 
-        <footer className="mt-10 border-t border-[#f5f0e8]/10 pt-5">
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold lowercase tracking-[0.24em] text-[#f5f0e8]">
-                leftovr
-              </p>
+        <footer className="mt-10 border-t border-[#f5f0e8]/8 pt-4">
+          <a
+            href="/whats-new"
+            aria-label="View what’s new in leftovr v1.3 Beta"
+            className="pressable group flex min-w-0 items-center gap-3 rounded-[1rem] px-1 py-1.5"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <p className="truncate text-sm font-semibold lowercase tracking-[0.24em] text-[#f5f0e8]">
+                  leftovr
+                </p>
 
-              <p className="mt-1 text-xs text-stone-500">
-                Simple finance tracking.
+                <span
+                  className="h-3 w-px shrink-0 bg-[#f5f0e8]/12"
+                  aria-hidden="true"
+                />
+
+                <p className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/75">
+                  v1.3 Beta
+                </p>
+              </div>
+
+              <p className="mt-0.5 text-xs leading-5 text-stone-500">
+                Clearer by Payday
               </p>
             </div>
 
-            <a
-              href="/whats-new"
-              className="pressable shrink-0 rounded-full border border-[#f5f0e8]/10 bg-[#11100d]/25 px-3 py-1.5 text-xs font-semibold text-stone-400 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+            <svg
+              className="h-4 w-4 shrink-0 text-stone-500 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[#c7ad75]"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
             >
-              v1.2.2 Beta
-            </a>
-          </div>
+              <path
+                d="m9 6 6 6-6 6"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </a>
         </footer>
       </div>
     </main>

@@ -7,10 +7,12 @@ type ThemeId =
   | "mocha"
   | "forest"
   | "slate"
+  | "rose-gold"
   | "classic-light"
   | "mocha-light"
   | "forest-light"
   | "slate-light"
+  | "rose-gold-light"
   | "july-fourth";
 
 type ThemeCategory = "Dark" | "Light" | "Special";
@@ -30,7 +32,7 @@ const themes: ThemeOption[] = [
     id: "classic",
     name: "leftovr Classic",
     category: "Dark",
-    description: "Obsidian charcoal, soft mint, and warm off-white.",
+    description: "Obsidian, mint, and soft white.",
     dots: ["#080d0f", "#8fd8b8", "#f4f8f5"],
   },
   {
@@ -53,6 +55,13 @@ const themes: ThemeOption[] = [
     category: "Dark",
     description: "Cool steel, blue-gray, and crisp white.",
     dots: ["#0c1018", "#9fb3d1", "#eef4fb"],
+  },
+  {
+    id: "rose-gold",
+    name: "Rose Gold",
+    category: "Dark",
+    description: "Charcoal rose, champagne, and warm ivory.",
+    dots: ["#130f11", "#d5a39d", "#f7efed"],
   },
   {
     id: "classic-light",
@@ -81,6 +90,13 @@ const themes: ThemeOption[] = [
     category: "Light",
     description: "Clean steel white with cool slate detail.",
     dots: ["#f1f4f8", "#5d7291", "#111820"],
+  },
+  {
+    id: "rose-gold-light",
+    name: "Rose Gold Light",
+    category: "Light",
+    description: "Warm pearl, soft blush, and rose bronze.",
+    dots: ["#f8f1ef", "#a86f69", "#2b1d1e"],
   },
   {
     id: "july-fourth",
@@ -115,58 +131,102 @@ export default function ThemeSelector() {
   const activeTheme =
     themes.find((theme) => theme.id === selectedTheme) || themes[0];
 
-  return (
-    <section className="grid gap-3 overflow-hidden">
-      <section className="liquid-glass motion-card motion-card-delay-1 rounded-[1.7rem] p-3.5">
-        <div className="liquid-content">
-          <div className="mb-3 flex items-center justify-between gap-4">
-            <SectionTitle title="Active Theme" />
+  const darkThemes = themes.filter((theme) => theme.category === "Dark");
+  const lightThemes = themes.filter((theme) => theme.category === "Light");
+  const specialThemes = themes.filter((theme) => theme.category === "Special");
 
-            <span className="shrink-0 rounded-full border border-[#c7ad75]/30 bg-[#c7ad75]/12 px-3 py-0.5 text-xs font-semibold text-[#f5f0e8]">
+  return (
+    <section className="grid gap-2.5 overflow-hidden">
+      <section className="liquid-glass-accent hero-glass-card dashboard-hero motion-card motion-card-delay-1 rounded-[2rem]">
+        <div className="liquid-content dashboard-hero-content relative p-3.5 sm:p-4">
+          <div
+            className="dashboard-hero-glow dashboard-hero-glow-accent"
+            aria-hidden="true"
+          />
+
+          <div
+            className="dashboard-hero-glow dashboard-hero-glow-soft"
+            aria-hidden="true"
+          />
+
+          <div className="dashboard-hero-reflection" aria-hidden="true" />
+
+          <div className="relative flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-2.5 pr-1">
+              <span className="dashboard-hero-status-dot mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75]" />
+
+              <p className="min-w-0 text-xs font-semibold uppercase leading-5 tracking-[0.22em] text-[#f5f0e8]">
+                Current Theme
+              </p>
+            </div>
+
+            <span className="dashboard-pill-button !px-2.5 !py-0.5">
               Active
             </span>
           </div>
 
-          <div className="rounded-[1.15rem] border border-[#c7ad75]/22 bg-[#c7ad75]/10 px-3 py-2.5">
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 overflow-hidden">
-              <div className="min-w-0">
-                <p className="truncate text-base font-semibold text-[#f5f0e8]">
-                  {activeTheme.name}
-                </p>
+          <div className="relative mt-3 flex items-end justify-between gap-4">
+            <div className="min-w-0">
+              <p className="truncate text-[2rem] font-bold leading-tight tracking-[-0.035em] text-[#f5f0e8] sm:text-4xl">
+                {activeTheme.name}
+              </p>
 
-                <p className="mt-0.5 truncate text-sm text-stone-400">
-                  {activeTheme.description}
-                </p>
-              </div>
+              <p className="mt-1 text-sm leading-5 text-stone-300/80">
+                {activeTheme.description}
+              </p>
+            </div>
 
-              <ThemePreview dots={activeTheme.dots} />
+            <ThemePreview dots={activeTheme.dots} large />
+          </div>
+
+          <div className="relative mt-3 overflow-hidden rounded-[1.3rem] border border-[#f5f0e8]/10 bg-[#11100d]/18 shadow-[inset_0_1px_0_rgba(245,240,232,0.045)]">
+            <div className="flex items-center justify-between gap-4 px-3.5 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
+                Style
+              </p>
+
+              <p className="text-base font-bold tracking-tight text-[#f5f0e8]">
+                {activeTheme.category}
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="liquid-glass motion-card motion-card-delay-2 rounded-[1.7rem] p-3.5">
-        <div className="liquid-content grid gap-4 overflow-hidden">
-          <ThemeGroup
-            title="Dark"
-            themes={themes.filter((theme) => theme.category === "Dark")}
-            selectedTheme={selectedTheme}
-            onChooseTheme={chooseTheme}
-          />
+      <section className="dashboard-surface motion-card motion-card-delay-2 rounded-[1.7rem] p-3">
+        <div className="dashboard-surface-glow" aria-hidden="true" />
 
-          <ThemeGroup
-            title="Light"
-            themes={themes.filter((theme) => theme.category === "Light")}
-            selectedTheme={selectedTheme}
-            onChooseTheme={chooseTheme}
-          />
+        <div className="liquid-content">
+          <div className="mb-3 flex items-center justify-between gap-4">
+            <SectionTitle title="Choose Theme" />
 
-          <ThemeGroup
-            title="Special"
-            themes={themes.filter((theme) => theme.category === "Special")}
-            selectedTheme={selectedTheme}
-            onChooseTheme={chooseTheme}
-          />
+            <span className="text-xs font-semibold text-stone-500">
+              {themes.length} themes
+            </span>
+          </div>
+
+          <div className="grid gap-3">
+            <ThemeGroup
+              title="Dark"
+              themes={darkThemes}
+              selectedTheme={selectedTheme}
+              onChooseTheme={chooseTheme}
+            />
+
+            <ThemeGroup
+              title="Light"
+              themes={lightThemes}
+              selectedTheme={selectedTheme}
+              onChooseTheme={chooseTheme}
+            />
+
+            <ThemeGroup
+              title="Special"
+              themes={specialThemes}
+              selectedTheme={selectedTheme}
+              onChooseTheme={chooseTheme}
+            />
+          </div>
         </div>
       </section>
     </section>
@@ -179,14 +239,14 @@ function ThemeGroup({
   selectedTheme,
   onChooseTheme,
 }: {
-  title: string;
+  title: ThemeCategory;
   themes: ThemeOption[];
   selectedTheme: ThemeId;
   onChooseTheme: (themeId: ThemeId) => void;
 }) {
   return (
-    <div className="min-w-0 overflow-hidden">
-      <div className="mb-2.5 flex items-center justify-between gap-4">
+    <section>
+      <div className="mb-2 flex items-center justify-between gap-4 px-1">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#c7ad75]/80">
           {title}
         </p>
@@ -196,8 +256,8 @@ function ThemeGroup({
         </span>
       </div>
 
-      <div className="grid gap-2">
-        {themes.map((theme) => {
+      <div className="overflow-hidden rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#11100d]/16 shadow-[inset_0_1px_0_rgba(245,240,232,0.04)]">
+        {themes.map((theme, index) => {
           const active = selectedTheme === theme.id;
 
           return (
@@ -205,38 +265,48 @@ function ThemeGroup({
               key={theme.id}
               type="button"
               onClick={() => onChooseTheme(theme.id)}
-              className={`pressable group rounded-[1.15rem] border px-3 py-2.5 text-left transition ${
+              aria-pressed={active}
+              className={`pressable group relative block w-full px-3.5 py-3 text-left transition ${
+                index > 0 ? "border-t border-[#f5f0e8]/8" : ""
+              } ${
                 active
-                  ? "border-[#c7ad75]/34 bg-[#c7ad75]/12 shadow-[inset_0_1px_0_rgba(245,240,232,0.08)]"
-                  : "border-[#f5f0e8]/10 bg-[#11100d]/22 hover:border-[#c7ad75]/24 hover:bg-[#f5f0e8]/6"
+                  ? "bg-[#c7ad75]/10"
+                  : "hover:bg-[#f5f0e8]/[0.035]"
               }`}
             >
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 overflow-hidden">
+              {active ? (
+                <span
+                  className="absolute inset-y-2 left-0 w-[3px] rounded-r-full bg-[#c7ad75]"
+                  aria-hidden="true"
+                />
+              ) : null}
+
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div
-                    className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border transition ${
+                  <span
+                    className={`grid h-9 w-9 shrink-0 place-items-center rounded-[0.95rem] border transition ${
                       active
-                        ? "border-[#c7ad75]/38 bg-[#c7ad75]/14 text-[#c7ad75]"
-                        : "border-[#f5f0e8]/10 bg-[#11100d]/25 text-stone-500 group-hover:text-[#c7ad75]"
+                        ? "border-[#c7ad75]/34 bg-[#c7ad75]/12 text-[#c7ad75]"
+                        : "border-[#f5f0e8]/10 bg-[#f5f0e8]/5 text-stone-500 group-hover:border-[#c7ad75]/24 group-hover:text-[#c7ad75]"
                     }`}
                   >
                     {active ? <CheckIcon /> : <ThemeIcon />}
-                  </div>
+                  </span>
 
                   <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-2">
-                      <p className="truncate text-base font-semibold text-[#f5f0e8]">
+                      <p className="truncate text-sm font-semibold text-[#f5f0e8] sm:text-base">
                         {theme.name}
                       </p>
 
                       {active ? (
-                        <span className="shrink-0 rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/12 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[#c7ad75]">
-                          On
+                        <span className="shrink-0 text-[9px] font-bold uppercase tracking-[0.16em] text-[#c7ad75]">
+                          Active
                         </span>
                       ) : null}
                     </div>
 
-                    <p className="mt-0.5 truncate text-sm text-stone-400">
+                    <p className="mt-0.5 overflow-hidden text-xs leading-5 text-stone-400 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] sm:text-sm">
                       {theme.description}
                     </p>
                   </div>
@@ -248,14 +318,14 @@ function ThemeGroup({
           );
         })}
       </div>
-    </div>
+    </section>
   );
 }
 
 function SectionTitle({ title }: { title: string }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.25)]" />
+    <div className="flex items-center gap-2.5">
+      <span className="dashboard-section-dot h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75]" />
 
       <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
         {title}
@@ -264,13 +334,25 @@ function SectionTitle({ title }: { title: string }) {
   );
 }
 
-function ThemePreview({ dots }: { dots: string[] }) {
+function ThemePreview({
+  dots,
+  large = false,
+}: {
+  dots: string[];
+  large?: boolean;
+}) {
   return (
-    <div className="flex max-w-[64px] shrink-0 overflow-hidden rounded-full border border-[#f5f0e8]/10 bg-[#11100d]/25 p-0.5">
+    <div
+      className={`flex shrink-0 overflow-hidden rounded-full border border-[#f5f0e8]/10 bg-[#11100d]/25 p-0.5 ${
+        large ? "max-w-[78px]" : "max-w-[64px]"
+      }`}
+    >
       {dots.map((dot) => (
         <span
           key={dot}
-          className="-ml-1 h-4 w-4 shrink-0 rounded-full border border-white/20 shadow-sm first:ml-0"
+          className={`-ml-1 shrink-0 rounded-full border border-white/20 shadow-sm first:ml-0 ${
+            large ? "h-5 w-5" : "h-4 w-4"
+          }`}
           style={{ backgroundColor: dot }}
         />
       ))}
@@ -306,11 +388,16 @@ function ThemeIcon() {
       aria-hidden="true"
     >
       <path
-        d="M12 4a8 8 0 1 0 8 8 4 4 0 0 1-4-4 4 4 0 0 1-4-4Z"
+        d="M12 4.25a7.75 7.75 0 1 0 0 15.5h1.1a1.9 1.9 0 0 0 1.36-3.23 1.55 1.55 0 0 1 1.1-2.64H17a3.75 3.75 0 0 0 3.75-3.75C20.75 6.88 17.35 4.25 12 4.25Z"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="1.7"
         strokeLinejoin="round"
       />
+
+      <circle cx="8.3" cy="10.1" r="0.9" fill="currentColor" />
+      <circle cx="10.4" cy="7.35" r="0.9" fill="currentColor" />
+      <circle cx="14" cy="7.35" r="0.9" fill="currentColor" />
+      <circle cx="16.15" cy="10.2" r="0.9" fill="currentColor" />
     </svg>
   );
 }

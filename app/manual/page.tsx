@@ -1,12 +1,22 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
 import TopNav from "../../components/TopNav";
 import { PageShell, Pill } from "../../components/Layout";
 import { bills, creditCards, financeSummary } from "../../data/bandData";
-import { sortIndexedBillsByDueDay } from "../../lib/billStatus";
+import {
+  getBillIdentity,
+  sortIndexedBillsByDueDay,
+  type PaidBillOccurrences,
+} from "../../lib/billStatus";
 
 type EditorTab = "overview" | "bills" | "cards";
+
+type NewlyAddedItem = {
+  type: "bill" | "card";
+  index: number;
+};
 
 type ManualFinanceData = {
   checkingBalance: string;
@@ -32,10 +42,28 @@ type ManualCreditCard = {
   status: "Good" | "Watch" | "Pay Down";
 };
 
+type PaidBillAction = {
+  occurrenceKey: string;
+  occurrenceDateKey: string;
+  billIdentity: string;
+  billName: string;
+  nextOccurrenceDateKey: string | null;
+  paidAt: string;
+};
+
+type ActiveBillOccurrenceDates = Record<string, string>;
+
 const summaryStorageKey = "finance-tracker-manual-data";
 const billsStorageKey = "finance-tracker-manual-bills";
 const cardsStorageKey = "finance-tracker-manual-cards";
 const lastSavedStorageKey = "finance-tracker-last-saved";
+const paidBillsStorageKey = "leftovr-paid-bill-occurrences";
+const activeBillOccurrencesStorageKey =
+  "leftovr-active-bill-occurrences";
+const recentPaidActionsStorageKey =
+  "leftovr-recent-paid-bill-actions";
+const legacyLastPaidActionStorageKey =
+  "leftovr-last-paid-bill-action";
 
 const defaultManualData: ManualFinanceData = {
   checkingBalance: String(financeSummary.checkingBalance),
@@ -73,6 +101,206 @@ function readJsonStorage<T>(key: string, fallback: T) {
   } catch {
     return fallback;
   }
+}
+
+function cloneBill(bill: ManualBill) {
+  return { ...bill };
+}
+
+function getOccurrenceKeyForIdentity(
+  occurrenceKey: string,
+  oldIdentity: string,
+  newIdentity: string,
+) {
+  const oldPrefix = `${oldIdentity}|`;
+
+  if (!occurrenceKey.startsWith(oldPrefix)) {
+    return occurrenceKey;
+  }
+
+  return `${newIdentity}|${occurrenceKey.slice(oldPrefix.length)}`;
+}
+
+function reconcileBillOccurrenceStorage(
+  originalBills: Array<ManualBill | null>,
+  removedBills: ManualBill[],
+  nextBills: ManualBill[],
+) {
+  const savedActiveOccurrences =
+    readJsonStorage<ActiveBillOccurrenceDates>(
+      activeBillOccurrencesStorageKey,
+      {},
+    );
+  const savedPaidOccurrences =
+    readJsonStorage<PaidBillOccurrences>(
+      paidBillsStorageKey,
+      {},
+    );
+  const savedRecentPaidActions =
+    readJsonStorage<PaidBillAction[]>(
+      recentPaidActionsStorageKey,
+      [],
+    );
+
+  const nextActiveOccurrences = {
+    ...savedActiveOccurrences,
+  };
+  const nextPaidOccurrences = {
+    ...savedPaidOccurrences,
+  };
+  let nextRecentPaidActions = [...savedRecentPaidActions];
+
+  nextBills.forEach((nextBill, index) => {
+    const originalBill = originalBills[index];
+
+    if (!originalBill) {
+      return;
+    }
+
+    const oldIdentity = getBillIdentity(originalBill);
+    const newIdentity = getBillIdentity(nextBill);
+
+    if (oldIdentity === newIdentity) {
+      return;
+    }
+
+    const dueDateChanged =
+      originalBill.dueDate.trim().toLowerCase() !==
+      nextBill.dueDate.trim().toLowerCase();
+
+    if (
+      !dueDateChanged &&
+      nextActiveOccurrences[oldIdentity]
+    ) {
+      nextActiveOccurrences[newIdentity] =
+        nextActiveOccurrences[oldIdentity];
+    }
+
+    delete nextActiveOccurrences[oldIdentity];
+
+    Object.entries(nextPaidOccurrences).forEach(
+      ([occurrenceKey, paidAt]) => {
+        if (!occurrenceKey.startsWith(`${oldIdentity}|`)) {
+          return;
+        }
+
+        const migratedOccurrenceKey =
+          getOccurrenceKeyForIdentity(
+            occurrenceKey,
+            oldIdentity,
+            newIdentity,
+          );
+
+        nextPaidOccurrences[migratedOccurrenceKey] = paidAt;
+        delete nextPaidOccurrences[occurrenceKey];
+      },
+    );
+
+    nextRecentPaidActions = nextRecentPaidActions.flatMap(
+      (action) => {
+        if (action.billIdentity !== oldIdentity) {
+          return [action];
+        }
+
+        if (dueDateChanged) {
+          return [];
+        }
+
+        return [
+          {
+            ...action,
+            occurrenceKey: getOccurrenceKeyForIdentity(
+              action.occurrenceKey,
+              oldIdentity,
+              newIdentity,
+            ),
+            billIdentity: newIdentity,
+            billName: nextBill.name || "Bill",
+          },
+        ];
+      },
+    );
+  });
+
+  const removedIdentities = new Set(
+    removedBills.map((bill) => getBillIdentity(bill)),
+  );
+
+  removedIdentities.forEach((identity) => {
+    delete nextActiveOccurrences[identity];
+
+    Object.keys(nextPaidOccurrences).forEach(
+      (occurrenceKey) => {
+        if (occurrenceKey.startsWith(`${identity}|`)) {
+          delete nextPaidOccurrences[occurrenceKey];
+        }
+      },
+    );
+
+    nextRecentPaidActions = nextRecentPaidActions.filter(
+      (action) =>
+        action.billIdentity !== identity &&
+        !action.occurrenceKey.startsWith(`${identity}|`),
+    );
+  });
+
+  const validBillIdentities = nextBills.map((bill) =>
+    getBillIdentity(bill),
+  );
+  const isValidOccurrenceKey = (occurrenceKey: string) =>
+    validBillIdentities.some((identity) =>
+      occurrenceKey.startsWith(`${identity}|`),
+    );
+
+  Object.keys(nextActiveOccurrences).forEach((identity) => {
+    if (!validBillIdentities.includes(identity)) {
+      delete nextActiveOccurrences[identity];
+    }
+  });
+
+  Object.keys(nextPaidOccurrences).forEach((occurrenceKey) => {
+    if (!isValidOccurrenceKey(occurrenceKey)) {
+      delete nextPaidOccurrences[occurrenceKey];
+    }
+  });
+
+  const seenRecentOccurrenceKeys = new Set<string>();
+
+  nextRecentPaidActions = nextRecentPaidActions
+    .filter((action) => {
+      if (
+        !validBillIdentities.includes(action.billIdentity) ||
+        !nextPaidOccurrences[action.occurrenceKey] ||
+        seenRecentOccurrenceKeys.has(action.occurrenceKey)
+      ) {
+        return false;
+      }
+
+      seenRecentOccurrenceKeys.add(action.occurrenceKey);
+      return true;
+    })
+    .sort(
+      (firstAction, secondAction) =>
+        new Date(secondAction.paidAt).getTime() -
+        new Date(firstAction.paidAt).getTime(),
+    )
+    .slice(0, 8);
+
+  window.localStorage.setItem(
+    activeBillOccurrencesStorageKey,
+    JSON.stringify(nextActiveOccurrences),
+  );
+  window.localStorage.setItem(
+    paidBillsStorageKey,
+    JSON.stringify(nextPaidOccurrences),
+  );
+  window.localStorage.setItem(
+    recentPaidActionsStorageKey,
+    JSON.stringify(nextRecentPaidActions),
+  );
+  window.localStorage.removeItem(
+    legacyLastPaidActionStorageKey,
+  );
 }
 
 function formatSavedTime(value: string) {
@@ -118,6 +346,43 @@ function clearZeroOnFocus(
   }
 }
 
+function scrollEditorItemIntoView(
+  type: "bill" | "card",
+  index: number
+) {
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      const item = document.querySelector<HTMLElement>(
+        `[data-editor-item="${type}-${index}"]`
+      );
+
+      if (!item) {
+        return;
+      }
+
+      const rect = item.getBoundingClientRect();
+      const topClearance = 112;
+      const bottomClearance = 24;
+      const isComfortablyVisible =
+        rect.top >= topClearance &&
+        rect.bottom <= window.innerHeight - bottomClearance;
+
+      if (isComfortablyVisible) {
+        return;
+      }
+
+      const prefersReducedMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)"
+      ).matches;
+
+      item.scrollIntoView({
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+        block: "start",
+      });
+    });
+  });
+}
+
 export default function ManualPage() {
   const [activeTab, setActiveTab] = useState<EditorTab>("overview");
   const [manualData, setManualData] =
@@ -131,15 +396,36 @@ export default function ManualPage() {
   const [showSavedConfirmation, setShowSavedConfirmation] = useState(false);
   const [editingBills, setEditingBills] = useState<number[]>([]);
   const [editingCards, setEditingCards] = useState<number[]>([]);
+  const [newlyAddedItem, setNewlyAddedItem] =
+    useState<NewlyAddedItem | null>(null);
 
   const savedConfirmationTimeout = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
+  const newItemFocusTimeout = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  const newItemHighlightTimeout = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  const originalBillsRef =
+    useRef<Array<ManualBill | null>>([]);
+  const removedBillsRef = useRef<ManualBill[]>([]);
 
   useEffect(() => {
+    const savedBills = readJsonStorage(
+      billsStorageKey,
+      defaultManualBills,
+    );
+
     setManualData(readJsonStorage(summaryStorageKey, defaultManualData));
-    setManualBills(readJsonStorage(billsStorageKey, defaultManualBills));
+    setManualBills(savedBills);
     setManualCards(readJsonStorage(cardsStorageKey, defaultManualCards));
+
+    originalBillsRef.current = savedBills.map((bill) =>
+      cloneBill(bill),
+    );
+    removedBillsRef.current = [];
 
     const savedTime = window.localStorage.getItem(lastSavedStorageKey);
 
@@ -159,8 +445,87 @@ export default function ManualPage() {
       if (savedConfirmationTimeout.current) {
         clearTimeout(savedConfirmationTimeout.current);
       }
+
+      if (newItemFocusTimeout.current) {
+        clearTimeout(newItemFocusTimeout.current);
+      }
+
+      if (newItemHighlightTimeout.current) {
+        clearTimeout(newItemHighlightTimeout.current);
+      }
     };
   }, []);
+
+  useEffect(() => {
+    if (!newlyAddedItem) {
+      return;
+    }
+
+    const targetTab = newlyAddedItem.type === "bill" ? "bills" : "cards";
+
+    if (activeTab !== targetTab) {
+      return;
+    }
+
+    let secondAnimationFrame = 0;
+
+    const firstAnimationFrame = window.requestAnimationFrame(() => {
+      secondAnimationFrame = window.requestAnimationFrame(() => {
+        const item = document.querySelector<HTMLElement>(
+          `[data-editor-item="${newlyAddedItem.type}-${newlyAddedItem.index}"]`
+        );
+
+        if (!item) {
+          return;
+        }
+
+        const prefersReducedMotion = window.matchMedia(
+          "(prefers-reduced-motion: reduce)"
+        ).matches;
+
+        item.scrollIntoView({
+          behavior: prefersReducedMotion ? "auto" : "smooth",
+          block: "start",
+        });
+
+        if (newItemFocusTimeout.current) {
+          clearTimeout(newItemFocusTimeout.current);
+        }
+
+        newItemFocusTimeout.current = setTimeout(
+          () => {
+            const firstField = item.querySelector<
+              HTMLInputElement | HTMLSelectElement
+            >("input, select");
+
+            firstField?.focus({ preventScroll: true });
+          },
+          prefersReducedMotion ? 0 : 450
+        );
+
+        if (newItemHighlightTimeout.current) {
+          clearTimeout(newItemHighlightTimeout.current);
+        }
+
+        newItemHighlightTimeout.current = setTimeout(() => {
+          setNewlyAddedItem(null);
+        }, 1400);
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(firstAnimationFrame);
+
+      if (secondAnimationFrame) {
+        window.cancelAnimationFrame(secondAnimationFrame);
+      }
+    };
+  }, [
+    activeTab,
+    manualBills.length,
+    manualCards.length,
+    newlyAddedItem,
+  ]);
 
   function markUnsaved() {
     setShowSavedConfirmation(false);
@@ -221,12 +586,32 @@ export default function ManualPage() {
       },
     ]);
 
+    originalBillsRef.current = [
+      ...originalBillsRef.current,
+      null,
+    ];
+
     setEditingBills((current) => [...current, nextIndex]);
+    setNewlyAddedItem({ type: "bill", index: nextIndex });
     markUnsaved();
     chooseTab("bills");
   }
 
   function removeBill(index: number) {
+    const originalBill = originalBillsRef.current[index];
+
+    if (originalBill) {
+      removedBillsRef.current = [
+        ...removedBillsRef.current,
+        cloneBill(originalBill),
+      ];
+    }
+
+    originalBillsRef.current =
+      originalBillsRef.current.filter(
+        (_, billIndex) => billIndex !== index,
+      );
+
     setManualBills((currentBills) =>
       currentBills.filter((_, billIndex) => billIndex !== index)
     );
@@ -237,15 +622,35 @@ export default function ManualPage() {
         .map((billIndex) => (billIndex > index ? billIndex - 1 : billIndex))
     );
 
+    setNewlyAddedItem((current) => {
+      if (!current || current.type !== "bill") {
+        return current;
+      }
+
+      if (current.index === index) {
+        return null;
+      }
+
+      return current.index > index
+        ? { ...current, index: current.index - 1 }
+        : current;
+    });
+
     markUnsaved();
   }
 
   function toggleBillEditing(index: number) {
+    const isOpening = !editingBills.includes(index);
+
     setEditingBills((current) =>
       current.includes(index)
         ? current.filter((billIndex) => billIndex !== index)
         : [...current, index]
     );
+
+    if (isOpening) {
+      scrollEditorItemIntoView("bill", index);
+    }
   }
 
   function addCard() {
@@ -264,6 +669,7 @@ export default function ManualPage() {
     ]);
 
     setEditingCards((current) => [...current, nextIndex]);
+    setNewlyAddedItem({ type: "card", index: nextIndex });
     markUnsaved();
     chooseTab("cards");
   }
@@ -279,30 +685,70 @@ export default function ManualPage() {
         .map((cardIndex) => (cardIndex > index ? cardIndex - 1 : cardIndex))
     );
 
+    setNewlyAddedItem((current) => {
+      if (!current || current.type !== "card") {
+        return current;
+      }
+
+      if (current.index === index) {
+        return null;
+      }
+
+      return current.index > index
+        ? { ...current, index: current.index - 1 }
+        : current;
+    });
+
     markUnsaved();
   }
 
   function toggleCardEditing(index: number) {
+    const isOpening = !editingCards.includes(index);
+
     setEditingCards((current) =>
       current.includes(index)
         ? current.filter((cardIndex) => cardIndex !== index)
         : [...current, index]
     );
+
+    if (isOpening) {
+      scrollEditorItemIntoView("card", index);
+    }
   }
 
   function saveChanges() {
     const savedTime = new Date().toISOString();
+
+    reconcileBillOccurrenceStorage(
+      originalBillsRef.current,
+      removedBillsRef.current,
+      manualBills,
+    );
 
     window.localStorage.setItem(summaryStorageKey, JSON.stringify(manualData));
     window.localStorage.setItem(billsStorageKey, JSON.stringify(manualBills));
     window.localStorage.setItem(cardsStorageKey, JSON.stringify(manualCards));
     window.localStorage.setItem(lastSavedStorageKey, savedTime);
 
+    originalBillsRef.current = manualBills.map((bill) =>
+      cloneBill(bill),
+    );
+    removedBillsRef.current = [];
+
     setLastSaved(savedTime);
     setHasUnsavedChanges(false);
     setShowSavedConfirmation(true);
     setEditingBills([]);
     setEditingCards([]);
+    setNewlyAddedItem(null);
+
+    if (newItemFocusTimeout.current) {
+      clearTimeout(newItemFocusTimeout.current);
+    }
+
+    if (newItemHighlightTimeout.current) {
+      clearTimeout(newItemHighlightTimeout.current);
+    }
 
     if (savedConfirmationTimeout.current) {
       clearTimeout(savedConfirmationTimeout.current);
@@ -344,12 +790,6 @@ export default function ManualPage() {
       ? Math.round((cardBalanceTotal / cardLimitTotal) * 100)
       : 0;
 
-  const saveStatusTitle = hasUnsavedChanges
-    ? "Changes ready"
-    : showSavedConfirmation
-      ? "Saved"
-      : "Up to date";
-
   const saveStatusDetail = hasUnsavedChanges
     ? lastSaved
       ? `Last saved ${formatSavedTime(lastSaved)}`
@@ -365,24 +805,24 @@ export default function ManualPage() {
       <TopNav />
 
       <div className="min-h-[70vh]">
-        <header className="-mt-1 mb-3 motion-card sm:-mt-2">
-          <div className="mb-2 flex items-center justify-between gap-4">
+        <header className="-mt-1 mb-1.5 motion-card sm:-mt-2">
+          <div className="mb-1.5 flex items-center justify-between gap-4">
             <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
-              Data Editor
+              Financial Setup
             </p>
 
             <Pill>{hasUnsavedChanges ? "Ready" : "Saved"}</Pill>
           </div>
 
-          <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
+          <h1 className="text-[2.15rem] font-bold leading-tight tracking-tight text-[#f5f0e8] sm:text-4xl">
             Editor
           </h1>
         </header>
 
-        <section className="motion-card motion-card-delay-1 mb-3 grid gap-2.5 sm:grid-cols-[1fr_auto]">
+        <section className="motion-card motion-card-delay-1 mb-2 grid gap-2 sm:grid-cols-[1fr_auto]">
           <div
             aria-live="polite"
-            className={`liquid-glass-soft rounded-[1.35rem] p-2.5 transition-all duration-300 ${
+            className={`dashboard-surface relative overflow-hidden rounded-[1.35rem] p-2 transition-all duration-300 ${
               hasUnsavedChanges
                 ? "shadow-[inset_0_0_0_1px_rgba(199,173,117,0.18),0_12px_28px_rgba(0,0,0,0.1)]"
                 : showSavedConfirmation
@@ -390,6 +830,8 @@ export default function ManualPage() {
                   : "shadow-[inset_0_0_0_1px_rgba(245,240,232,0.04)]"
             }`}
           >
+            <div className="dashboard-surface-glow" aria-hidden="true" />
+
             <div className="liquid-content flex items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-3">
                 <span
@@ -404,7 +846,7 @@ export default function ManualPage() {
 
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-[#f5f0e8] transition-colors duration-300">
-                    {saveStatusTitle}
+                    {hasUnsavedChanges ? "Changes ready to save" : "Everything is current"}
                   </p>
 
                   <p className="mt-0.5 text-xs text-stone-500 transition-colors duration-300">
@@ -419,7 +861,7 @@ export default function ManualPage() {
             type="button"
             onClick={saveChanges}
             disabled={!hasUnsavedChanges}
-            className={`pressable rounded-full border px-5 py-2.5 text-sm font-semibold transition-all duration-300 sm:min-w-36 ${
+            className={`pressable rounded-full border px-5 py-2 text-sm font-semibold transition-all duration-300 sm:min-w-36 ${
               hasUnsavedChanges
                 ? "border-[#c7ad75]/42 bg-[#c7ad75]/18 text-[#f5f0e8] shadow-[inset_0_1px_0_rgba(245,240,232,0.1),0_14px_28px_rgba(0,0,0,0.16)] hover:bg-[#c7ad75]/24"
                 : showSavedConfirmation
@@ -431,32 +873,35 @@ export default function ManualPage() {
           </button>
         </section>
 
-        <section className="motion-card motion-card-delay-2 mb-3">
-          <div className="liquid-glass rounded-full p-1.5 sm:hidden">
+        <section className="motion-card motion-card-delay-2 mb-2">
+          <div className="dashboard-compact-panel rounded-full p-1 sm:hidden">
             <div className="liquid-content grid grid-cols-3 gap-1">
               <EditorSegmentButton
-                label="Numbers"
+                label="Balances"
+                icon={<BalanceIcon />}
                 active={activeTab === "overview"}
                 onClick={() => chooseTab("overview")}
               />
 
               <EditorSegmentButton
                 label="Bills"
+                icon={<BillsEditorIcon />}
                 active={activeTab === "bills"}
                 onClick={() => chooseTab("bills")}
               />
 
               <EditorSegmentButton
                 label="Cards"
+                icon={<CardsEditorIcon />}
                 active={activeTab === "cards"}
                 onClick={() => chooseTab("cards")}
               />
             </div>
           </div>
 
-          <div className="hidden gap-2.5 sm:grid sm:grid-cols-3">
+          <div className="hidden gap-2 sm:grid sm:grid-cols-3">
             <EditorSectionButton
-              title="Main Numbers"
+              title="Balances"
               value={formatMoney(manualData.checkingBalance)}
               detail="Checking"
               active={activeTab === "overview"}
@@ -482,66 +927,126 @@ export default function ManualPage() {
         </section>
 
         {activeTab === "overview" && (
-          <section className="liquid-glass motion-card motion-card-delay-3 rounded-[1.7rem] p-3.5">
-            <div className="liquid-content">
-              <SectionHeading title="Main Numbers" />
+          <section className="dashboard-surface motion-card motion-card-delay-3 relative overflow-hidden rounded-[1.7rem] p-3">
+            <div className="dashboard-surface-glow" aria-hidden="true" />
 
-              <div className="mt-3 grid gap-2.5">
-                <MoneyInput
-                  label="Checking Balance"
+            <div className="liquid-content">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <SectionHeading title="Balances" />
+
+                  <p className="mt-1 text-xs leading-5 text-stone-500">
+                    The core numbers that power your Dashboard.
+                  </p>
+                </div>
+
+                <span className="dashboard-pill-button shrink-0 !px-2.5 !py-0.5">
+                  3 values
+                </span>
+              </div>
+
+              <div className="mt-2.5 grid gap-1.5 sm:grid-cols-2">
+                <BalanceEditorCard
+                  label="Checking"
+                  detail="Available spending balance"
                   value={manualData.checkingBalance}
+                  icon={<WalletIcon />}
                   onChange={(value) =>
                     updateManualData("checkingBalance", value)
                   }
                 />
 
-                <MoneyInput
-                  label="Savings Balance"
+                <BalanceEditorCard
+                  label="Savings"
+                  detail="Money set aside"
                   value={manualData.savingsBalance}
+                  icon={<SavingsIcon />}
                   onChange={(value) =>
                     updateManualData("savingsBalance", value)
                   }
                 />
 
-                <MoneyInput
+                <BalanceEditorCard
                   label="Monthly Income"
+                  detail="Expected income each month"
                   value={manualData.monthlyIncome}
-                  onChange={(value) => updateManualData("monthlyIncome", value)}
-                />
-
-                <TextInput
-                  label="Next Payday"
-                  value={manualData.nextPayday}
-                  placeholder="Example: July 12"
-                  onChange={(value) => updateManualData("nextPayday", value)}
+                  icon={<IncomeIcon />}
+                  onChange={(value) =>
+                    updateManualData("monthlyIncome", value)
+                  }
+                  wide
                 />
               </div>
+
+              <Link
+                href="/account/preferences"
+                className="dashboard-preview-row pressable mt-2 block !px-3 !py-2.5"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[0.95rem] border border-[#c7ad75]/22 bg-[#c7ad75]/9 text-[#c7ad75] shadow-[inset_0_1px_0_rgba(245,240,232,0.07)]">
+                      <CalendarIcon />
+                    </span>
+
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-[#f5f0e8]">
+                        Pay Schedule
+                      </p>
+
+                      <p className="mt-0.5 text-xs leading-5 text-stone-500">
+                        Payday and frequency are managed in Preferences.
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="dashboard-pill-button shrink-0 !px-2.5 !py-0.5">
+                    Open
+                  </span>
+                </div>
+              </Link>
             </div>
           </section>
         )}
 
         {activeTab === "bills" && (
-          <section className="liquid-glass motion-card motion-card-delay-3 rounded-[1.7rem] p-3.5">
+          <section className="dashboard-surface motion-card motion-card-delay-3 relative overflow-hidden rounded-[1.7rem] p-3">
+            <div className="dashboard-surface-glow" aria-hidden="true" />
+
             <div className="liquid-content">
-              <div className="mb-3 flex items-center justify-between gap-4">
-                <SectionHeading title="Bills" />
+              <div className="mb-2.5 flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <SectionHeading title="Bills" />
+
+                  <p className="mt-1 text-xs leading-5 text-stone-500">
+                    {manualBills.length} recurring bill{manualBills.length === 1 ? "" : "s"} • Organized by due date
+                  </p>
+                </div>
 
                 <button
                   type="button"
                   onClick={addBill}
-                  className="pressable shrink-0 rounded-full border border-[#c7ad75]/30 bg-[#c7ad75]/14 px-4 py-2 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/22"
+                  className="dashboard-pill-button pressable shrink-0"
                 >
-                  Add
+                  + Add Bill
                 </button>
               </div>
 
-              <div className="grid gap-2">
+              <div className="grid gap-1.5">
                 {manualBills.length > 0 ? (
                   sortedManualBills.map(({ bill, index }) => (
                     <BillEditorRow
                       key={`bill-${index}`}
+                      itemIndex={index}
                       bill={bill}
                       isEditing={editingBills.includes(index)}
+                      isDimmed={
+                        editingBills.length > 0 &&
+                        !editingBills.includes(index)
+                      }
+                      isNewlyAdded={
+                        newlyAddedItem?.type === "bill" &&
+                        newlyAddedItem.index === index
+                      }
                       onToggleEditing={() => toggleBillEditing(index)}
                       onRemove={() => removeBill(index)}
                       onChange={(field, value) =>
@@ -561,27 +1066,44 @@ export default function ManualPage() {
         )}
 
         {activeTab === "cards" && (
-          <section className="liquid-glass motion-card motion-card-delay-3 rounded-[1.7rem] p-3.5">
+          <section className="dashboard-surface motion-card motion-card-delay-3 relative overflow-hidden rounded-[1.7rem] p-3">
+            <div className="dashboard-surface-glow" aria-hidden="true" />
+
             <div className="liquid-content">
-              <div className="mb-3 flex items-center justify-between gap-4">
-                <SectionHeading title="Credit Cards" />
+              <div className="mb-2.5 flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <SectionHeading title="Credit Cards" />
+
+                  <p className="mt-1 text-xs leading-5 text-stone-500">
+                    {manualCards.length} card{manualCards.length === 1 ? "" : "s"} • {cardUtilization}% overall utilization
+                  </p>
+                </div>
 
                 <button
                   type="button"
                   onClick={addCard}
-                  className="pressable shrink-0 rounded-full border border-[#c7ad75]/30 bg-[#c7ad75]/14 px-4 py-2 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/22"
+                  className="dashboard-pill-button pressable shrink-0"
                 >
-                  Add
+                  + Add Card
                 </button>
               </div>
 
-              <div className="grid gap-2">
+              <div className="grid gap-1.5">
                 {manualCards.length > 0 ? (
                   sortedManualCards.map(({ card, index }) => (
                     <CardEditorRow
                       key={`card-${index}`}
+                      itemIndex={index}
                       card={card}
                       isEditing={editingCards.includes(index)}
+                      isDimmed={
+                        editingCards.length > 0 &&
+                        !editingCards.includes(index)
+                      }
+                      isNewlyAdded={
+                        newlyAddedItem?.type === "card" &&
+                        newlyAddedItem.index === index
+                      }
                       onToggleEditing={() => toggleCardEditing(index)}
                       onRemove={() => removeCard(index)}
                       onChange={(field, value) =>
@@ -606,8 +1128,10 @@ export default function ManualPage() {
           <div
             role="status"
             aria-live="polite"
-            className="liquid-glass-soft w-full max-w-[22rem] rounded-[1.35rem] border border-[#f5f0e8]/10 p-3 shadow-[0_18px_42px_rgba(0,0,0,0.28)]"
+            className="dashboard-surface relative w-full max-w-[22rem] overflow-hidden rounded-[1.35rem] border border-[#f5f0e8]/10 p-2.5 shadow-[0_18px_42px_rgba(0,0,0,0.28)]"
           >
+            <div className="dashboard-surface-glow" aria-hidden="true" />
+
             <div className="liquid-content flex items-center gap-3">
               <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#f5f0e8]/85 shadow-[0_0_18px_rgba(245,240,232,0.22)]" />
 
@@ -628,10 +1152,12 @@ export default function ManualPage() {
 
 function EditorSegmentButton({
   label,
+  icon,
   active,
   onClick,
 }: {
   label: string;
+  icon: ReactNode;
   active: boolean;
   onClick: () => void;
 }) {
@@ -640,13 +1166,16 @@ function EditorSegmentButton({
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`pressable rounded-full px-3 py-2 text-sm font-semibold transition ${
+      className={`pressable rounded-full px-3 py-1.5 text-sm font-semibold transition-all duration-300 ${
         active
           ? "bg-[#c7ad75]/20 text-[#f5f0e8] shadow-[inset_0_0_0_1px_rgba(199,173,117,0.26),inset_0_1px_0_rgba(245,240,232,0.08)]"
           : "text-stone-400 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
       }`}
     >
-      {label}
+      <span className="flex items-center justify-center gap-1.5">
+        {icon}
+        <span>{label}</span>
+      </span>
     </button>
   );
 }
@@ -669,13 +1198,13 @@ function EditorSectionButton({
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`pressable rounded-[1.25rem] border p-3 text-left transition ${
+      className={`dashboard-compact-panel pressable rounded-[1.25rem] p-2.5 text-left transition-all duration-300 ${
         active
           ? "border-[#c7ad75]/38 bg-[#c7ad75]/13 shadow-[inset_0_1px_0_rgba(245,240,232,0.09),0_16px_28px_rgba(0,0,0,0.13)]"
-          : "border-[#f5f0e8]/10 bg-[#11100d]/22 hover:border-[#c7ad75]/24 hover:bg-[#f5f0e8]/5"
+          : "hover:border-[#c7ad75]/24 hover:bg-[#f5f0e8]/5"
       }`}
     >
-      <div className="mb-2.5 flex items-center justify-between gap-3">
+      <div className="mb-2 flex items-center justify-between gap-3">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c7ad75]/75">
           {title}
         </p>
@@ -701,7 +1230,7 @@ function EditorSectionButton({
 function SectionHeading({ title }: { title: string }) {
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.25)]" />
+      <span className="dashboard-section-dot h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75]" />
 
       <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
         {title}
@@ -711,14 +1240,20 @@ function SectionHeading({ title }: { title: string }) {
 }
 
 function BillEditorRow({
+  itemIndex,
   bill,
   isEditing,
+  isDimmed,
+  isNewlyAdded,
   onToggleEditing,
   onRemove,
   onChange,
 }: {
+  itemIndex: number;
   bill: ManualBill;
   isEditing: boolean;
+  isDimmed: boolean;
+  isNewlyAdded: boolean;
   onToggleEditing: () => void;
   onRemove: () => void;
   onChange: (field: keyof ManualBill, value: string) => void;
@@ -738,59 +1273,90 @@ function BillEditorRow({
 
   return (
     <article
-      className={`rounded-[1.15rem] border p-3 transition hover:bg-[#f5f0e8]/5 ${
-        isEditing
-          ? "border-[#c7ad75]/30 bg-[#c7ad75]/10 shadow-[inset_0_1px_0_rgba(245,240,232,0.08)]"
-          : "border-[#f5f0e8]/10 bg-[#11100d]/22"
-      }`}
+      data-editor-item={`bill-${itemIndex}`}
+      className={`dashboard-preview-row scroll-mt-28 overflow-hidden rounded-[1.2rem] border transition-all duration-300 ${
+        isNewlyAdded
+          ? "border-[#c7ad75]/48 shadow-[0_0_0_1px_rgba(199,173,117,0.12),0_12px_30px_rgba(0,0,0,0.08),0_0_22px_rgba(199,173,117,0.08)]"
+          : isEditing
+            ? "border-[#c7ad75]/28 shadow-[0_14px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(245,240,232,0.06)]"
+            : "border-[#f5f0e8]/10 hover:border-[#c7ad75]/20"
+      } ${isDimmed ? "opacity-70" : "opacity-100"}`}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="truncate text-base font-semibold text-[#f5f0e8]">
-            {bill.name || "Untitled Bill"}
-          </p>
+      {isEditing ? (
+        <div className="relative px-3.5 py-2.5">
+          <span
+            className="absolute inset-y-3 left-0 w-[2px] rounded-r-full bg-[#c7ad75]"
+            aria-hidden="true"
+          />
 
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-[#f5f0e8]/10 bg-[#f5f0e8]/6 px-2.5 py-0.5 text-xs font-semibold text-stone-400">
-              {formatMoney(bill.amount)}
-            </span>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[0.9rem] border border-[#f5f0e8]/12 bg-[#f5f0e8]/5 text-[#c7ad75] shadow-[inset_0_1px_0_rgba(245,240,232,0.07)]">
+                <EditPencilIcon />
+              </span>
 
-            <span className="rounded-full border border-[#f5f0e8]/10 bg-[#11100d]/25 px-2.5 py-0.5 text-xs font-semibold text-stone-400">
-              Due {bill.dueDate || "TBD"}
-            </span>
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/75">
+                  Editing Bill
+                </p>
+
+                <p className="mt-0.5 truncate text-base font-semibold text-[#f5f0e8]">
+                  {bill.name || "New Bill"}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              aria-expanded={isEditing}
+              aria-label={`Close editor for ${bill.name || "bill"}`}
+              onClick={onToggleEditing}
+              className="dashboard-pill-button pressable inline-flex shrink-0 items-center gap-1.5 !px-3 !py-1.5 text-xs font-semibold text-[#f5f0e8]"
+            >
+              <CheckIcon />
+              Done
+            </button>
           </div>
         </div>
+      ) : (
+        <div className="flex items-start justify-between gap-4 p-2.5">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[0.9rem] border border-[#f5f0e8]/10 bg-[#f5f0e8]/5 text-[#c7ad75] shadow-[inset_0_1px_0_rgba(245,240,232,0.06)]">
+              <BillsEditorIcon />
+            </span>
 
-        <button
-          type="button"
-          aria-expanded={isEditing}
-          aria-label={`${isEditing ? "Close editor for" : "Edit"} ${
-            bill.name || "bill"
-          }`}
-          onClick={onToggleEditing}
-          className={`pressable shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition ${
-            isEditing
-              ? "border-[#c7ad75]/30 bg-[#c7ad75]/12 text-[#f5f0e8]"
-              : "border-[#f5f0e8]/10 text-stone-300 hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
-          }`}
-        >
-          {isEditing ? "Done" : "Edit"}
-        </button>
-      </div>
+            <div className="min-w-0">
+              <p className="truncate text-base font-semibold text-[#f5f0e8]">
+                {bill.name || "Untitled Bill"}
+              </p>
 
-      {isEditing && (
-        <div className="mt-3 rounded-[1.05rem] border border-[#f5f0e8]/10 bg-[#11100d]/30 p-2.5 shadow-[inset_0_1px_0_rgba(245,240,232,0.04)]">
-          <div className="mb-2.5 flex items-center justify-between gap-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/70">
-              Editing Bill
-            </p>
+              <p className="mt-0.5 text-xs text-stone-500">
+                Recurring monthly
+              </p>
 
-            <p className="text-xs font-medium text-stone-500">
-              Save when ready
-            </p>
+              <p className="mt-1 text-sm font-medium text-stone-300">
+                {formatMoney(bill.amount)}
+                <span className="mx-1.5 text-stone-600">•</span>
+                Due {bill.dueDate || "TBD"}
+              </p>
+            </div>
           </div>
 
-          <div className="grid gap-2.5">
+          <button
+            type="button"
+            aria-expanded={isEditing}
+            aria-label={`Edit ${bill.name || "bill"}`}
+            onClick={onToggleEditing}
+            className="dashboard-pill-button pressable shrink-0 !px-3 !py-1 text-xs font-semibold"
+          >
+            Edit
+          </button>
+        </div>
+      )}
+
+      {isEditing && (
+        <div className="border-t border-[#f5f0e8]/10 px-3.5 pb-3 pt-2.5">
+          <div className="dashboard-compact-panel !overflow-hidden !rounded-[1rem] !p-0">
             <TextInput
               label="Bill Name"
               value={bill.name}
@@ -820,7 +1386,7 @@ function BillEditorRow({
           </div>
 
           {showRemoveConfirm ? (
-            <div className="mt-2.5 rounded-[1rem] border border-[#dc2626]/28 bg-[#dc2626]/8 p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+            <div className="mt-2 rounded-[1rem] border border-[#dc2626]/22 bg-[#dc2626]/6 p-2.5">
               <p className="text-sm font-semibold text-[#f5f0e8]">
                 Remove this bill?
               </p>
@@ -829,7 +1395,7 @@ function BillEditorRow({
                 This change will be saved when you tap Save.
               </p>
 
-              <div className="mt-2.5 grid grid-cols-2 gap-2">
+              <div className="mt-2 grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setShowRemoveConfirm(false)}
@@ -851,8 +1417,9 @@ function BillEditorRow({
             <button
               type="button"
               onClick={() => setShowRemoveConfirm(true)}
-              className="pressable mt-2.5 w-full rounded-full border border-[#dc2626]/38 bg-[#dc2626]/10 px-4 py-2.5 text-sm font-bold text-[#ef4444] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_10px_24px_rgba(127,29,29,0.08)] transition hover:border-[#dc2626]/58 hover:bg-[#dc2626]/15"
+              className="pressable mt-2.5 inline-flex items-center gap-1.5 border-0 bg-transparent px-1 py-1 text-xs font-semibold text-[#dc2626]/85 transition hover:text-[#dc2626]"
             >
+              <TrashIcon />
               Remove Bill
             </button>
           )}
@@ -863,14 +1430,20 @@ function BillEditorRow({
 }
 
 function CardEditorRow({
+  itemIndex,
   card,
   isEditing,
+  isDimmed,
+  isNewlyAdded,
   onToggleEditing,
   onRemove,
   onChange,
 }: {
+  itemIndex: number;
   card: ManualCreditCard;
   isEditing: boolean;
+  isDimmed: boolean;
+  isNewlyAdded: boolean;
   onToggleEditing: () => void;
   onRemove: () => void;
   onChange: (field: keyof ManualCreditCard, value: string) => void;
@@ -894,60 +1467,99 @@ function CardEditorRow({
 
   return (
     <article
-      className={`rounded-[1.15rem] border p-3 transition hover:bg-[#f5f0e8]/5 ${
-        isEditing
-          ? "border-[#c7ad75]/30 bg-[#c7ad75]/10 shadow-[inset_0_1px_0_rgba(245,240,232,0.08)]"
-          : "border-[#f5f0e8]/10 bg-[#11100d]/22"
-      }`}
+      data-editor-item={`card-${itemIndex}`}
+      className={`dashboard-preview-row scroll-mt-28 overflow-hidden rounded-[1.2rem] border transition-all duration-300 ${
+        isNewlyAdded
+          ? "border-[#c7ad75]/48 shadow-[0_0_0_1px_rgba(199,173,117,0.12),0_12px_30px_rgba(0,0,0,0.08),0_0_22px_rgba(199,173,117,0.08)]"
+          : isEditing
+            ? "border-[#c7ad75]/28 shadow-[0_14px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(245,240,232,0.06)]"
+            : "border-[#f5f0e8]/10 hover:border-[#c7ad75]/20"
+      } ${isDimmed ? "opacity-70" : "opacity-100"}`}
     >
-      <div className="mb-2.5 flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="truncate text-base font-semibold text-[#f5f0e8]">
-            {card.name || "Untitled Card"}
-          </p>
+      {isEditing ? (
+        <div className="relative px-3.5 py-2.5">
+          <span
+            className="absolute inset-y-3 left-0 w-[2px] rounded-r-full bg-[#c7ad75]"
+            aria-hidden="true"
+          />
 
-          <p className="mt-0.5 text-sm text-stone-400">
-            {utilization}% used • {formatMoney(card.balance)}
-          </p>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[0.9rem] border border-[#f5f0e8]/12 bg-[#f5f0e8]/5 text-[#c7ad75] shadow-[inset_0_1px_0_rgba(245,240,232,0.07)]">
+                <EditPencilIcon />
+              </span>
+
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/75">
+                  Editing Card
+                </p>
+
+                <p className="mt-0.5 truncate text-base font-semibold text-[#f5f0e8]">
+                  {card.name || "New Card"}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              aria-expanded={isEditing}
+              aria-label={`Close editor for ${card.name || "card"}`}
+              onClick={onToggleEditing}
+              className="dashboard-pill-button pressable inline-flex shrink-0 items-center gap-1.5 !px-3 !py-1.5 text-xs font-semibold text-[#f5f0e8]"
+            >
+              <CheckIcon />
+              Done
+            </button>
+          </div>
         </div>
+      ) : (
+        <div className="flex items-start justify-between gap-4 p-2.5">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[0.9rem] border border-[#f5f0e8]/10 bg-[#f5f0e8]/5 text-[#c7ad75] shadow-[inset_0_1px_0_rgba(245,240,232,0.06)]">
+              <CardsEditorIcon />
+            </span>
 
-        <button
-          type="button"
-          aria-expanded={isEditing}
-          aria-label={`${isEditing ? "Close editor for" : "Edit"} ${
-            card.name || "card"
-          }`}
-          onClick={onToggleEditing}
-          className={`pressable shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition ${
-            isEditing
-              ? "border-[#c7ad75]/30 bg-[#c7ad75]/12 text-[#f5f0e8]"
-              : "border-[#f5f0e8]/10 text-stone-300 hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
-          }`}
-        >
-          {isEditing ? "Done" : "Edit"}
-        </button>
-      </div>
+            <div className="min-w-0">
+              <p className="truncate text-base font-semibold text-[#f5f0e8]">
+                {card.name || "Untitled Card"}
+              </p>
 
-      <div className="h-1.5 overflow-hidden rounded-full bg-black/30">
-        <div
-          className="liquid-progress h-full rounded-full bg-[#c7ad75]"
-          style={{ width: `${Math.min(utilization, 100)}%` }}
-        />
-      </div>
+              <p className="mt-0.5 text-xs text-stone-500">
+                Revolving account
+              </p>
 
-      {isEditing && (
-        <div className="mt-3 rounded-[1.05rem] border border-[#f5f0e8]/10 bg-[#11100d]/30 p-2.5 shadow-[inset_0_1px_0_rgba(245,240,232,0.04)]">
-          <div className="mb-2.5 flex items-center justify-between gap-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/70">
-              Editing Card
-            </p>
-
-            <p className="text-xs font-medium text-stone-500">
-              Save when ready
-            </p>
+              <p className="mt-1 text-sm font-medium text-stone-300">
+                {formatMoney(card.balance)}
+                <span className="mx-1.5 text-stone-600">•</span>
+                {utilization}% used
+              </p>
+            </div>
           </div>
 
-          <div className="grid gap-2.5">
+          <button
+            type="button"
+            aria-expanded={isEditing}
+            aria-label={`Edit ${card.name || "card"}`}
+            onClick={onToggleEditing}
+            className="dashboard-pill-button pressable shrink-0 !px-3 !py-1 text-xs font-semibold"
+          >
+            Edit
+          </button>
+        </div>
+      )}
+
+      {!isEditing ? (
+        <div className="mx-3 mb-2.5 dashboard-progress-track h-1.5 overflow-hidden rounded-full bg-black/30">
+        <div
+          className="liquid-progress dashboard-progress-fill h-full rounded-full bg-[#c7ad75]"
+          style={{ width: `${Math.min(utilization, 100)}%` }}
+        />
+        </div>
+      ) : null}
+
+      {isEditing && (
+        <div className="border-t border-[#f5f0e8]/10 px-3.5 pb-3 pt-2.5">
+          <div className="dashboard-compact-panel !overflow-hidden !rounded-[1rem] !p-0">
             <TextInput
               label="Card Name"
               value={card.name}
@@ -980,18 +1592,10 @@ function CardEditorRow({
               onChange={(value) => onChange("dueDate", value)}
             />
 
-            <SelectInput
-              label="Status"
-              value={card.status}
-              options={["Good", "Watch", "Pay Down"]}
-              onChange={(value) =>
-                onChange("status", value as ManualCreditCard["status"])
-              }
-            />
           </div>
 
           {showRemoveConfirm ? (
-            <div className="mt-2.5 rounded-[1rem] border border-[#dc2626]/28 bg-[#dc2626]/8 p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+            <div className="mt-2 rounded-[1rem] border border-[#dc2626]/22 bg-[#dc2626]/6 p-2.5">
               <p className="text-sm font-semibold text-[#f5f0e8]">
                 Remove this card?
               </p>
@@ -1000,7 +1604,7 @@ function CardEditorRow({
                 This change will be saved when you tap Save.
               </p>
 
-              <div className="mt-2.5 grid grid-cols-2 gap-2">
+              <div className="mt-2 grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setShowRemoveConfirm(false)}
@@ -1022,14 +1626,150 @@ function CardEditorRow({
             <button
               type="button"
               onClick={() => setShowRemoveConfirm(true)}
-              className="pressable mt-2.5 w-full rounded-full border border-[#dc2626]/38 bg-[#dc2626]/10 px-4 py-2.5 text-sm font-bold text-[#ef4444] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_10px_24px_rgba(127,29,29,0.08)] transition hover:border-[#dc2626]/58 hover:bg-[#dc2626]/15"
+              className="pressable mt-2.5 inline-flex items-center gap-1.5 border-0 bg-transparent px-1 py-1 text-xs font-semibold text-[#dc2626]/85 transition hover:text-[#dc2626]"
             >
+              <TrashIcon />
               Remove Card
             </button>
           )}
         </div>
       )}
     </article>
+  );
+}
+
+function BalanceEditorCard({
+  label,
+  detail,
+  value,
+  icon,
+  onChange,
+  wide = false,
+}: {
+  label: string;
+  detail: string;
+  value: string;
+  icon: ReactNode;
+  onChange: (value: string) => void;
+  wide?: boolean;
+}) {
+  return (
+    <label
+      className={`dashboard-preview-row group block cursor-text !px-3 !py-2.5 transition focus-within:border-[#c7ad75]/34 focus-within:bg-[#c7ad75]/[0.055] ${
+        wide ? "sm:col-span-2" : ""
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[0.95rem] border border-[#c7ad75]/22 bg-[#c7ad75]/9 text-[#c7ad75] shadow-[inset_0_1px_0_rgba(245,240,232,0.07)]">
+          {icon}
+        </span>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-[#f5f0e8]">
+                {label}
+              </p>
+
+              <p className="mt-0.5 text-xs leading-5 text-stone-500">
+                {detail}
+              </p>
+            </div>
+
+            <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#c7ad75]/65">
+              Edit
+            </span>
+          </div>
+
+          <div className="mt-1.5 flex items-baseline gap-1.5 border-t border-[#f5f0e8]/8 pt-1.5">
+            <span className="text-lg font-semibold text-stone-500">$</span>
+
+            <input
+              type="number"
+              inputMode="decimal"
+              value={value}
+              onFocus={() => clearZeroOnFocus(value, onChange)}
+              onChange={(event) => onChange(event.target.value)}
+              className="min-w-0 flex-1 bg-transparent text-2xl font-bold tracking-tight text-[#f5f0e8] outline-none placeholder:text-stone-600"
+            />
+          </div>
+        </div>
+      </div>
+    </label>
+  );
+}
+
+function WalletIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6.5A2.5 2.5 0 0 1 4 17.5v-10Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4 8h13M16 12h4v4h-4a2 2 0 0 1 0-4Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function SavingsIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M5 10.5C5 7.5 7.7 5 11 5h2c3.9 0 7 2.7 7 6v3.5c0 1.8-1.2 3.5-3 4.2V21h-3v-2h-4v2H7v-2.6c-1.2-.9-2-2.3-2-3.9v-4Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10 8h4M20 11h1.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <circle cx="8.5" cy="11.5" r=".75" fill="currentColor" />
+    </svg>
+  );
+}
+
+function IncomeIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 17 9 12l3 3 7-8"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M15 7h4v4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M6 4v3M18 4v3M4 9h16M6 6h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
@@ -1043,10 +1783,8 @@ function MoneyInput({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="grid gap-1.5 rounded-[1.05rem] border border-[#f5f0e8]/10 bg-[#11100d]/20 p-2.5 transition-within:border-[#c7ad75]/24">
-      <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/75">
-        {label}
-      </span>
+    <label className="flex items-center justify-between gap-4 border-b border-[#f5f0e8]/8 px-3.5 py-2 transition-colors last:border-b-0 focus-within:bg-[#c7ad75]/[0.035]">
+      <span className="shrink-0 text-sm font-medium text-stone-400">{label}</span>
 
       <input
         type="number"
@@ -1054,7 +1792,7 @@ function MoneyInput({
         value={value}
         onFocus={() => clearZeroOnFocus(value, onChange)}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-full border border-[#f5f0e8]/12 bg-[#11100d]/55 px-4 py-2.5 text-base font-semibold text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-[#c7ad75]/45 focus:bg-[#11100d]/75"
+        className="min-w-0 flex-1 bg-transparent text-right text-[15px] font-semibold text-[#f5f0e8] outline-none placeholder:text-stone-600"
       />
     </label>
   );
@@ -1072,57 +1810,112 @@ function TextInput({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="grid gap-1.5 rounded-[1.05rem] border border-[#f5f0e8]/10 bg-[#11100d]/20 p-2.5">
-      <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/75">
-        {label}
-      </span>
+    <label className="flex items-center justify-between gap-4 border-b border-[#f5f0e8]/8 px-3.5 py-2 transition-colors last:border-b-0 focus-within:bg-[#c7ad75]/[0.035]">
+      <span className="shrink-0 text-sm font-medium text-stone-400">{label}</span>
 
       <input
         type="text"
         value={value}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-full border border-[#f5f0e8]/12 bg-[#11100d]/55 px-4 py-2.5 text-base font-semibold text-[#f5f0e8] outline-none transition placeholder:text-stone-600 focus:border-[#c7ad75]/45 focus:bg-[#11100d]/75"
+        className="min-w-0 flex-1 bg-transparent text-right text-[15px] font-semibold text-[#f5f0e8] outline-none placeholder:text-stone-600"
       />
     </label>
   );
 }
 
-function SelectInput({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: string[];
-  onChange: (value: string) => void;
-}) {
+function BalanceIcon() {
   return (
-    <label className="grid gap-1.5 rounded-[1.05rem] border border-[#f5f0e8]/10 bg-[#11100d]/20 p-2.5">
-      <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/75">
-        {label}
-      </span>
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4 17 9 12l3 3 7-8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M15 7h4v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-full border border-[#f5f0e8]/12 bg-[#11100d]/55 px-4 py-2.5 text-base font-semibold text-[#f5f0e8] outline-none transition focus:border-[#c7ad75]/45 focus:bg-[#11100d]/75"
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-    </label>
+function BillsEditorIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M7 3h10a1 1 0 0 1 1 1v17l-3-1.8-3 1.8-3-1.8L6 21V4a1 1 0 0 1 1-1Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M9 8h6M9 12h6M9 16h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function CardsEditorIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M4 9h16M8 15h3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      className="h-3.5 w-3.5"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M5 7h14M9 7V4.8A1.8 1.8 0 0 1 10.8 3h2.4A1.8 1.8 0 0 1 15 4.8V7M8 10v7M12 10v7M16 10v7M6.5 7l.7 12.2A2 2 0 0 0 9.2 21h5.6a2 2 0 0 0 2-1.8L17.5 7"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      className="h-3.5 w-3.5"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="m6 12.5 4 4 8-9"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function EditPencilIcon() {
+  return (
+    <svg
+      className="h-3.5 w-3.5"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M5 19h4l10-10a2.1 2.1 0 0 0-3-3L6 16l-1 3Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="m14.5 7.5 2 2"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 
 function EmptyState({ title, text }: { title: string; text: string }) {
   return (
-    <div className="rounded-[1.15rem] border border-dashed border-[#f5f0e8]/12 bg-[#11100d]/20 p-3.5">
+    <div className="dashboard-empty-preview rounded-[1.15rem] border border-dashed border-[#f5f0e8]/12 p-3">
       <div className="flex items-start gap-3">
         <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#c7ad75]/60 shadow-[0_0_12px_rgba(199,173,117,0.18)]" />
 

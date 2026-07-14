@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import AuthGate from "@/components/AuthGate";
+import UpdateAnnouncements from "@/components/UpdateAnnouncements";
 import WelcomeScreen from "@/components/WelcomeScreen";
 
 export const metadata: Metadata = {
@@ -29,10 +30,12 @@ const themeScript = `
       "mocha",
       "forest",
       "slate",
+      "rose-gold",
       "classic-light",
       "mocha-light",
       "forest-light",
       "slate-light",
+      "rose-gold-light",
       "july-fourth"
     ];
 
@@ -64,6 +67,7 @@ export default function RootLayout({
         <AuthGate>
           {children}
           <WelcomeScreen />
+          <UpdateAnnouncements />
         </AuthGate>
       </body>
     </html>

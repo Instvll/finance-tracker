@@ -1,11 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import TopNav from "../../components/TopNav";
 import { PageShell, Pill } from "../../components/Layout";
 import { bills } from "../../data/bandData";
-import { getAutoBillStatus, sortBillsByDueDay } from "../../lib/billStatus";
+import {
+  defaultPayPeriodPreferences,
+  getActiveBillOccurrence,
+  getBillIdentity,
+  getBillOccurrencePayPeriod,
+  getDaysUntilDate,
+  getFollowingBillDueDate,
+  getPayPeriodLength,
+  getPlanningAmount,
+  isDateInCurrentPayPeriod,
+  parseLocalDate,
+  readPayPeriodPreferences,
+  type ActiveBillOccurrence,
+  type PaidBillOccurrences,
+  type PayPeriodPreferences,
+} from "../../lib/billStatus";
 
 type ManualBill = {
   name: string;
@@ -15,8 +30,32 @@ type ManualBill = {
   paymentMethod: string;
 };
 
+type ActiveBillOccurrenceDates = Record<string, string>;
+
+type BillOccurrenceItem = {
+  bill: ManualBill;
+  occurrence: ActiveBillOccurrence;
+};
+
+type PaidBillAction = {
+  occurrenceKey: string;
+  occurrenceDateKey: string;
+  billIdentity: string;
+  billName: string;
+  nextOccurrenceDateKey: string | null;
+  paidAt: string;
+};
+
 const billsStorageKey = "finance-tracker-manual-bills";
 const billsEditSnapshotKey = "finance-tracker-bills-edit-snapshot";
+const paidBillsStorageKey = "leftovr-paid-bill-occurrences";
+const activeBillOccurrencesStorageKey =
+  "leftovr-active-bill-occurrences";
+const recentPaidActionsStorageKey =
+  "leftovr-recent-paid-bill-actions";
+const legacyLastPaidActionStorageKey =
+  "leftovr-last-paid-bill-action";
+const preferencesStorageKey = "leftovr-preferences";
 
 const defaultManualBills: ManualBill[] = bills.map((bill) => ({
   name: bill.name,
@@ -28,12 +67,7 @@ const defaultManualBills: ManualBill[] = bills.map((bill) => ({
 
 function parseMoney(value: string) {
   const numberValue = Number(value);
-
-  if (Number.isNaN(numberValue)) {
-    return 0;
-  }
-
-  return numberValue;
+  return Number.isNaN(numberValue) ? 0 : numberValue;
 }
 
 function formatMoney(amount: number) {
@@ -43,47 +77,353 @@ function formatMoney(amount: number) {
   }).format(amount);
 }
 
-function readBillsStorage() {
-  const savedBills = window.localStorage.getItem(billsStorageKey);
+function formatPayday(value: string) {
+  const payday = parseLocalDate(value);
 
-  if (!savedBills) {
-    return defaultManualBills;
+  if (!payday) {
+    return "Not set";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(payday);
+}
+
+function formatLocalDateKey(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function getCurrentPayPeriodPreferences(
+  currentPreferences: PayPeriodPreferences,
+  referenceDate = new Date(),
+) {
+  const savedPayday = parseLocalDate(currentPreferences.nextPayday);
+
+  if (!savedPayday) {
+    return {
+      preferences: currentPreferences,
+      didAdvance: false,
+    };
+  }
+
+  const today = new Date(
+    referenceDate.getFullYear(),
+    referenceDate.getMonth(),
+    referenceDate.getDate(),
+    12,
+  );
+
+  const nextPayday = new Date(
+    savedPayday.getFullYear(),
+    savedPayday.getMonth(),
+    savedPayday.getDate(),
+    12,
+  );
+
+  const intervalDays = getPayPeriodLength(
+    currentPreferences.payFrequency,
+  );
+
+  let advancedPeriods = 0;
+
+  while (nextPayday < today && advancedPeriods < 260) {
+    nextPayday.setDate(nextPayday.getDate() + intervalDays);
+    advancedPeriods += 1;
+  }
+
+  const nextPaydayValue = formatLocalDateKey(nextPayday);
+
+  if (nextPaydayValue === currentPreferences.nextPayday) {
+    return {
+      preferences: currentPreferences,
+      didAdvance: false,
+    };
+  }
+
+  return {
+    preferences: {
+      ...currentPreferences,
+      nextPayday: nextPaydayValue,
+    },
+    didAdvance: true,
+  };
+}
+
+function formatBillDate(value: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(value);
+}
+
+function sortBillOccurrenceItems(items: BillOccurrenceItem[]) {
+  return [...items].sort(
+    (firstItem, secondItem) =>
+      firstItem.occurrence.dueDate.getTime() -
+      secondItem.occurrence.dueDate.getTime(),
+  );
+}
+
+function getBillOccurrenceItemsTotal(
+  items: BillOccurrenceItem[],
+  preferences: PayPeriodPreferences,
+) {
+  return items.reduce(
+    (total, item) =>
+      total +
+      getPlanningAmount(
+        item.bill.amount,
+        preferences.roundBillsForPlanning,
+      ),
+    0,
+  );
+}
+
+function normalizeActiveBillOccurrenceDates(
+  currentBills: ManualBill[],
+  savedOccurrenceDates: ActiveBillOccurrenceDates,
+  paidOccurrences: PaidBillOccurrences,
+  referenceDate = new Date(),
+) {
+  const normalizedDates: ActiveBillOccurrenceDates = {};
+
+  currentBills.forEach((bill) => {
+    const billIdentity = getBillIdentity(bill);
+
+    const occurrence = getActiveBillOccurrence(
+      bill,
+      savedOccurrenceDates[billIdentity],
+      paidOccurrences,
+      referenceDate,
+    );
+
+    if (occurrence) {
+      normalizedDates[billIdentity] = occurrence.dueDateKey;
+    }
+  });
+
+  return normalizedDates;
+}
+
+function readJsonStorage<T>(key: string, fallback: T) {
+  const savedValue = window.localStorage.getItem(key);
+
+  if (!savedValue) {
+    return fallback;
   }
 
   try {
-    return JSON.parse(savedBills) as ManualBill[];
+    return JSON.parse(savedValue) as T;
   } catch {
-    return defaultManualBills;
+    return fallback;
   }
 }
 
-function getBillsSnapshot(bills: ManualBill[]) {
-  return JSON.stringify(bills);
+function getBillsSnapshot(currentBills: ManualBill[]) {
+  return JSON.stringify(currentBills);
+}
+
+function normalizeRecentPaidActions(
+  actions: PaidBillAction[],
+  paidOccurrences: PaidBillOccurrences,
+  preferences: PayPeriodPreferences,
+  referenceDate = new Date(),
+) {
+  const seenOccurrenceKeys = new Set<string>();
+
+  return actions
+    .filter((action) => {
+      const paidAt =
+        action?.paidAt ||
+        paidOccurrences[action?.occurrenceKey ?? ""];
+
+      if (
+        !action?.occurrenceKey ||
+        !paidOccurrences[action.occurrenceKey] ||
+        seenOccurrenceKeys.has(action.occurrenceKey) ||
+        !paidAt ||
+        !isDateInCurrentPayPeriod(
+          paidAt,
+          preferences,
+          referenceDate,
+        )
+      ) {
+        return false;
+      }
+
+      seenOccurrenceKeys.add(action.occurrenceKey);
+      return true;
+    })
+    .map((action) => ({
+      ...action,
+      paidAt:
+        action.paidAt ||
+        paidOccurrences[action.occurrenceKey] ||
+        new Date(0).toISOString(),
+    }))
+    .sort(
+      (firstAction, secondAction) =>
+        new Date(secondAction.paidAt).getTime() -
+        new Date(firstAction.paidAt).getTime(),
+    )
+    .slice(0, 8);
 }
 
 export default function BillsPage() {
   const [manualBills, setManualBills] =
     useState<ManualBill[]>(defaultManualBills);
-  const [showOtherBills, setShowOtherBills] = useState(false);
+  const [preferences, setPreferences] = useState<PayPeriodPreferences>(
+    defaultPayPeriodPreferences,
+  );
+  const [paidBillOccurrences, setPaidBillOccurrences] =
+    useState<PaidBillOccurrences>({});
+  const [activeBillOccurrenceDates, setActiveBillOccurrenceDates] =
+    useState<ActiveBillOccurrenceDates>({});
+  const [recentPaidActions, setRecentPaidActions] =
+    useState<PaidBillAction[]>([]);
+  const [paidConfirmationAction, setPaidConfirmationAction] =
+    useState<PaidBillAction | null>(null);
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+  const [showPaidConfirmation, setShowPaidConfirmation] = useState(false);
+  const [showRecentPayments, setShowRecentPayments] = useState(false);
+
+  const paidConfirmationTimeout = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   useEffect(() => {
-    const savedBills = readBillsStorage();
+    function loadBillsData(checkEditSnapshot: boolean) {
+      const savedBills = readJsonStorage(
+        billsStorageKey,
+        defaultManualBills,
+      );
 
-    setManualBills(savedBills);
+      const savedPreferences = readPayPeriodPreferences();
+      const rolloverResult =
+        getCurrentPayPeriodPreferences(savedPreferences);
 
-    const previousBillsSnapshot = window.sessionStorage.getItem(
-      billsEditSnapshotKey
-    );
+      if (rolloverResult.didAdvance) {
+        window.localStorage.setItem(
+          preferencesStorageKey,
+          JSON.stringify(rolloverResult.preferences),
+        );
+      }
 
-    if (
-      previousBillsSnapshot &&
-      previousBillsSnapshot !== getBillsSnapshot(savedBills)
-    ) {
-      setShowSaveConfirmation(true);
+      const savedPaidOccurrences =
+        readJsonStorage<PaidBillOccurrences>(
+          paidBillsStorageKey,
+          {},
+        );
+      const savedActiveOccurrenceDates =
+        readJsonStorage<ActiveBillOccurrenceDates>(
+          activeBillOccurrencesStorageKey,
+          {},
+        );
+      const normalizedOccurrenceDates =
+        normalizeActiveBillOccurrenceDates(
+          savedBills,
+          savedActiveOccurrenceDates,
+          savedPaidOccurrences,
+        );
+
+      setManualBills(savedBills);
+      setPreferences(rolloverResult.preferences);
+      setPaidBillOccurrences(savedPaidOccurrences);
+      setActiveBillOccurrenceDates(normalizedOccurrenceDates);
+
+      window.localStorage.setItem(
+        activeBillOccurrencesStorageKey,
+        JSON.stringify(normalizedOccurrenceDates),
+      );
+
+      const savedRecentPaidActions =
+        readJsonStorage<PaidBillAction[]>(
+          recentPaidActionsStorageKey,
+          [],
+        );
+      const legacyLastPaidAction =
+        readJsonStorage<Partial<PaidBillAction> | null>(
+          legacyLastPaidActionStorageKey,
+          null,
+        );
+
+      const migratedLegacyAction =
+        legacyLastPaidAction?.occurrenceKey &&
+        legacyLastPaidAction.occurrenceDateKey &&
+        legacyLastPaidAction.billIdentity &&
+        legacyLastPaidAction.billName &&
+        savedPaidOccurrences[legacyLastPaidAction.occurrenceKey]
+          ? ({
+              occurrenceKey: legacyLastPaidAction.occurrenceKey,
+              occurrenceDateKey:
+                legacyLastPaidAction.occurrenceDateKey,
+              billIdentity: legacyLastPaidAction.billIdentity,
+              billName: legacyLastPaidAction.billName,
+              nextOccurrenceDateKey:
+                legacyLastPaidAction.nextOccurrenceDateKey ?? null,
+              paidAt:
+                legacyLastPaidAction.paidAt ||
+                savedPaidOccurrences[
+                  legacyLastPaidAction.occurrenceKey
+                ],
+            } satisfies PaidBillAction)
+          : null;
+
+      const normalizedRecentPaidActions =
+        normalizeRecentPaidActions(
+          migratedLegacyAction
+            ? [migratedLegacyAction, ...savedRecentPaidActions]
+            : savedRecentPaidActions,
+          savedPaidOccurrences,
+          rolloverResult.preferences,
+        );
+
+      setRecentPaidActions(normalizedRecentPaidActions);
+      setShowRecentPayments(false);
+
+      window.localStorage.setItem(
+        recentPaidActionsStorageKey,
+        JSON.stringify(normalizedRecentPaidActions),
+      );
+      window.localStorage.removeItem(
+        legacyLastPaidActionStorageKey,
+      );
+
+      if (!checkEditSnapshot) {
+        return;
+      }
+
+      const previousBillsSnapshot =
+        window.sessionStorage.getItem(billsEditSnapshotKey);
+
+      if (
+        previousBillsSnapshot &&
+        previousBillsSnapshot !== getBillsSnapshot(savedBills)
+      ) {
+        setShowSaveConfirmation(true);
+      }
+
+      window.sessionStorage.removeItem(billsEditSnapshotKey);
     }
 
-    window.sessionStorage.removeItem(billsEditSnapshotKey);
+    loadBillsData(true);
+
+    function refreshBillsData() {
+      loadBillsData(false);
+    }
+
+    window.addEventListener("focus", refreshBillsData);
+    window.addEventListener("pageshow", refreshBillsData);
+
+    return () => {
+      window.removeEventListener("focus", refreshBillsData);
+      window.removeEventListener("pageshow", refreshBillsData);
+    };
   }, []);
 
   useEffect(() => {
@@ -98,91 +438,389 @@ export default function BillsPage() {
     return () => window.clearTimeout(timeout);
   }, [showSaveConfirmation]);
 
+  useEffect(() => {
+    return () => {
+      if (paidConfirmationTimeout.current) {
+        clearTimeout(paidConfirmationTimeout.current);
+      }
+    };
+  }, []);
+
   function rememberBillsEditSnapshot() {
     window.sessionStorage.setItem(
       billsEditSnapshotKey,
-      getBillsSnapshot(readBillsStorage())
+      getBillsSnapshot(readJsonStorage(billsStorageKey, defaultManualBills)),
     );
   }
 
-  const upcomingBills = sortBillsByDueDay(
-    manualBills.filter(
-      (bill) => getAutoBillStatus(bill.dueDate) === "Upcoming"
-    )
+  const today = new Date();
+  const payday = parseLocalDate(preferences.nextPayday);
+  const hasCurrentPayday =
+    payday !== null &&
+    payday.getTime() >=
+      new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate(),
+      ).getTime();
+
+  const payPeriodDays = getPayPeriodLength(preferences.payFrequency);
+
+  function updateActiveOccurrenceDate(
+    billIdentity: string,
+    occurrenceDateKey: string,
+  ) {
+    setActiveBillOccurrenceDates((current) => {
+      const nextDates = {
+        ...current,
+        [billIdentity]: occurrenceDateKey,
+      };
+
+      window.localStorage.setItem(
+        activeBillOccurrencesStorageKey,
+        JSON.stringify(nextDates),
+      );
+
+      return nextDates;
+    });
+  }
+
+  function markBillPaid(item: BillOccurrenceItem) {
+    const { bill, occurrence } = item;
+    const paidAt = new Date().toISOString();
+    const followingOccurrence = getFollowingBillDueDate(
+      bill.dueDate,
+      occurrence.dueDate,
+    );
+    const nextOccurrenceDateKey = followingOccurrence
+      ? formatLocalDateKey(followingOccurrence)
+      : null;
+
+    setPaidBillOccurrences((current) => {
+      const nextOccurrences = {
+        ...current,
+        [occurrence.occurrenceKey]: paidAt,
+      };
+
+      window.localStorage.setItem(
+        paidBillsStorageKey,
+        JSON.stringify(nextOccurrences),
+      );
+
+      return nextOccurrences;
+    });
+
+    if (nextOccurrenceDateKey) {
+      setActiveBillOccurrenceDates((current) => {
+        const nextDates = {
+          ...current,
+          [occurrence.billIdentity]: nextOccurrenceDateKey,
+        };
+
+        window.localStorage.setItem(
+          activeBillOccurrencesStorageKey,
+          JSON.stringify(nextDates),
+        );
+
+        return nextDates;
+      });
+    }
+
+    const nextPaidAction: PaidBillAction = {
+      occurrenceKey: occurrence.occurrenceKey,
+      occurrenceDateKey: occurrence.dueDateKey,
+      billIdentity: occurrence.billIdentity,
+      billName: bill.name || "Bill",
+      nextOccurrenceDateKey,
+      paidAt,
+    };
+
+    setRecentPaidActions((current) => {
+      const nextActions = normalizeRecentPaidActions(
+        [
+          nextPaidAction,
+          ...current.filter(
+            (action) =>
+              action.occurrenceKey !==
+              nextPaidAction.occurrenceKey,
+          ),
+        ],
+        {
+          ...paidBillOccurrences,
+          [occurrence.occurrenceKey]: paidAt,
+        },
+        preferences,
+      );
+
+      window.localStorage.setItem(
+        recentPaidActionsStorageKey,
+        JSON.stringify(nextActions),
+      );
+
+      return nextActions;
+    });
+
+    setPaidConfirmationAction(nextPaidAction);
+    setShowPaidConfirmation(true);
+
+    if (paidConfirmationTimeout.current) {
+      clearTimeout(paidConfirmationTimeout.current);
+    }
+
+    paidConfirmationTimeout.current = setTimeout(() => {
+      setShowPaidConfirmation(false);
+      paidConfirmationTimeout.current = null;
+    }, 6500);
+  }
+
+  function undoPaidBill(action: PaidBillAction) {
+    setPaidBillOccurrences((current) => {
+      const nextOccurrences = { ...current };
+      delete nextOccurrences[action.occurrenceKey];
+
+      window.localStorage.setItem(
+        paidBillsStorageKey,
+        JSON.stringify(nextOccurrences),
+      );
+
+      return nextOccurrences;
+    });
+
+    updateActiveOccurrenceDate(
+      action.billIdentity,
+      action.occurrenceDateKey,
+    );
+
+    setRecentPaidActions((current) => {
+      const nextActions = current.filter(
+        (recentAction) =>
+          recentAction.occurrenceKey !== action.occurrenceKey,
+      );
+
+      window.localStorage.setItem(
+        recentPaidActionsStorageKey,
+        JSON.stringify(nextActions),
+      );
+
+      return nextActions;
+    });
+
+    if (
+      paidConfirmationAction?.occurrenceKey ===
+      action.occurrenceKey
+    ) {
+      setPaidConfirmationAction(null);
+      setShowPaidConfirmation(false);
+    }
+
+    if (paidConfirmationTimeout.current) {
+      clearTimeout(paidConfirmationTimeout.current);
+      paidConfirmationTimeout.current = null;
+    }
+  }
+
+
+  const activeBillItems = manualBills
+    .map((bill) => {
+      const billIdentity = getBillIdentity(bill);
+      const occurrence = getActiveBillOccurrence(
+        bill,
+        activeBillOccurrenceDates[billIdentity],
+        paidBillOccurrences,
+        today,
+      );
+
+      return occurrence ? { bill, occurrence } : null;
+    })
+    .filter(
+      (item): item is BillOccurrenceItem => item !== null,
+    );
+
+  const overdueBillItems = sortBillOccurrenceItems(
+    activeBillItems.filter(
+      (item) => item.occurrence.status === "Overdue",
+    ),
   );
 
-  const otherBills = sortBillsByDueDay(
-    manualBills.filter((bill) => getAutoBillStatus(bill.dueDate) === "Paid")
+  const upcomingBillItems = activeBillItems.filter(
+    (item) => item.occurrence.status === "Upcoming",
   );
 
-  const upcomingTotal = upcomingBills.reduce(
+  const beforeNextPaydayBillItems = hasCurrentPayday
+    ? sortBillOccurrenceItems(
+        upcomingBillItems.filter(
+          (item) =>
+            getBillOccurrencePayPeriod(
+              item.occurrence.dueDate,
+              preferences,
+              today,
+            ) === "before-next-payday",
+        ),
+      )
+    : sortBillOccurrenceItems(
+        upcomingBillItems.filter((item) => {
+          const daysUntilDue = getDaysUntilDate(
+            item.occurrence.dueDate,
+            today,
+          );
+
+          return daysUntilDue >= 0 && daysUntilDue <= payPeriodDays;
+        }),
+      );
+
+  const nextPayPeriodBillItems = hasCurrentPayday
+    ? sortBillOccurrenceItems(
+        upcomingBillItems.filter(
+          (item) =>
+            getBillOccurrencePayPeriod(
+              item.occurrence.dueDate,
+              preferences,
+              today,
+            ) === "next-pay-period",
+        ),
+      )
+    : [];
+
+  const laterBillItems = hasCurrentPayday
+    ? sortBillOccurrenceItems(
+        upcomingBillItems.filter((item) => {
+          const period = getBillOccurrencePayPeriod(
+            item.occurrence.dueDate,
+            preferences,
+            today,
+          );
+
+          return period === "later" || period === "unscheduled";
+        }),
+      )
+    : sortBillOccurrenceItems(
+        upcomingBillItems.filter(
+          (item) =>
+            getDaysUntilDate(item.occurrence.dueDate, today) >
+            payPeriodDays,
+        ),
+      );
+
+  const overdueTotal = getBillOccurrenceItemsTotal(
+    overdueBillItems,
+    preferences,
+  );
+  const beforeNextPaydayTotal = getBillOccurrenceItemsTotal(
+    beforeNextPaydayBillItems,
+    preferences,
+  );
+  const nextPayPeriodTotal = getBillOccurrenceItemsTotal(
+    nextPayPeriodBillItems,
+    preferences,
+  );
+  const laterBillsTotal = getBillOccurrenceItemsTotal(
+    laterBillItems,
+    preferences,
+  );
+  const dueBeforePaydayTotal =
+    overdueTotal + beforeNextPaydayTotal;
+  const dueBeforePaydayCount =
+    overdueBillItems.length + beforeNextPaydayBillItems.length;
+  const monthlyTotal = manualBills.reduce(
     (total, bill) => total + parseMoney(bill.amount),
-    0
+    0,
   );
 
-  const otherTotal = otherBills.reduce(
-    (total, bill) => total + parseMoney(bill.amount),
-    0
-  );
-
-  const totalBills = manualBills.reduce(
-    (total, bill) => total + parseMoney(bill.amount),
-    0
-  );
-
-  const hasBills = manualBills.length > 0;
+  const primaryTitle = hasCurrentPayday
+    ? "Due This Pay Period"
+    : "Next Bills";
+  const heroTitle = hasCurrentPayday
+    ? "Due Before Next Payday"
+    : overdueBillItems.length > 0
+      ? "Bills Needing Attention"
+      : "Upcoming Bills";
+  const primaryEmptyTitle = hasCurrentPayday
+    ? "Nothing else due before payday"
+    : "No bills due soon";
+  const primaryEmptyText = hasCurrentPayday
+    ? `You have no additional unpaid bills due before ${formatPayday(
+        preferences.nextPayday,
+      )}.`
+    : `You have no unpaid bills due within the next ${payPeriodDays} days.`;
 
   return (
     <PageShell>
       <TopNav />
 
       <div className="min-h-[70vh]">
-        <header className="-mt-1 mb-3 motion-card sm:-mt-2">
-          <div className="mb-2 flex items-center justify-between gap-4">
+        <header className="-mt-1 mb-1.5 motion-card sm:-mt-2">
+          <div className="mb-1.5 flex items-center justify-between gap-4">
             <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
               Bill Tracker
             </p>
 
-            <Pill>v1.2.2 Beta</Pill>
+            <Pill>v1.3 Beta</Pill>
           </div>
 
-          <h1 className="text-4xl font-bold tracking-tight text-[#f5f0e8]">
+          <h1 className="text-[2.15rem] font-bold leading-tight tracking-tight text-[#f5f0e8] sm:text-4xl">
             Bills
           </h1>
         </header>
 
-        <section className="liquid-glass-accent hero-glass-card motion-card motion-card-delay-1 mb-3 rounded-[2rem]">
-          <div className="liquid-content relative p-3.5 sm:p-5">
-            <div className="absolute -right-16 -top-16 h-36 w-36 rounded-full bg-[#c7ad75]/10 blur-3xl" />
-            <div className="absolute -bottom-16 left-10 h-36 w-36 rounded-full bg-[#f5f0e8]/5 blur-3xl" />
+        <section className="liquid-glass-accent hero-glass-card dashboard-hero motion-card motion-card-delay-1 mb-2 rounded-[2rem]">
+          <div className="liquid-content dashboard-hero-content relative p-3 sm:p-3.5">
+            <div
+              className="dashboard-hero-glow dashboard-hero-glow-accent"
+              aria-hidden="true"
+            />
+            <div
+              className="dashboard-hero-glow dashboard-hero-glow-soft"
+              aria-hidden="true"
+            />
+            <div className="dashboard-hero-reflection" aria-hidden="true" />
 
-            <div className="relative mb-2.5 flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.35)]" />
+            <div className="relative flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-start gap-2.5 pr-1">
+                <span className="dashboard-hero-status-dot mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75]" />
 
-                <p className="min-w-0 text-xs font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
-                  Due Soon
+                <p className="min-w-0 text-xs font-semibold uppercase leading-5 tracking-[0.22em] text-[#f5f0e8]">
+                  {heroTitle}
                 </p>
               </div>
 
-              <Pill>{upcomingBills.length} upcoming</Pill>
+              <div className="shrink-0">
+                <Pill>
+                  {dueBeforePaydayCount} bill
+                  {dueBeforePaydayCount === 1 ? "" : "s"}
+                </Pill>
+              </div>
             </div>
 
-            <p className="relative break-words text-5xl font-bold tracking-tight text-[#f5f0e8] sm:text-7xl">
-              {formatMoney(upcomingTotal)}
-            </p>
+            <div className="relative mt-2.5">
+              <p className="dashboard-hero-balance break-words text-[3rem] font-bold leading-none tracking-[-0.045em] text-[#f5f0e8] sm:text-6xl">
+                {formatMoney(dueBeforePaydayTotal)}
+              </p>
+            </div>
 
-            <div className="relative mt-3 rounded-[1.35rem] border border-[#f5f0e8]/10 bg-[#11100d]/25 p-1.5">
-              <div className="grid gap-1 sm:grid-cols-3 sm:gap-0">
-                <HeroStat label="Tracked" value={String(manualBills.length)} />
+            <div className="relative mt-2.5 overflow-hidden rounded-[1.3rem] border border-[#f5f0e8]/10 bg-[#11100d]/18 shadow-[inset_0_1px_0_rgba(245,240,232,0.045)]">
+              <HeroMetricRow
+                label="Next Payday"
+                value={
+                  hasCurrentPayday
+                    ? formatPayday(preferences.nextPayday)
+                    : "Not set"
+                }
+              />
 
-                <HeroStat label="Other Bills" value={formatMoney(otherTotal)} />
+              <HeroMetricRow
+                label="Next Pay Period"
+                value={
+                  hasCurrentPayday
+                    ? formatMoney(nextPayPeriodTotal)
+                    : "Not available"
+                }
+              />
 
-                <HeroStat
-                  label="Monthly Total"
-                  value={formatMoney(totalBills)}
-                />
-              </div>
+              <HeroMetricRow
+                label="Monthly Bills"
+                value={formatMoney(monthlyTotal)}
+                last
+              />
             </div>
           </div>
         </section>
@@ -191,98 +829,321 @@ export default function BillsPage() {
           <SaveConfirmation onDismiss={() => setShowSaveConfirmation(false)} />
         ) : null}
 
-        <section className="grid gap-3">
-          <section className="liquid-glass motion-card motion-card-delay-2 rounded-[1.7rem] p-3.5">
-            <div className="liquid-content">
-              <div className="mb-3 flex items-start justify-between gap-4">
-                <div>
-                  <SectionTitle title="Upcoming Bills" />
-
-                  <p className="mt-1.5 text-sm text-stone-400">
-                    {upcomingBills.length} due within 7 days •{" "}
-                    {formatMoney(upcomingTotal)}
-                  </p>
-                </div>
-
-                <Link
-                  href="/manual?tab=bills"
-                  onClick={rememberBillsEditSnapshot}
-                  className="pressable shrink-0 rounded-full border border-[#f5f0e8]/10 px-3 py-1 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
-                >
-                  Edit
-                </Link>
-              </div>
-
-              {upcomingBills.length > 0 ? (
-                <div className="grid gap-2">
-                  {upcomingBills.map((bill, index) => (
-                    <BillRow key={`upcoming-${index}`} bill={bill} />
-                  ))}
-                </div>
-              ) : (
-                <EmptyState
-                  title={hasBills ? "Nothing due soon" : "No bills added yet"}
-                  text={
-                    hasBills
-                      ? "No bills are due within the next 7 days."
-                      : "Add your first bill in the Editor."
-                  }
-                  actionLabel="Add Bill"
-                  actionHref="/manual?tab=bills"
-                  onAction={rememberBillsEditSnapshot}
-                />
-              )}
-            </div>
-          </section>
-
-          <section className="liquid-glass motion-card motion-card-delay-3 rounded-[1.7rem] p-3.5">
-            <div className="liquid-content">
-              <button
-                type="button"
-                onClick={() => setShowOtherBills((current) => !current)}
-                className="flex w-full items-center justify-between gap-4 text-left"
+        <section className="grid gap-2">
+          <CurrentPayPeriodCard
+            title={primaryTitle}
+            description={
+              hasCurrentPayday
+                ? `${beforeNextPaydayBillItems.length} unpaid • ${formatMoney(
+                    beforeNextPaydayTotal,
+                  )} planned through ${formatPayday(preferences.nextPayday)}`
+                : `${beforeNextPaydayBillItems.length} unpaid • ${formatMoney(
+                    beforeNextPaydayTotal,
+                  )} planned over the next ${payPeriodDays} days`
+            }
+            bills={beforeNextPaydayBillItems}
+            overdueBills={overdueBillItems}
+            overdueTotal={overdueTotal}
+            recentPaidActions={recentPaidActions}
+            showRecentPayments={showRecentPayments}
+            onToggleRecentPayments={() =>
+              setShowRecentPayments((current) => !current)
+            }
+            onPayBill={markBillPaid}
+            onUndoRecentPayment={undoPaidBill}
+            emptyTitle={primaryEmptyTitle}
+            emptyText={primaryEmptyText}
+            action={
+              <Link
+                href="/manual?tab=bills"
+                onClick={rememberBillsEditSnapshot}
+                className="dashboard-pill-button pressable shrink-0 !px-2.5 !py-0.5"
               >
-                <div className="min-w-0">
-                  <SectionTitle title="Other Bills" />
+                Edit
+              </Link>
+            }
+          />
 
-                  <p className="mt-1.5 text-sm text-stone-400">
-                    {otherBills.length} bill
-                    {otherBills.length === 1 ? "" : "s"} •{" "}
-                    {formatMoney(otherTotal)}
-                  </p>
-                </div>
+          {hasCurrentPayday ? (
+            <BillSection
+              title="Next Pay Period"
+              description={`${nextPayPeriodBillItems.length} bill${
+                nextPayPeriodBillItems.length === 1 ? "" : "s"
+              } • ${formatMoney(nextPayPeriodTotal)} planned after payday`}
+              bills={nextPayPeriodBillItems}
+              onPayBill={markBillPaid}
+              emptyTitle="No bills in the next pay period"
+              emptyText="Nothing is currently scheduled in this pay period."
+              delayClass="motion-card-delay-3"
+              muted
+            />
+          ) : null}
 
-                <span className="pressable shrink-0 rounded-full border border-[#f5f0e8]/10 px-3 py-1 text-xs font-semibold text-stone-300 transition hover:border-[#c7ad75]/30 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]">
-                  {showOtherBills ? "Hide" : "View"}
-                </span>
-              </button>
-
-              {showOtherBills && (
-                <div className="mt-3 grid gap-2 pt-1">
-                  {otherBills.length > 0 ? (
-                    otherBills.map((bill, index) => (
-                      <BillRow key={`other-${index}`} bill={bill} muted />
-                    ))
-                  ) : (
-                    <p className="text-sm text-stone-400">
-                      No other bills to show yet.
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          </section>
+          <BillSection
+            title={hasCurrentPayday ? "Later Bills" : "Other Bills"}
+            description={`${laterBillItems.length} bill${
+              laterBillItems.length === 1 ? "" : "s"
+            } • ${formatMoney(laterBillsTotal)}`}
+            bills={laterBillItems}
+            emptyTitle={hasCurrentPayday ? "No later bills" : "No other bills"}
+            emptyText={
+              hasCurrentPayday
+                ? "Nothing is scheduled beyond the next two pay periods."
+                : `Nothing is scheduled outside the current ${payPeriodDays}-day window.`
+            }
+            muted
+          />
         </section>
       </div>
+
+      {paidConfirmationAction && showPaidConfirmation ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-5 z-50 flex justify-center px-4 pb-[env(safe-area-inset-bottom)]">
+          <div
+            role="status"
+            aria-live="polite"
+            className="dashboard-surface pointer-events-auto relative w-full max-w-[23rem] overflow-hidden rounded-[1.35rem] border border-[#f5f0e8]/10 p-3 shadow-[0_18px_42px_rgba(0,0,0,0.28)]"
+          >
+            <div className="dashboard-surface-glow" aria-hidden="true" />
+
+            <div className="liquid-content flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[#f5f0e8]">
+                  Bill marked paid
+                </p>
+                <p className="mt-0.5 truncate text-xs text-stone-400">
+                  {paidConfirmationAction.nextOccurrenceDateKey
+                    ? `Next due ${formatPayday(
+                        paidConfirmationAction.nextOccurrenceDateKey,
+                      )}.`
+                    : `${paidConfirmationAction.billName} payment recorded.`}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  undoPaidBill(paidConfirmationAction)
+                }
+                className="dashboard-pill-button pressable shrink-0 !px-3 !py-1"
+              >
+                <span className="text-xs">Undo</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </PageShell>
+  );
+}
+
+function BillSection({
+  title,
+  description,
+  bills,
+  onPayBill,
+  emptyTitle,
+  emptyText,
+  action,
+  muted = false,
+  attention = false,
+  delayClass = "",
+}: {
+  title: string;
+  description: string;
+  bills: BillOccurrenceItem[];
+  onPayBill?: (item: BillOccurrenceItem) => void;
+  emptyTitle: string;
+  emptyText: string;
+  action?: React.ReactNode;
+  muted?: boolean;
+  attention?: boolean;
+  delayClass?: string;
+}) {
+  return (
+    <section
+      className={`dashboard-surface dashboard-bills-surface motion-card ${delayClass} rounded-[1.7rem] p-2.5`}
+    >
+      <div className="dashboard-surface-glow" aria-hidden="true" />
+
+      <div className="liquid-content">
+        <div className="mb-2 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <SectionTitle title={title} />
+            <p className="mt-1 text-sm text-stone-400">{description}</p>
+          </div>
+
+          {action}
+        </div>
+
+        {bills.length > 0 ? (
+          <div className="grid gap-1">
+            {bills.map((item) => (
+              <BillRow
+                key={item.occurrence.occurrenceKey}
+                bill={item.bill}
+                occurrenceDate={item.occurrence.dueDate}
+                muted={muted}
+                overdue={attention}
+                onPay={onPayBill ? () => onPayBill(item) : undefined}
+              />
+            ))}
+          </div>
+        ) : (
+          <EmptyPreview title={emptyTitle} text={emptyText} />
+        )}
+      </div>
+    </section>
+  );
+}
+
+function CurrentPayPeriodCard({
+  title,
+  description,
+  bills,
+  overdueBills,
+  overdueTotal,
+  recentPaidActions,
+  showRecentPayments,
+  onToggleRecentPayments,
+  onPayBill,
+  onUndoRecentPayment,
+  emptyTitle,
+  emptyText,
+  action,
+}: {
+  title: string;
+  description: string;
+  bills: BillOccurrenceItem[];
+  overdueBills: BillOccurrenceItem[];
+  overdueTotal: number;
+  recentPaidActions: PaidBillAction[];
+  showRecentPayments: boolean;
+  onToggleRecentPayments: () => void;
+  onPayBill: (item: BillOccurrenceItem) => void;
+  onUndoRecentPayment: (action: PaidBillAction) => void;
+  emptyTitle: string;
+  emptyText: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <section className="dashboard-surface dashboard-bills-surface motion-card motion-card-delay-2 rounded-[1.7rem] p-2.5">
+      <div className="dashboard-surface-glow" aria-hidden="true" />
+
+      <div className="liquid-content">
+        <div className="mb-2 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <SectionTitle title={title} />
+            <p className="mt-1 text-sm text-stone-400">{description}</p>
+          </div>
+
+          {action}
+        </div>
+
+        {bills.length > 0 ? (
+          <div className="grid gap-1">
+            {bills.map((item) => (
+              <BillRow
+                key={item.occurrence.occurrenceKey}
+                bill={item.bill}
+                occurrenceDate={item.occurrence.dueDate}
+                onPay={() => onPayBill(item)}
+              />
+            ))}
+          </div>
+        ) : (
+          <EmptyPreview title={emptyTitle} text={emptyText} />
+        )}
+
+        {overdueBills.length > 0 ? (
+          <div className="mt-2.5 border-t border-[#f5f0e8]/8 pt-2.5">
+            <div className="mb-2">
+              <SectionTitle title="Needs Attention" />
+
+              <p className="mt-1 text-sm text-stone-400">
+                {overdueBills.length} overdue • {formatMoney(overdueTotal)} still unpaid
+              </p>
+            </div>
+
+            <div className="grid gap-1">
+              {overdueBills.map((item) => (
+                <BillRow
+                  key={item.occurrence.occurrenceKey}
+                  bill={item.bill}
+                  occurrenceDate={item.occurrence.dueDate}
+                  overdue
+                  onPay={() => onPayBill(item)}
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {recentPaidActions.length > 0 ? (
+          <div className="mt-2.5 border-t border-[#f5f0e8]/8 pt-1.5">
+            <button
+              type="button"
+              onClick={onToggleRecentPayments}
+              aria-expanded={showRecentPayments}
+              aria-controls="recent-payments-content"
+              className="pressable flex w-full items-center justify-between gap-3 rounded-[1.1rem] px-1 py-1.5 text-left"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[#f5f0e8]">
+                  Recently Paid
+                </p>
+
+                <p className="mt-0.5 text-xs text-stone-500">
+                  {recentPaidActions.length} recorded
+                </p>
+              </div>
+
+              <span className="dashboard-pill-button shrink-0 !px-2.5 !py-0.5">
+                {showRecentPayments ? "Hide" : "View"}
+              </span>
+            </button>
+
+            {showRecentPayments ? (
+              <div
+                id="recent-payments-content"
+                className="mt-1.5 grid gap-1 border-t border-[#f5f0e8]/8 pt-2"
+              >
+                {recentPaidActions.map((action) => (
+                  <div
+                    key={action.occurrenceKey}
+                    className="dashboard-preview-row flex items-center justify-between gap-3 !px-3 !py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-stone-300">
+                        {action.billName}
+                      </p>
+
+                      <p className="mt-0.5 text-xs text-stone-500">
+                        Paid {formatPayday(action.occurrenceDateKey)}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => onUndoRecentPayment(action)}
+                      className="dashboard-pill-button pressable shrink-0 !px-2.5 !py-1"
+                    >
+                      <span className="text-xs">Undo</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </section>
   );
 }
 
 function SectionTitle({ title }: { title: string }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.25)]" />
-
+    <div className="flex items-center gap-2.5">
+      <span className="dashboard-section-dot h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75]" />
       <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
         {title}
       </h2>
@@ -290,14 +1151,26 @@ function SectionTitle({ title }: { title: string }) {
   );
 }
 
-function HeroStat({ label, value }: { label: string; value: string }) {
+function HeroMetricRow({
+  label,
+  value,
+  last = false,
+}: {
+  label: string;
+  value: string;
+  last?: boolean;
+}) {
   return (
-    <div className="rounded-[0.95rem] px-3 py-1.5 sm:border-r sm:border-[#f5f0e8]/10 sm:last:border-r-0">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
+    <div
+      className={`flex items-center justify-between gap-4 px-3.5 py-2.5 ${
+        last ? "" : "border-b border-[#f5f0e8]/8"
+      }`}
+    >
+      <p className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
         {label}
       </p>
 
-      <p className="mt-1 truncate text-base font-bold text-[#f5f0e8]">
+      <p className="shrink-0 text-base font-bold tracking-tight text-[#f5f0e8]">
         {value}
       </p>
     </div>
@@ -309,10 +1182,12 @@ function SaveConfirmation({ onDismiss }: { onDismiss: () => void }) {
     <div
       role="status"
       aria-live="polite"
-      className="motion-card motion-card-delay-2 mb-3 rounded-[1.35rem] border border-[#c7ad75]/20 bg-[#c7ad75]/10 px-3.5 py-3 shadow-[0_18px_45px_rgba(0,0,0,0.18)]"
+      className="dashboard-surface motion-card motion-card-delay-2 mb-2 rounded-[1.35rem] p-2.5"
     >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="dashboard-surface-glow" aria-hidden="true" />
+
+      <div className="liquid-content flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#c7ad75]/25 bg-[#11100d]/25 text-sm font-bold text-[#c7ad75]">
             ✓
           </span>
@@ -321,7 +1196,6 @@ function SaveConfirmation({ onDismiss }: { onDismiss: () => void }) {
             <p className="text-sm font-semibold text-[#f5f0e8]">
               Bills updated
             </p>
-
             <p className="mt-0.5 text-xs leading-5 text-stone-400">
               Your latest changes are reflected here.
             </p>
@@ -331,7 +1205,7 @@ function SaveConfirmation({ onDismiss }: { onDismiss: () => void }) {
         <button
           type="button"
           onClick={onDismiss}
-          className="pressable shrink-0 rounded-full border border-[#f5f0e8]/10 px-2.5 py-1 text-xs font-semibold text-stone-400 transition hover:border-[#c7ad75]/25 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+          className="dashboard-pill-button pressable shrink-0 !px-2.5 !py-0.5"
         >
           Done
         </button>
@@ -342,22 +1216,24 @@ function SaveConfirmation({ onDismiss }: { onDismiss: () => void }) {
 
 function BillRow({
   bill,
+  occurrenceDate,
   muted = false,
+  overdue = false,
+  onPay,
 }: {
   bill: ManualBill;
+  occurrenceDate: Date;
   muted?: boolean;
+  overdue?: boolean;
+  onPay?: () => void;
 }) {
-  const amount = parseMoney(bill.amount);
-
   return (
     <div
-      className={`rounded-[1.1rem] border px-3.5 py-3 transition hover:bg-[#f5f0e8]/6 ${
-        muted
-          ? "border-[#f5f0e8]/10 bg-[#11100d]/20"
-          : "border-[#c7ad75]/18 bg-[#11100d]/25"
+      className={`dashboard-preview-row !px-3 !py-2 ${
+        muted ? "dashboard-preview-row-muted" : ""
       }`}
     >
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p
             className={`truncate text-base font-semibold ${
@@ -367,13 +1243,21 @@ function BillRow({
             {bill.name || "Untitled Bill"}
           </p>
 
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-[#f5f0e8]/10 bg-[#f5f0e8]/6 px-2.5 py-0.5 text-xs font-semibold text-stone-400">
-              Due {bill.dueDate || "TBD"}
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <span
+              className={`dashboard-date-pill ${
+                overdue
+                  ? "!border-[#d79b83]/25 !bg-[#d79b83]/10 !text-[#e2aa93]"
+                  : ""
+              }`}
+            >
+              {overdue
+                ? `Overdue · ${formatBillDate(occurrenceDate)}`
+                : `Due ${formatBillDate(occurrenceDate)}`}
             </span>
 
             {bill.paymentMethod ? (
-              <span className="rounded-full border border-[#f5f0e8]/10 bg-[#11100d]/25 px-2.5 py-0.5 text-xs font-semibold text-stone-500">
+              <span className="dashboard-secondary-pill hidden sm:inline-flex">
                 {bill.paymentMethod}
               </span>
             ) : null}
@@ -386,44 +1270,34 @@ function BillRow({
               muted ? "text-stone-300" : "text-[#f5f0e8]"
             }`}
           >
-            {formatMoney(amount)}
+            {formatMoney(parseMoney(bill.amount))}
           </p>
 
-          <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/65">
-            Monthly
-          </p>
+          {onPay ? (
+            <button
+              type="button"
+              onClick={onPay}
+              aria-label={`Mark ${bill.name || "bill"} paid`}
+              className="dashboard-pill-button pressable mt-1 !px-2.5 !py-1"
+            >
+              <span className="text-xs">Pay</span>
+            </button>
+          ) : (
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/65">
+              Monthly
+            </p>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function EmptyState({
-  title,
-  text,
-  actionLabel,
-  actionHref,
-  onAction,
-}: {
-  title: string;
-  text: string;
-  actionLabel: string;
-  actionHref: string;
-  onAction?: () => void;
-}) {
+function EmptyPreview({ title, text }: { title: string; text: string }) {
   return (
-    <div className="rounded-[1.15rem] border border-dashed border-[#f5f0e8]/12 bg-[#11100d]/20 p-3.5">
-      <p className="text-base font-semibold text-[#f5f0e8]">{title}</p>
-
-      <p className="mt-1.5 text-sm leading-6 text-stone-400">{text}</p>
-
-      <Link
-        href={actionHref}
-        onClick={onAction}
-        className="pressable mt-3 flex rounded-full border border-[#c7ad75]/25 bg-[#c7ad75]/14 px-4 py-2.5 text-center text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#c7ad75]/20"
-      >
-        <span className="w-full">{actionLabel}</span>
-      </Link>
+    <div className="dashboard-empty-preview !p-2.5">
+      <p className="font-semibold text-[#f5f0e8]">{title}</p>
+      <p className="mt-1 text-sm leading-6 text-stone-400">{text}</p>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import LogoMark from "@/components/LogoMark";
 import { supabase } from "../lib/supabase/client";
 
@@ -10,48 +10,21 @@ const publicRoutes = ["/login", "/signup"];
 
 export default function AuthGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
 
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isAllowed, setIsAllowed] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
+    let isRedirecting = false;
 
-    async function checkAuth() {
-      const isPublicRoute = publicRoutes.includes(pathname);
-      const isLocalhost =
-        window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1";
+    const isPublicRoute = publicRoutes.includes(pathname);
+    const isLocalhost =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1";
 
-      if (isLocalhost) {
-        if (!isMounted) {
-          return;
-        }
-
-        setIsAllowed(true);
-        setIsCheckingAuth(false);
-        return;
-      }
-
-      const { data } = await supabase.auth.getSession();
-      const session = data.session;
-
-      if (!isMounted) {
-        return;
-      }
-
-      if (!session && !isPublicRoute) {
-        setIsAllowed(false);
-        setIsCheckingAuth(false);
-        router.replace("/login");
-        return;
-      }
-
-      if (session && isPublicRoute) {
-        setIsAllowed(false);
-        setIsCheckingAuth(false);
-        router.replace("/");
+    function allowCurrentRoute() {
+      if (!isMounted || isRedirecting) {
         return;
       }
 
@@ -59,19 +32,84 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       setIsCheckingAuth(false);
     }
 
-    checkAuth();
+    function redirectTo(path: string) {
+      if (!isMounted || isRedirecting) {
+        return;
+      }
+
+      isRedirecting = true;
+      setIsAllowed(false);
+      setIsCheckingAuth(true);
+
+      /*
+       * Auth-boundary redirects use a full location replacement instead of
+       * client navigation. This is more dependable in the installed iPhone
+       * web app and guarantees the newly created or cleared Supabase session
+       * is picked up immediately.
+       */
+      window.location.replace(path);
+    }
+
+    function applySessionState(hasSession: boolean) {
+      if (!isMounted || isRedirecting) {
+        return;
+      }
+
+      if (!hasSession && !isPublicRoute) {
+        redirectTo("/login");
+        return;
+      }
+
+      if (hasSession && isPublicRoute) {
+        redirectTo("/");
+        return;
+      }
+
+      allowCurrentRoute();
+    }
+
+    async function checkInitialSession() {
+      if (isLocalhost) {
+        allowCurrentRoute();
+        return;
+      }
+
+      const { data, error } = await supabase.auth.getSession();
+
+      if (!isMounted || isRedirecting) {
+        return;
+      }
+
+      if (error) {
+        if (isPublicRoute) {
+          allowCurrentRoute();
+        } else {
+          redirectTo("/login");
+        }
+
+        return;
+      }
+
+      applySessionState(Boolean(data.session));
+    }
+
+    checkInitialSession();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
-      checkAuth();
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (isLocalhost || !isMounted || isRedirecting) {
+        return;
+      }
+
+      applySessionState(Boolean(session));
     });
 
     return () => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [pathname, router]);
+  }, [pathname]);
 
   if (isCheckingAuth) {
     return (
