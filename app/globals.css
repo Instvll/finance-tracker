@@ -174,51 +174,14 @@ body {
    These are derived from each preset so every page uses the same depth,
    contrast, and glass hierarchy without changing the identity of a theme. */
 :root {
-  --theme-hero-surface: color-mix(
-    in srgb,
-    var(--theme-panel) 92%,
-    var(--theme-card) 8%
-  );
-  --theme-section-surface: color-mix(
-    in srgb,
-    var(--theme-panel) 78%,
-    var(--theme-card) 22%
-  );
-  --theme-row-surface: color-mix(
-    in srgb,
-    var(--theme-card) 74%,
-    var(--theme-panel) 26%
-  );
-  --theme-row-surface-strong: color-mix(
-    in srgb,
-    var(--theme-card-soft) 66%,
-    var(--theme-card) 34%
-  );
-  --theme-row-surface-muted: color-mix(
-    in srgb,
-    var(--theme-card) 58%,
-    var(--theme-panel) 42%
-  );
-  --theme-inset-surface: color-mix(
-    in srgb,
-    var(--theme-bg) 72%,
-    var(--theme-panel) 28%
-  );
-  --theme-overlay-soft: color-mix(
-    in srgb,
-    var(--theme-card-soft) 24%,
-    transparent
-  );
-  --theme-border-soft: color-mix(
-    in srgb,
-    var(--theme-text) 14%,
-    transparent
-  );
-  --theme-border-strong: color-mix(
-    in srgb,
-    var(--theme-text) 20%,
-    transparent
-  );
+  --theme-hero-surface: color-mix( in srgb, var(--theme-panel) 92%, var(--theme-card) 8% );
+  --theme-section-surface: color-mix( in srgb, var(--theme-panel) 78%, var(--theme-card) 22% );
+  --theme-row-surface: color-mix( in srgb, var(--theme-card) 74%, var(--theme-panel) 26% );
+  --theme-row-surface-strong: color-mix( in srgb, var(--theme-card-soft) 66%, var(--theme-card) 34% );
+  --theme-row-surface-muted: color-mix( in srgb, var(--theme-card) 58%, var(--theme-panel) 42% );
+  --theme-inset-surface: color-mix( in srgb, var(--theme-bg) 72%, var(--theme-panel) 28% );
+  --theme-overlay-soft: color-mix( in srgb, var(--theme-card-soft) 24%, transparent );
+  --theme-border-soft: color-mix( in srgb, var(--theme-text) 14%, transparent );
 }
 
 
@@ -271,11 +234,7 @@ html[data-theme] [class*=" bg-[#211f19]"] {
 /* Soft dark panels */
 html[data-theme] [class^="bg-black/30"],
 html[data-theme] [class*=" bg-black/30"] {
-  background-color: color-mix(
-    in srgb,
-    var(--theme-text) 12%,
-    transparent
-  ) !important;
+  background-color: color-mix( in srgb, var(--theme-text) 12%, transparent ) !important;
 }
 
 html[data-theme] [class^="bg-[#11100d]/16"],
@@ -294,11 +253,7 @@ html[data-theme] [class^="bg-[#11100d]/30"],
 html[data-theme] [class*=" bg-[#11100d]/30"],
 html[data-theme] [class^="bg-[#11100d]/35"],
 html[data-theme] [class*=" bg-[#11100d]/35"] {
-  background-color: color-mix(
-    in srgb,
-    var(--theme-row-surface) 58%,
-    transparent
-  ) !important;
+  background-color: color-mix( in srgb, var(--theme-row-surface) 58%, transparent ) !important;
 }
 
 html[data-theme] [class^="bg-[#11100d]/45"],
@@ -307,22 +262,14 @@ html[data-theme] [class^="bg-[#11100d]/50"],
 html[data-theme] [class*=" bg-[#11100d]/50"],
 html[data-theme] [class^="bg-[#11100d]/55"],
 html[data-theme] [class*=" bg-[#11100d]/55"] {
-  background-color: color-mix(
-    in srgb,
-    var(--theme-row-surface-strong) 76%,
-    transparent
-  ) !important;
+  background-color: color-mix( in srgb, var(--theme-row-surface-strong) 76%, transparent ) !important;
 }
 
 html[data-theme] [class^="bg-[#11100d]/75"],
 html[data-theme] [class*=" bg-[#11100d]/75"],
 html[data-theme] [class^="bg-[#11100d]/80"],
 html[data-theme] [class*=" bg-[#11100d]/80"] {
-  background-color: color-mix(
-    in srgb,
-    var(--theme-inset-surface) 92%,
-    transparent
-  ) !important;
+  background-color: color-mix( in srgb, var(--theme-inset-surface) 92%, transparent ) !important;
 }
 
 html[data-theme] [class^="bg-[#25231e]/45"],
@@ -333,11 +280,7 @@ html[data-theme] [class^="bg-[#25231e]/60"],
 html[data-theme] [class*=" bg-[#25231e]/60"],
 html[data-theme] [class^="bg-[#25231e]/70"],
 html[data-theme] [class*=" bg-[#25231e]/70"] {
-  background-color: color-mix(
-    in srgb,
-    var(--theme-row-surface-strong) 78%,
-    transparent
-  ) !important;
+  background-color: color-mix( in srgb, var(--theme-row-surface-strong) 78%, transparent ) !important;
 }
 
 /* Accent backgrounds - actual bg classes only, not hover classes */
@@ -347,11 +290,7 @@ html[data-theme] [class~="bg-[#c7ad75]"] {
 
 html[data-theme] [class^="bg-[#c7ad75]/"],
 html[data-theme] [class*=" bg-[#c7ad75]/"] {
-  background-color: color-mix(
-    in srgb,
-    var(--theme-accent) 16%,
-    transparent
-  ) !important;
+  background-color: color-mix( in srgb, var(--theme-accent) 16%, transparent ) !important;
 }
 
 html[data-theme] [class^="bg-[#f5f0e8]/"],
@@ -361,19 +300,11 @@ html[data-theme] [class*=" bg-[#f5f0e8]/"] {
 
 /* Hover accent states */
 html[data-theme] [class*="hover:bg-[#c7ad75]/"]:hover {
-  background-color: color-mix(
-    in srgb,
-    var(--theme-accent) 10%,
-    transparent
-  ) !important;
+  background-color: color-mix( in srgb, var(--theme-accent) 10%, transparent ) !important;
 }
 
 html[data-theme] [class*="hover:border-[#c7ad75]/"]:hover {
-  border-color: color-mix(
-    in srgb,
-    var(--theme-accent) 34%,
-    transparent
-  ) !important;
+  border-color: color-mix( in srgb, var(--theme-accent) 34%, transparent ) !important;
 }
 
 html[data-theme] [class*="hover:text-[#c7ad75]"]:hover {
@@ -414,37 +345,21 @@ html[data-theme] [class*="placeholder:text-stone-600"]::placeholder {
 /* Borders */
 html[data-theme] [class^="border-[#f5f0e8]"],
 html[data-theme] [class*=" border-[#f5f0e8]"] {
-  border-color: color-mix(
-    in srgb,
-    var(--theme-text) 18%,
-    transparent
-  ) !important;
+  border-color: color-mix( in srgb, var(--theme-text) 18%, transparent ) !important;
 }
 
 html[data-theme] [class^="border-[#c7ad75]"],
 html[data-theme] [class*=" border-[#c7ad75]"] {
-  border-color: color-mix(
-    in srgb,
-    var(--theme-accent) 42%,
-    transparent
-  ) !important;
+  border-color: color-mix( in srgb, var(--theme-accent) 42%, transparent ) !important;
 }
 
 /* Focus states */
 html[data-theme] [class*="focus:border-[#c7ad75]"]:focus {
-  border-color: color-mix(
-    in srgb,
-    var(--theme-accent) 55%,
-    transparent
-  ) !important;
+  border-color: color-mix( in srgb, var(--theme-accent) 55%, transparent ) !important;
 }
 
 html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
-  background-color: color-mix(
-    in srgb,
-    var(--theme-card) 88%,
-    transparent
-  ) !important;
+  background-color: color-mix( in srgb, var(--theme-card) 88%, transparent ) !important;
 }
 
 /* Liquid glass utilities */
@@ -455,17 +370,10 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
   background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--theme-text) 8%, transparent),
-      transparent 42%
-    ),
-    color-mix(in srgb, var(--theme-panel) 86%, transparent);
+    linear-gradient( 135deg, color-mix(in srgb, var(--theme-text) 8%, transparent), transparent 42% ), color-mix(in srgb, var(--theme-panel) 86%, transparent);
   border: 1px solid color-mix(in srgb, var(--theme-text) 18%, transparent);
   box-shadow:
-    0 24px 70px var(--theme-shadow),
-    inset 0 1px 0 color-mix(in srgb, var(--theme-text) 12%, transparent),
-    inset 0 -1px 0 color-mix(in srgb, var(--theme-bg) 50%, transparent);
+    0 24px 70px var(--theme-shadow), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 12%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--theme-bg) 50%, transparent);
   backdrop-filter: blur(22px) saturate(145%);
   -webkit-backdrop-filter: blur(22px) saturate(145%);
 }
@@ -477,16 +385,10 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
   background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--theme-text) 6%, transparent),
-      transparent 45%
-    ),
-    color-mix(in srgb, var(--theme-card) 86%, transparent);
+    linear-gradient( 135deg, color-mix(in srgb, var(--theme-text) 6%, transparent), transparent 45% ), color-mix(in srgb, var(--theme-card) 86%, transparent);
   border: 1px solid color-mix(in srgb, var(--theme-text) 16%, transparent);
   box-shadow:
-    0 16px 40px color-mix(in srgb, var(--theme-shadow) 75%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--theme-text) 10%, transparent);
+    0 16px 40px color-mix(in srgb, var(--theme-shadow) 75%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 10%, transparent);
   backdrop-filter: blur(18px) saturate(135%);
   -webkit-backdrop-filter: blur(18px) saturate(135%);
 }
@@ -498,22 +400,10 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
   background:
-    radial-gradient(
-      circle at top right,
-      color-mix(in srgb, var(--theme-accent) 20%, transparent),
-      transparent 36%
-    ),
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--theme-text) 7%, transparent),
-      transparent 44%
-    ),
-    color-mix(in srgb, var(--theme-section-surface) 94%, transparent);
+    radial-gradient( circle at top right, color-mix(in srgb, var(--theme-accent) 20%, transparent), transparent 36% ), linear-gradient( 135deg, color-mix(in srgb, var(--theme-text) 7%, transparent), transparent 44% ), color-mix(in srgb, var(--theme-section-surface) 94%, transparent);
   border: 1px solid color-mix(in srgb, var(--theme-accent) 40%, transparent);
   box-shadow:
-    0 28px 80px var(--theme-shadow),
-    inset 0 1px 0 color-mix(in srgb, var(--theme-text) 12%, transparent),
-    0 0 40px color-mix(in srgb, var(--theme-accent) 8%, transparent);
+    0 28px 80px var(--theme-shadow), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 12%, transparent), 0 0 40px color-mix(in srgb, var(--theme-accent) 8%, transparent);
   backdrop-filter: blur(24px) saturate(150%);
   -webkit-backdrop-filter: blur(24px) saturate(150%);
 }
@@ -526,13 +416,7 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--theme-text) 10%, transparent),
-    transparent 28%,
-    transparent 72%,
-    color-mix(in srgb, var(--theme-accent) 6%, transparent)
-  );
+  background: linear-gradient( 135deg, color-mix(in srgb, var(--theme-text) 10%, transparent), transparent 28%, transparent 72%, color-mix(in srgb, var(--theme-accent) 6%, transparent) );
   opacity: 0.5;
 }
 
@@ -544,8 +428,7 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  box-shadow: inset 0 0 0 1px
-    color-mix(in srgb, var(--theme-text) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-text) 10%, transparent);
 }
 
 .liquid-content {
@@ -570,6 +453,10 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   animation-delay: 110ms;
 }
 
+.motion-card-delay-4 {
+  animation-delay: 145ms;
+}
+
 @keyframes page-transition-in {
   from {
     opacity: 0.985;
@@ -582,12 +469,7 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
 
 .pressable {
   transition:
-    transform 190ms var(--motion-apple),
-    border-color 190ms ease,
-    background-color 190ms ease,
-    box-shadow 190ms ease,
-    color 190ms ease,
-    opacity 190ms ease;
+    transform 190ms var(--motion-apple), border-color 190ms ease, background-color 190ms ease, box-shadow 190ms ease, color 190ms ease, opacity 190ms ease;
 }
 
 .pressable:hover {
@@ -606,28 +488,10 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
 /* Clean top app bar */
 .top-app-bar {
   background:
-    radial-gradient(
-      circle at 16% 0%,
-      color-mix(in srgb, var(--theme-text) 13%, transparent),
-      transparent 34%
-    ),
-    radial-gradient(
-      circle at 86% 12%,
-      color-mix(in srgb, var(--theme-accent) 10%, transparent),
-      transparent 38%
-    ),
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--theme-text) 7%, transparent),
-      transparent 46%
-    ),
-    color-mix(in srgb, var(--theme-nav) 76%, transparent);
+    radial-gradient( circle at 16% 0%, color-mix(in srgb, var(--theme-text) 13%, transparent), transparent 34% ), radial-gradient( circle at 86% 12%, color-mix(in srgb, var(--theme-accent) 10%, transparent), transparent 38% ), linear-gradient( 135deg, color-mix(in srgb, var(--theme-text) 7%, transparent), transparent 46% ), color-mix(in srgb, var(--theme-nav) 76%, transparent);
   border-color: color-mix(in srgb, var(--theme-text) 18%, transparent);
   box-shadow:
-    0 18px 44px color-mix(in srgb, var(--theme-shadow) 66%, transparent),
-    0 1px 0 color-mix(in srgb, var(--theme-text) 5%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--theme-text) 16%, transparent),
-    inset 0 -1px 0 color-mix(in srgb, var(--theme-bg) 38%, transparent);
+    0 18px 44px color-mix(in srgb, var(--theme-shadow) 66%, transparent), 0 1px 0 color-mix(in srgb, var(--theme-text) 5%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 16%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--theme-bg) 38%, transparent);
   backdrop-filter: blur(24px) saturate(155%);
   -webkit-backdrop-filter: blur(24px) saturate(155%);
 }
@@ -644,22 +508,10 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--theme-text) 16%, transparent);
   background:
-    radial-gradient(
-      circle at 35% 18%,
-      color-mix(in srgb, var(--theme-text) 16%, transparent),
-      transparent 36%
-    ),
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--theme-text) 9%, transparent),
-      transparent 56%
-    ),
-    color-mix(in srgb, var(--theme-card) 64%, transparent);
+    radial-gradient( circle at 35% 18%, color-mix(in srgb, var(--theme-text) 16%, transparent), transparent 36% ), linear-gradient( 135deg, color-mix(in srgb, var(--theme-text) 9%, transparent), transparent 56% ), color-mix(in srgb, var(--theme-card) 64%, transparent);
   color: var(--theme-text);
   box-shadow:
-    0 9px 22px color-mix(in srgb, var(--theme-shadow) 40%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--theme-text) 16%, transparent),
-    inset 0 -1px 0 color-mix(in srgb, var(--theme-bg) 26%, transparent);
+    0 9px 22px color-mix(in srgb, var(--theme-shadow) 40%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 16%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--theme-bg) 26%, transparent);
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -670,38 +522,20 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   z-index: 0;
   border-radius: inherit;
   background:
-    radial-gradient(
-      circle,
-      color-mix(in srgb, var(--theme-accent) 32%, transparent),
-      transparent 68%
-    );
+    radial-gradient( circle, color-mix(in srgb, var(--theme-accent) 32%, transparent), transparent 68% );
   opacity: 0;
   transform: scale(0.42);
   transition:
-    opacity 220ms ease,
-    transform 380ms var(--motion-bubble);
+    opacity 220ms ease, transform 380ms var(--motion-bubble);
 }
 
 .app-menu-button:hover {
   border-color: color-mix(in srgb, var(--theme-accent) 36%, transparent);
   background:
-    radial-gradient(
-      circle at 35% 18%,
-      color-mix(in srgb, var(--theme-text) 18%, transparent),
-      transparent 36%
-    ),
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--theme-text) 10%, transparent),
-      transparent 56%
-    ),
-    color-mix(in srgb, var(--theme-card) 70%, transparent);
+    radial-gradient( circle at 35% 18%, color-mix(in srgb, var(--theme-text) 18%, transparent), transparent 36% ), linear-gradient( 135deg, color-mix(in srgb, var(--theme-text) 10%, transparent), transparent 56% ), color-mix(in srgb, var(--theme-card) 70%, transparent);
   color: var(--theme-text);
   box-shadow:
-    0 11px 26px color-mix(in srgb, var(--theme-shadow) 46%, transparent),
-    0 0 24px color-mix(in srgb, var(--theme-accent) 7%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--theme-text) 18%, transparent),
-    inset 0 -1px 0 color-mix(in srgb, var(--theme-bg) 30%, transparent);
+    0 11px 26px color-mix(in srgb, var(--theme-shadow) 46%, transparent), 0 0 24px color-mix(in srgb, var(--theme-accent) 7%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 18%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--theme-bg) 30%, transparent);
 }
 
 .app-menu-button:hover::before {
@@ -732,9 +566,7 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   background: currentColor;
   transform-origin: center;
   transition:
-    transform 260ms var(--motion-apple),
-    opacity 180ms ease,
-    width 220ms var(--motion-apple);
+    transform 260ms var(--motion-apple), opacity 180ms ease, width 220ms var(--motion-apple);
 }
 
 .app-menu-line-top {
@@ -763,17 +595,7 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   opacity: 0;
   animation: none;
   background:
-    radial-gradient(
-      circle at 86% 8%,
-      color-mix(in srgb, var(--theme-accent) 8%, transparent),
-      transparent 34%
-    ),
-    radial-gradient(
-      circle at 12% 92%,
-      color-mix(in srgb, var(--theme-text) 3%, transparent),
-      transparent 38%
-    ),
-    rgba(0, 0, 0, 0.5);
+    radial-gradient( circle at 86% 8%, color-mix(in srgb, var(--theme-accent) 8%, transparent), transparent 34% ), radial-gradient( circle at 12% 92%, color-mix(in srgb, var(--theme-text) 3%, transparent), transparent 38% ), rgba(0, 0, 0, 0.5);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   transition: opacity 220ms var(--motion-apple);
@@ -798,36 +620,16 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   animation: none;
   transform: translate3d(14px, 0, 0) scale(0.997);
   background:
-    radial-gradient(
-      circle at 28% 0%,
-      color-mix(in srgb, var(--theme-text) 12%, transparent),
-      transparent 30%
-    ),
-    radial-gradient(
-      circle at 95% 16%,
-      color-mix(in srgb, var(--theme-accent) 11%, transparent),
-      transparent 36%
-    ),
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--theme-text) 7%, transparent),
-      transparent 44%
-    ),
-    color-mix(in srgb, var(--theme-panel) 94%, var(--theme-bg)) !important;
-  border-left: 1px solid
-    color-mix(in srgb, var(--theme-text) 15%, transparent) !important;
+    radial-gradient( circle at 28% 0%, color-mix(in srgb, var(--theme-text) 12%, transparent), transparent 30% ), radial-gradient( circle at 95% 16%, color-mix(in srgb, var(--theme-accent) 11%, transparent), transparent 36% ), linear-gradient( 135deg, color-mix(in srgb, var(--theme-text) 7%, transparent), transparent 44% ), color-mix(in srgb, var(--theme-panel) 94%, var(--theme-bg)) !important;
+  border-left: 1px solid color-mix(in srgb, var(--theme-text) 15%, transparent) !important;
   box-shadow:
-    -18px 0 58px rgba(0, 0, 0, 0.34),
-    -1px 0 0 color-mix(in srgb, var(--theme-accent) 5%, transparent),
-    inset 1px 0 0 color-mix(in srgb, var(--theme-text) 9%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--theme-text) 11%, transparent) !important;
+    -18px 0 58px rgba(0, 0, 0, 0.34), -1px 0 0 color-mix(in srgb, var(--theme-accent) 5%, transparent), inset 1px 0 0 color-mix(in srgb, var(--theme-text) 9%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 11%, transparent) !important;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   transition:
-    transform 300ms var(--motion-apple),
-    opacity 220ms ease;
+    transform 300ms var(--motion-apple), opacity 220ms ease;
   will-change: transform, opacity;
 }
 
@@ -840,8 +642,7 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   opacity: 0;
   transform: translate3d(20px, 0, 0) scale(0.998);
   transition:
-    transform 270ms var(--motion-apple),
-    opacity 210ms ease;
+    transform 270ms var(--motion-apple), opacity 210ms ease;
 }
 
 .drawer-menu-item {
@@ -895,22 +696,14 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   gap: 1rem;
   overflow: hidden;
   isolation: isolate;
-  border: 1px solid
-    color-mix(in srgb, var(--theme-text) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-text) 10%, transparent);
   border-radius: 1.1rem;
   padding: 0.62rem 0.85rem;
   background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--theme-text) 4%, transparent),
-      transparent 54%
-    ),
-    color-mix(in srgb, var(--theme-row-surface) 62%, transparent);
+    linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 4%, transparent), transparent 54% ), color-mix(in srgb, var(--theme-row-surface) 62%, transparent);
   color: color-mix(in srgb, var(--theme-text) 78%, transparent);
   box-shadow:
-    0 6px 18px color-mix(in srgb, var(--theme-shadow) 14%, transparent),
-    inset 0 1px 0
-      color-mix(in srgb, var(--theme-text) 7%, transparent);
+    0 6px 18px color-mix(in srgb, var(--theme-shadow) 14%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 7%, transparent);
 }
 
 .drawer-nav-link::before {
@@ -918,11 +711,7 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(
-    115deg,
-    color-mix(in srgb, var(--theme-text) 5%, transparent),
-    transparent 38%
-  );
+  background: linear-gradient( 115deg, color-mix(in srgb, var(--theme-text) 5%, transparent), transparent 38% );
   opacity: 0.45;
 }
 
@@ -932,48 +721,21 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
 }
 
 .drawer-nav-link:hover {
-  border-color: color-mix(
-    in srgb,
-    var(--theme-accent) 24%,
-    transparent
-  );
+  border-color: color-mix( in srgb, var(--theme-accent) 24%, transparent );
   background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--theme-text) 5%, transparent),
-      transparent 54%
-    ),
-    color-mix(in srgb, var(--theme-accent) 7%, var(--theme-row-surface));
+    linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 5%, transparent), transparent 54% ), color-mix(in srgb, var(--theme-accent) 7%, var(--theme-row-surface));
   color: var(--theme-text);
   box-shadow:
-    0 8px 22px color-mix(in srgb, var(--theme-shadow) 20%, transparent),
-    inset 0 1px 0
-      color-mix(in srgb, var(--theme-text) 9%, transparent);
+    0 8px 22px color-mix(in srgb, var(--theme-shadow) 20%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 9%, transparent);
 }
 
 .drawer-nav-link-active {
-  border-color: color-mix(
-    in srgb,
-    var(--theme-accent) 30%,
-    transparent
-  );
+  border-color: color-mix( in srgb, var(--theme-accent) 30%, transparent );
   background:
-    radial-gradient(
-      circle at 92% 50%,
-      color-mix(in srgb, var(--theme-accent) 12%, transparent),
-      transparent 28%
-    ),
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--theme-text) 6%, transparent),
-      transparent 54%
-    ),
-    color-mix(in srgb, var(--theme-accent) 9%, var(--theme-row-surface));
+    radial-gradient( circle at 92% 50%, color-mix(in srgb, var(--theme-accent) 12%, transparent), transparent 28% ), linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 6%, transparent), transparent 54% ), color-mix(in srgb, var(--theme-accent) 9%, var(--theme-row-surface));
   color: var(--theme-text);
   box-shadow:
-    0 8px 22px color-mix(in srgb, var(--theme-shadow) 20%, transparent),
-    inset 0 1px 0
-      color-mix(in srgb, var(--theme-text) 10%, transparent);
+    0 8px 22px color-mix(in srgb, var(--theme-shadow) 20%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 10%, transparent);
 }
 
 .drawer-nav-icon {
@@ -982,45 +744,26 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   width: 2.1rem;
   flex-shrink: 0;
   place-items: center;
-  border: 1px solid
-    color-mix(in srgb, var(--theme-text) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-text) 10%, transparent);
   border-radius: 0.85rem;
   background: color-mix(in srgb, var(--theme-text) 4%, transparent);
   color: color-mix(in srgb, var(--theme-muted) 88%, transparent);
-  box-shadow: inset 0 1px 0
-    color-mix(in srgb, var(--theme-text) 6%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--theme-text) 6%, transparent);
   transition:
-    border-color 190ms ease,
-    background-color 190ms ease,
-    color 190ms ease,
-    box-shadow 190ms ease;
+    border-color 190ms ease, background-color 190ms ease, color 190ms ease, box-shadow 190ms ease;
 }
 
 .drawer-nav-link:hover .drawer-nav-icon {
-  border-color: color-mix(
-    in srgb,
-    var(--theme-accent) 24%,
-    transparent
-  );
+  border-color: color-mix( in srgb, var(--theme-accent) 24%, transparent );
   color: var(--theme-text);
 }
 
 .drawer-nav-icon-active {
-  border-color: color-mix(
-    in srgb,
-    var(--theme-accent) 28%,
-    transparent
-  );
-  background: color-mix(
-    in srgb,
-    var(--theme-accent) 10%,
-    transparent
-  );
+  border-color: color-mix( in srgb, var(--theme-accent) 28%, transparent );
+  background: color-mix( in srgb, var(--theme-accent) 10%, transparent );
   color: var(--theme-accent);
   box-shadow:
-    inset 0 1px 0
-      color-mix(in srgb, var(--theme-text) 9%, transparent),
-    0 6px 14px color-mix(in srgb, var(--theme-shadow) 14%, transparent);
+    inset 0 1px 0 color-mix(in srgb, var(--theme-text) 9%, transparent), 0 6px 14px color-mix(in srgb, var(--theme-shadow) 14%, transparent);
 }
 
 .drawer-nav-label {
@@ -1037,15 +780,13 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   background: transparent;
   opacity: 0;
   transition:
-    opacity 190ms ease,
-    box-shadow 190ms ease;
+    opacity 190ms ease, box-shadow 190ms ease;
 }
 
 .drawer-nav-dot-active {
   background: var(--theme-accent);
   opacity: 0.86;
-  box-shadow: 0 0 12px
-    color-mix(in srgb, var(--theme-accent) 28%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--theme-accent) 28%, transparent);
 }
 
 .drawer-account-card {
@@ -1054,26 +795,13 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   isolation: isolate;
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
-  border: 1px solid
-    color-mix(in srgb, var(--theme-text) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-text) 12%, transparent);
   border-radius: 1.25rem;
   padding: 0.72rem 0.78rem;
   background:
-    radial-gradient(
-      circle at 100% 0%,
-      color-mix(in srgb, var(--theme-accent) 10%, transparent),
-      transparent 34%
-    ),
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--theme-text) 6%, transparent),
-      transparent 52%
-    ),
-    color-mix(in srgb, var(--theme-row-surface) 74%, transparent);
+    radial-gradient( circle at 100% 0%, color-mix(in srgb, var(--theme-accent) 10%, transparent), transparent 34% ), linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 6%, transparent), transparent 52% ), color-mix(in srgb, var(--theme-row-surface) 74%, transparent);
   box-shadow:
-    0 10px 24px color-mix(in srgb, var(--theme-shadow) 18%, transparent),
-    inset 0 1px 0
-      color-mix(in srgb, var(--theme-text) 10%, transparent);
+    0 10px 24px color-mix(in srgb, var(--theme-shadow) 18%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 10%, transparent);
   backdrop-filter: blur(18px) saturate(128%);
   -webkit-backdrop-filter: blur(18px) saturate(128%);
 }
@@ -1084,11 +812,7 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  background: linear-gradient(
-    120deg,
-    color-mix(in srgb, var(--theme-text) 7%, transparent),
-    transparent 36%
-  );
+  background: linear-gradient( 120deg, color-mix(in srgb, var(--theme-text) 7%, transparent), transparent 36% );
   opacity: 0.5;
 }
 
@@ -1098,17 +822,11 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   width: 2.3rem;
   flex-shrink: 0;
   place-items: center;
-  border: 1px solid
-    color-mix(in srgb, var(--theme-accent) 24%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 24%, transparent);
   border-radius: 0.9rem;
-  background: color-mix(
-    in srgb,
-    var(--theme-accent) 9%,
-    transparent
-  );
+  background: color-mix( in srgb, var(--theme-accent) 9%, transparent );
   color: var(--theme-accent);
-  box-shadow: inset 0 1px 0
-    color-mix(in srgb, var(--theme-text) 8%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--theme-text) 8%, transparent);
 }
 
 .drawer-account-status-dot {
@@ -1117,8 +835,7 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   flex-shrink: 0;
   border-radius: 999px;
   background: var(--theme-accent);
-  box-shadow: 0 0 10px
-    color-mix(in srgb, var(--theme-accent) 30%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--theme-accent) 30%, transparent);
 }
 
 .drawer-account-signout {
@@ -1127,42 +844,22 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   width: 2.35rem;
   flex-shrink: 0;
   place-items: center;
-  border: 1px solid
-    color-mix(in srgb, var(--theme-text) 11%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-text) 11%, transparent);
   border-radius: 999px;
   background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--theme-text) 6%, transparent),
-      transparent 58%
-    ),
-    color-mix(in srgb, var(--theme-text) 4%, transparent);
+    linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 6%, transparent), transparent 58% ), color-mix(in srgb, var(--theme-text) 4%, transparent);
   color: color-mix(in srgb, var(--theme-text) 76%, transparent);
   box-shadow:
-    0 7px 18px color-mix(in srgb, var(--theme-shadow) 18%, transparent),
-    inset 0 1px 0
-      color-mix(in srgb, var(--theme-text) 8%, transparent);
+    0 7px 18px color-mix(in srgb, var(--theme-shadow) 18%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 8%, transparent);
 }
 
 .drawer-account-signout:hover {
-  border-color: color-mix(
-    in srgb,
-    var(--theme-accent) 28%,
-    transparent
-  );
+  border-color: color-mix( in srgb, var(--theme-accent) 28%, transparent );
   background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--theme-text) 8%, transparent),
-      transparent 58%
-    ),
-    color-mix(in srgb, var(--theme-accent) 9%, transparent);
+    linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 8%, transparent), transparent 58% ), color-mix(in srgb, var(--theme-accent) 9%, transparent);
   color: var(--theme-text);
   box-shadow:
-    0 9px 22px color-mix(in srgb, var(--theme-shadow) 22%, transparent),
-    0 0 16px color-mix(in srgb, var(--theme-accent) 5%, transparent),
-    inset 0 1px 0
-      color-mix(in srgb, var(--theme-text) 10%, transparent);
+    0 9px 22px color-mix(in srgb, var(--theme-shadow) 22%, transparent), 0 0 16px color-mix(in srgb, var(--theme-accent) 5%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 10%, transparent);
 }
 
 @media (max-height: 760px) {
@@ -1188,22 +885,10 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--theme-text) 16%, transparent);
   background:
-    radial-gradient(
-      circle at 35% 18%,
-      color-mix(in srgb, var(--theme-text) 16%, transparent),
-      transparent 36%
-    ),
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--theme-text) 9%, transparent),
-      transparent 56%
-    ),
-    color-mix(in srgb, var(--theme-card) 64%, transparent);
+    radial-gradient( circle at 35% 18%, color-mix(in srgb, var(--theme-text) 16%, transparent), transparent 36% ), linear-gradient( 135deg, color-mix(in srgb, var(--theme-text) 9%, transparent), transparent 56% ), color-mix(in srgb, var(--theme-card) 64%, transparent);
   color: var(--theme-text);
   box-shadow:
-    0 9px 22px color-mix(in srgb, var(--theme-shadow) 40%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--theme-text) 16%, transparent),
-    inset 0 -1px 0 color-mix(in srgb, var(--theme-bg) 26%, transparent);
+    0 9px 22px color-mix(in srgb, var(--theme-shadow) 40%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 16%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--theme-bg) 26%, transparent);
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -1214,25 +899,17 @@ html[data-theme] [class*="focus:bg-[#11100d]"]:focus {
   z-index: 0;
   border-radius: inherit;
   background:
-    radial-gradient(
-      circle,
-      color-mix(in srgb, var(--theme-accent) 34%, transparent),
-      transparent 68%
-    );
+    radial-gradient( circle, color-mix(in srgb, var(--theme-accent) 34%, transparent), transparent 68% );
   opacity: 0.32;
   transform: scale(1);
   transition:
-    opacity 220ms ease,
-    transform 340ms var(--motion-bubble);
+    opacity 220ms ease, transform 340ms var(--motion-bubble);
 }
 
 .drawer-close-button:hover {
   border-color: color-mix(in srgb, var(--theme-accent) 38%, transparent);
   box-shadow:
-    0 11px 26px color-mix(in srgb, var(--theme-shadow) 46%, transparent),
-    0 0 24px color-mix(in srgb, var(--theme-accent) 7%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--theme-text) 18%, transparent),
-    inset 0 -1px 0 color-mix(in srgb, var(--theme-bg) 30%, transparent);
+    0 11px 26px color-mix(in srgb, var(--theme-shadow) 46%, transparent), 0 0 24px color-mix(in srgb, var(--theme-accent) 7%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 18%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--theme-bg) 30%, transparent);
 }
 
 .drawer-close-button:hover::before {
@@ -1286,10 +963,7 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
   input,
   textarea,
   select,
-  [contenteditable="true"] {
-    font-size: 16px !important;
-  }
-
+  [contenteditable="true"],
   input::placeholder,
   textarea::placeholder {
     font-size: 16px !important;
@@ -1312,6 +986,7 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
   .motion-card-delay-1,
   .motion-card-delay-2,
   .motion-card-delay-3,
+  .motion-card-delay-4,
   .drawer-menu-item {
     animation: none;
   }
@@ -1356,56 +1031,23 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
 /* Dashboard hero material */
 .dashboard-hero {
   background:
-    radial-gradient(
-      circle at 88% 2%,
-      color-mix(in srgb, var(--theme-accent) 18%, transparent),
-      transparent 34%
-    ),
-    radial-gradient(
-      circle at 10% 100%,
-      color-mix(in srgb, var(--theme-text) 7%, transparent),
-      transparent 38%
-    ),
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--theme-text) 9%, transparent),
-      transparent 40%,
-      color-mix(in srgb, var(--theme-accent) 4%, transparent) 100%
-    ),
-    color-mix(in srgb, var(--theme-hero-surface) 94%, transparent);
-  border-color: color-mix(
-    in srgb,
-    var(--theme-accent) 34%,
-    var(--theme-text) 10%
-  );
+    radial-gradient( circle at 88% 2%, color-mix(in srgb, var(--theme-accent) 18%, transparent), transparent 34% ), radial-gradient( circle at 10% 100%, color-mix(in srgb, var(--theme-text) 7%, transparent), transparent 38% ), linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 9%, transparent), transparent 40%, color-mix(in srgb, var(--theme-accent) 4%, transparent) 100% ), color-mix(in srgb, var(--theme-hero-surface) 94%, transparent);
+  border-color: color-mix( in srgb, var(--theme-accent) 34%, var(--theme-text) 10% );
   box-shadow:
-    0 30px 82px color-mix(in srgb, var(--theme-shadow) 92%, transparent),
-    0 8px 26px color-mix(in srgb, var(--theme-shadow) 46%, transparent),
-    0 0 44px color-mix(in srgb, var(--theme-accent) 7%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--theme-text) 18%, transparent),
-    inset 0 -1px 0 color-mix(in srgb, var(--theme-bg) 54%, transparent);
+    0 30px 82px color-mix(in srgb, var(--theme-shadow) 92%, transparent), 0 8px 26px color-mix(in srgb, var(--theme-shadow) 46%, transparent), 0 0 44px color-mix(in srgb, var(--theme-accent) 7%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 18%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--theme-bg) 54%, transparent);
   backdrop-filter: blur(26px) saturate(150%);
   -webkit-backdrop-filter: blur(26px) saturate(150%);
 }
 
 .dashboard-hero::before {
   background:
-    linear-gradient(
-      115deg,
-      color-mix(in srgb, var(--theme-text) 13%, transparent),
-      transparent 24%,
-      transparent 72%,
-      color-mix(in srgb, var(--theme-accent) 8%, transparent)
-    );
+    linear-gradient( 115deg, color-mix(in srgb, var(--theme-text) 13%, transparent), transparent 24%, transparent 72%, color-mix(in srgb, var(--theme-accent) 8%, transparent) );
   opacity: 0.7;
 }
 
 .dashboard-hero::after {
   box-shadow:
-    inset 0 0 0 1px
-      color-mix(in srgb, var(--theme-text) 11%, transparent),
-    inset 0 1px 0
-      color-mix(in srgb, var(--theme-text) 8%, transparent);
+    inset 0 0 0 1px color-mix(in srgb, var(--theme-text) 11%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 8%, transparent);
 }
 
 .dashboard-hero-content {
@@ -1419,12 +1061,7 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
   top: 0;
   height: 1px;
   pointer-events: none;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    color-mix(in srgb, var(--theme-text) 30%, transparent),
-    transparent
-  );
+  background: linear-gradient( 90deg, transparent, color-mix(in srgb, var(--theme-text) 30%, transparent), transparent );
   opacity: 0.55;
 }
 
@@ -1440,11 +1077,7 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
   top: -5rem;
   height: 11rem;
   width: 11rem;
-  background: color-mix(
-    in srgb,
-    var(--theme-accent) 16%,
-    transparent
-  );
+  background: color-mix( in srgb, var(--theme-accent) 16%, transparent );
   opacity: 0.8;
 }
 
@@ -1453,46 +1086,28 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
   left: 8%;
   height: 10rem;
   width: 12rem;
-  background: color-mix(
-    in srgb,
-    var(--theme-text) 7%,
-    transparent
-  );
+  background: color-mix( in srgb, var(--theme-text) 7%, transparent );
   opacity: 0.7;
 }
 
 .dashboard-hero-status-dot {
   box-shadow:
-    0 0 0 4px
-      color-mix(in srgb, var(--theme-accent) 9%, transparent),
-    0 0 18px
-      color-mix(in srgb, var(--theme-accent) 42%, transparent);
+    0 0 0 4px color-mix(in srgb, var(--theme-accent) 9%, transparent), 0 0 18px color-mix(in srgb, var(--theme-accent) 42%, transparent);
 }
 
 .dashboard-hero-balance {
   text-shadow:
-    0 1px 0 color-mix(in srgb, var(--theme-text) 8%, transparent),
-    0 10px 30px color-mix(in srgb, var(--theme-shadow) 28%, transparent);
+    0 1px 0 color-mix(in srgb, var(--theme-text) 8%, transparent), 0 10px 30px color-mix(in srgb, var(--theme-shadow) 28%, transparent);
 }
 
 .dashboard-hero-stats {
   overflow: hidden;
-  border: 1px solid
-    color-mix(in srgb, var(--theme-text) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-text) 13%, transparent);
   border-radius: 1.45rem;
   background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--theme-text) 7%, transparent),
-      transparent 48%
-    ),
-    color-mix(in srgb, var(--theme-inset-surface) 90%, transparent);
+    linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 7%, transparent), transparent 48% ), color-mix(in srgb, var(--theme-inset-surface) 90%, transparent);
   box-shadow:
-    0 10px 28px color-mix(in srgb, var(--theme-shadow) 30%, transparent),
-    inset 0 1px 0
-      color-mix(in srgb, var(--theme-text) 11%, transparent),
-    inset 0 -1px 0
-      color-mix(in srgb, var(--theme-bg) 36%, transparent);
+    0 10px 28px color-mix(in srgb, var(--theme-shadow) 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 11%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--theme-bg) 36%, transparent);
   backdrop-filter: blur(18px) saturate(125%);
   -webkit-backdrop-filter: blur(18px) saturate(125%);
 }
@@ -1511,12 +1126,7 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
     left: 0;
     top: 0.65rem;
     width: 1px;
-    background: linear-gradient(
-      180deg,
-      transparent,
-      color-mix(in srgb, var(--theme-text) 15%, transparent),
-      transparent
-    );
+    background: linear-gradient( 180deg, transparent, color-mix(in srgb, var(--theme-text) 15%, transparent), transparent );
   }
 }
 
@@ -1528,12 +1138,7 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
     right: 0.9rem;
     top: 0;
     height: 1px;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      color-mix(in srgb, var(--theme-text) 13%, transparent),
-      transparent
-    );
+    background: linear-gradient( 90deg, transparent, color-mix(in srgb, var(--theme-text) 13%, transparent), transparent );
   }
 }
 
@@ -1549,27 +1154,11 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
   -webkit-mask-image: -webkit-radial-gradient(white, black);
   mask-image: linear-gradient(#fff, #fff);
   background-clip: padding-box;
-  border: 1px solid
-    color-mix(in srgb, var(--theme-text) 17%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-text) 17%, transparent);
   background:
-    radial-gradient(
-      circle at 92% 0%,
-      color-mix(in srgb, var(--theme-accent) 9%, transparent),
-      transparent 34%
-    ),
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--theme-text) 7%, transparent),
-      transparent 42%
-    ),
-    color-mix(in srgb, var(--theme-panel) 88%, transparent);
+    radial-gradient( circle at 92% 0%, color-mix(in srgb, var(--theme-accent) 9%, transparent), transparent 34% ), linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 7%, transparent), transparent 42% ), color-mix(in srgb, var(--theme-panel) 88%, transparent);
   box-shadow:
-    0 22px 62px color-mix(in srgb, var(--theme-shadow) 78%, transparent),
-    0 5px 18px color-mix(in srgb, var(--theme-shadow) 32%, transparent),
-    inset 0 1px 0
-      color-mix(in srgb, var(--theme-text) 15%, transparent),
-    inset 0 -1px 0
-      color-mix(in srgb, var(--theme-bg) 42%, transparent);
+    0 22px 62px color-mix(in srgb, var(--theme-shadow) 78%, transparent), 0 5px 18px color-mix(in srgb, var(--theme-shadow) 32%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 15%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--theme-bg) 42%, transparent);
   backdrop-filter: blur(23px) saturate(142%);
   -webkit-backdrop-filter: blur(23px) saturate(142%);
 }
@@ -1582,13 +1171,7 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
   pointer-events: none;
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
-  background: linear-gradient(
-    125deg,
-    color-mix(in srgb, var(--theme-text) 10%, transparent),
-    transparent 25%,
-    transparent 72%,
-    color-mix(in srgb, var(--theme-accent) 5%, transparent)
-  );
+  background: linear-gradient( 125deg, color-mix(in srgb, var(--theme-text) 10%, transparent), transparent 25%, transparent 72%, color-mix(in srgb, var(--theme-accent) 5%, transparent) );
   opacity: 0.52;
 }
 
@@ -1601,10 +1184,7 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
   box-shadow:
-    inset 0 0 0 1px
-      color-mix(in srgb, var(--theme-text) 8%, transparent),
-    inset 0 1px 0
-      color-mix(in srgb, var(--theme-text) 7%, transparent);
+    inset 0 0 0 1px color-mix(in srgb, var(--theme-text) 8%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 7%, transparent);
 }
 
 .dashboard-surface-glow {
@@ -1615,37 +1195,22 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
   width: 10rem;
   border-radius: 999px;
   pointer-events: none;
-  background: color-mix(
-    in srgb,
-    var(--theme-accent) 10%,
-    transparent
-  );
+  background: color-mix( in srgb, var(--theme-accent) 10%, transparent );
   filter: blur(42px);
   opacity: 0.72;
 }
 
 .dashboard-bills-surface {
-  border-color: color-mix(
-    in srgb,
-    var(--theme-text) 17%,
-    var(--theme-accent) 5%
-  );
+  border-color: color-mix( in srgb, var(--theme-text) 17%, var(--theme-accent) 5% );
 }
 
 .dashboard-cards-surface {
-  border-color: color-mix(
-    in srgb,
-    var(--theme-text) 16%,
-    var(--theme-accent) 4%
-  );
+  border-color: color-mix( in srgb, var(--theme-text) 16%, var(--theme-accent) 4% );
 }
 
 .dashboard-section-dot {
   box-shadow:
-    0 0 0 4px
-      color-mix(in srgb, var(--theme-accent) 8%, transparent),
-    0 0 15px
-      color-mix(in srgb, var(--theme-accent) 34%, transparent);
+    0 0 0 4px color-mix(in srgb, var(--theme-accent) 8%, transparent), 0 0 15px color-mix(in srgb, var(--theme-accent) 34%, transparent);
 }
 
 .dashboard-pill-button {
@@ -1653,48 +1218,28 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border: 1px solid
-    color-mix(in srgb, var(--theme-text) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-text) 14%, transparent);
   border-radius: 999px;
   padding: 0.3rem 0.8rem;
   background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--theme-text) 7%, transparent),
-      transparent 54%
-    ),
-    color-mix(in srgb, var(--theme-row-surface) 72%, transparent);
+    linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 7%, transparent), transparent 54% ), color-mix(in srgb, var(--theme-row-surface) 72%, transparent);
   color: color-mix(in srgb, var(--theme-text) 82%, transparent);
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1.2;
   box-shadow:
-    0 7px 18px color-mix(in srgb, var(--theme-shadow) 28%, transparent),
-    inset 0 1px 0
-      color-mix(in srgb, var(--theme-text) 10%, transparent);
+    0 7px 18px color-mix(in srgb, var(--theme-shadow) 28%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 10%, transparent);
   backdrop-filter: blur(14px) saturate(120%);
   -webkit-backdrop-filter: blur(14px) saturate(120%);
 }
 
 .dashboard-pill-button:hover {
-  border-color: color-mix(
-    in srgb,
-    var(--theme-accent) 32%,
-    transparent
-  );
+  border-color: color-mix( in srgb, var(--theme-accent) 32%, transparent );
   background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--theme-text) 9%, transparent),
-      transparent 54%
-    ),
-    color-mix(in srgb, var(--theme-accent) 9%, transparent);
+    linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 9%, transparent), transparent 54% ), color-mix(in srgb, var(--theme-accent) 9%, transparent);
   color: var(--theme-text);
   box-shadow:
-    0 9px 22px color-mix(in srgb, var(--theme-shadow) 34%, transparent),
-    0 0 18px color-mix(in srgb, var(--theme-accent) 5%, transparent),
-    inset 0 1px 0
-      color-mix(in srgb, var(--theme-text) 13%, transparent);
+    0 9px 22px color-mix(in srgb, var(--theme-shadow) 34%, transparent), 0 0 18px color-mix(in srgb, var(--theme-accent) 5%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 13%, transparent);
 }
 
 .dashboard-preview-row {
@@ -1711,23 +1256,13 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
   border-radius: 1.15rem;
   padding: 0.8rem 0.9rem;
   background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--theme-text) 5%, transparent),
-      transparent 50%
-    ),
-    color-mix(in srgb, var(--theme-row-surface) 92%, transparent);
+    linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 5%, transparent), transparent 50% ), color-mix(in srgb, var(--theme-row-surface) 92%, transparent);
   box-shadow:
-    0 8px 22px color-mix(in srgb, var(--theme-shadow) 24%, transparent),
-    inset 0 1px 0
-      color-mix(in srgb, var(--theme-text) 8%, transparent);
+    0 8px 22px color-mix(in srgb, var(--theme-shadow) 24%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 8%, transparent);
   backdrop-filter: blur(16px) saturate(122%);
   -webkit-backdrop-filter: blur(16px) saturate(122%);
   transition:
-    transform 190ms var(--motion-apple),
-    border-color 190ms ease,
-    background-color 190ms ease,
-    box-shadow 190ms ease;
+    transform 190ms var(--motion-apple), border-color 190ms ease, background-color 190ms ease, box-shadow 190ms ease;
 }
 
 .dashboard-preview-row::before {
@@ -1735,11 +1270,7 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(
-    120deg,
-    color-mix(in srgb, var(--theme-text) 6%, transparent),
-    transparent 34%
-  );
+  background: linear-gradient( 120deg, color-mix(in srgb, var(--theme-text) 6%, transparent), transparent 34% );
   opacity: 0.55;
 }
 
@@ -1750,72 +1281,39 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
 
 .dashboard-preview-row:hover {
   transform: translateY(-0.5px);
-  border-color: color-mix(
-    in srgb,
-    var(--theme-accent) 27%,
-    transparent
-  );
+  border-color: color-mix( in srgb, var(--theme-accent) 27%, transparent );
   box-shadow:
-    0 10px 26px color-mix(in srgb, var(--theme-shadow) 30%, transparent),
-    inset 0 1px 0
-      color-mix(in srgb, var(--theme-text) 10%, transparent);
+    0 10px 26px color-mix(in srgb, var(--theme-shadow) 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 10%, transparent);
 }
 
 .dashboard-preview-row-muted {
-  border-color: color-mix(
-    in srgb,
-    var(--theme-text) 11%,
-    transparent
-  );
+  border-color: color-mix( in srgb, var(--theme-text) 11%, transparent );
   background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--theme-text) 4%, transparent),
-      transparent 50%
-    ),
-    color-mix(in srgb, var(--theme-row-surface-muted) 88%, transparent);
+    linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 4%, transparent), transparent 50% ), color-mix(in srgb, var(--theme-row-surface-muted) 88%, transparent);
   opacity: 0.84;
 }
 
 .dashboard-card-preview-row {
-  border-color: color-mix(
-    in srgb,
-    var(--theme-text) 13%,
-    transparent
-  );
+  border-color: color-mix( in srgb, var(--theme-text) 13%, transparent );
 }
 
 .dashboard-date-pill,
 .dashboard-secondary-pill {
   display: inline-flex;
   align-items: center;
-  border: 1px solid
-    color-mix(in srgb, var(--theme-text) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-text) 12%, transparent);
   border-radius: 999px;
   padding: 0.14rem 0.6rem;
-  background: color-mix(
-    in srgb,
-    var(--theme-text) 7%,
-    transparent
-  );
+  background: color-mix( in srgb, var(--theme-text) 7%, transparent );
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--theme-muted);
-  box-shadow: inset 0 1px 0
-    color-mix(in srgb, var(--theme-text) 7%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--theme-text) 7%, transparent);
 }
 
 .dashboard-secondary-pill {
-  background: color-mix(
-    in srgb,
-    var(--theme-bg) 26%,
-    transparent
-  );
-  color: color-mix(
-    in srgb,
-    var(--theme-muted) 78%,
-    transparent
-  );
+  background: color-mix( in srgb, var(--theme-bg) 26%, transparent );
+  color: color-mix( in srgb, var(--theme-muted) 78%, transparent );
 }
 
 .dashboard-expanded-section {
@@ -1829,12 +1327,7 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
   right: 0.25rem;
   top: 0;
   height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    color-mix(in srgb, var(--theme-text) 13%, transparent),
-    transparent
-  );
+  background: linear-gradient( 90deg, transparent, color-mix(in srgb, var(--theme-text) 13%, transparent), transparent );
 }
 
 .dashboard-compact-panel {
@@ -1847,21 +1340,13 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
   -webkit-backface-visibility: hidden;
   -webkit-mask-image: -webkit-radial-gradient(white, black);
   mask-image: linear-gradient(#fff, #fff);
-  border: 1px solid
-    color-mix(in srgb, var(--theme-text) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-text) 12%, transparent);
   border-radius: 1.3rem;
   padding: 0.35rem;
   background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--theme-text) 6%, transparent),
-      transparent 50%
-    ),
-    color-mix(in srgb, var(--theme-inset-surface) 90%, transparent);
+    linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 6%, transparent), transparent 50% ), color-mix(in srgb, var(--theme-inset-surface) 90%, transparent);
   box-shadow:
-    0 9px 24px color-mix(in srgb, var(--theme-shadow) 25%, transparent),
-    inset 0 1px 0
-      color-mix(in srgb, var(--theme-text) 9%, transparent);
+    0 9px 24px color-mix(in srgb, var(--theme-shadow) 25%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 9%, transparent);
   backdrop-filter: blur(16px) saturate(120%);
   -webkit-backdrop-filter: blur(16px) saturate(120%);
 }
@@ -1873,77 +1358,46 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
 }
 
 .dashboard-compact-stat + .dashboard-compact-stat {
-  border-left: 1px solid
-    color-mix(in srgb, var(--theme-text) 10%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--theme-text) 10%, transparent);
 }
 
 .dashboard-progress-track {
   height: 0.4rem;
   overflow: hidden;
   border-radius: 999px;
-  background: color-mix(
-    in srgb,
-    var(--theme-text) 8%,
-    transparent
-  );
+  background: color-mix( in srgb, var(--theme-text) 8%, transparent );
   box-shadow:
-    inset 0 1px 2px
-      color-mix(in srgb, var(--theme-shadow) 38%, transparent),
-    inset 0 0 0 1px
-      color-mix(in srgb, var(--theme-text) 4%, transparent);
+    inset 0 1px 2px color-mix(in srgb, var(--theme-shadow) 38%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--theme-text) 4%, transparent);
 }
 
 .dashboard-progress-fill {
   height: 100%;
   border-radius: inherit;
   background:
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--theme-accent) 88%, white 4%),
-      var(--theme-accent)
-    );
+    linear-gradient( 90deg, color-mix(in srgb, var(--theme-accent) 88%, white 4%), var(--theme-accent) );
   box-shadow:
-    0 0 14px color-mix(in srgb, var(--theme-accent) 24%, transparent),
-    inset 0 1px 0
-      color-mix(in srgb, var(--theme-text) 18%, transparent);
+    0 0 14px color-mix(in srgb, var(--theme-accent) 24%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 18%, transparent);
 }
 
 .dashboard-wide-button {
   display: block;
-  border: 1px solid
-    color-mix(in srgb, var(--theme-text) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-text) 13%, transparent);
   border-radius: 999px;
   padding: 0.75rem 1rem;
   background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--theme-text) 6%, transparent),
-      transparent 52%
-    ),
-    color-mix(in srgb, var(--theme-row-surface) 84%, transparent);
+    linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 6%, transparent), transparent 52% ), color-mix(in srgb, var(--theme-row-surface) 84%, transparent);
   color: color-mix(in srgb, var(--theme-text) 82%, transparent);
   text-align: center;
   font-size: 0.875rem;
   font-weight: 600;
   box-shadow:
-    0 8px 22px color-mix(in srgb, var(--theme-shadow) 26%, transparent),
-    inset 0 1px 0
-      color-mix(in srgb, var(--theme-text) 9%, transparent);
+    0 8px 22px color-mix(in srgb, var(--theme-shadow) 26%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 9%, transparent);
 }
 
 .dashboard-wide-button:hover {
-  border-color: color-mix(
-    in srgb,
-    var(--theme-accent) 28%,
-    transparent
-  );
+  border-color: color-mix( in srgb, var(--theme-accent) 28%, transparent );
   background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--theme-text) 8%, transparent),
-      transparent 52%
-    ),
-    color-mix(in srgb, var(--theme-accent) 8%, transparent);
+    linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 8%, transparent), transparent 52% ), color-mix(in srgb, var(--theme-accent) 8%, transparent);
   color: var(--theme-text);
 }
 
@@ -1957,19 +1411,12 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
   -webkit-backface-visibility: hidden;
   -webkit-mask-image: -webkit-radial-gradient(white, black);
   mask-image: linear-gradient(#fff, #fff);
-  border: 1px dashed
-    color-mix(in srgb, var(--theme-text) 14%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--theme-text) 14%, transparent);
   border-radius: 1.15rem;
   padding: 0.9rem;
   background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--theme-text) 4%, transparent),
-      transparent 52%
-    ),
-    color-mix(in srgb, var(--theme-row-surface-muted) 84%, transparent);
-  box-shadow: inset 0 1px 0
-    color-mix(in srgb, var(--theme-text) 6%, transparent);
+    linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 4%, transparent), transparent 52% ), color-mix(in srgb, var(--theme-row-surface-muted) 84%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--theme-text) 6%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1979,5 +1426,1189 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
 
   .dashboard-preview-row:hover {
     transform: none;
+  }
+}
+
+/* Dashboard v1.4 bridge: section actions, soft bill rows, and separated Up Next */
+.dashboard-section-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  border-radius: 999px;
+  padding: 0.34rem 0.58rem;
+  color: color-mix(in srgb, var(--theme-accent) 82%, var(--theme-text));
+  font-size: 0.72rem;
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.dashboard-section-link:hover {
+  background: color-mix( in srgb, var(--theme-accent) 8%, transparent );
+  color: var(--theme-text);
+}
+
+.dashboard-bill-list {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid color-mix(in srgb, var(--theme-text) 10%, var(--theme-accent) 3%);
+  border-radius: 1.22rem;
+  background:
+    linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 4%, transparent), transparent 52% ), color-mix(in srgb, var(--theme-inset-surface) 74%, transparent);
+  box-shadow:
+    0 6px 18px color-mix(in srgb, var(--theme-shadow) 12%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 7%, transparent);
+}
+
+.dashboard-bill-list::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient( 120deg, color-mix(in srgb, var(--theme-text) 5%, transparent), transparent 36% );
+  opacity: 0.44;
+}
+
+.dashboard-bill-list > * {
+  position: relative;
+  z-index: 1;
+}
+
+.dashboard-bill-list-muted {
+  border-color: color-mix( in srgb, var(--theme-text) 8%, transparent );
+  background:
+    linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 3%, transparent), transparent 52% ), color-mix(in srgb, var(--theme-inset-surface) 62%, transparent);
+}
+
+.dashboard-bill-list-overdue {
+  border-color: color-mix( in srgb, var(--theme-accent) 24%, var(--theme-text) 5% );
+}
+
+.dashboard-bill-list-row {
+  position: relative;
+  display: grid;
+  min-height: 4.8rem;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.78rem;
+  padding: 0.78rem 0.82rem;
+  transition:
+    background-color 190ms ease, opacity 190ms ease;
+}
+
+.dashboard-bill-list-row + .dashboard-bill-list-row::before {
+  content: "";
+  position: absolute;
+  left: 4.25rem;
+  right: 0.82rem;
+  top: 0;
+  height: 1px;
+  background: linear-gradient( 90deg, color-mix(in srgb, var(--theme-text) 10%, transparent), color-mix(in srgb, var(--theme-text) 6%, transparent), transparent );
+}
+
+.dashboard-bill-list-row:hover {
+  background: color-mix( in srgb, var(--theme-accent) 5%, transparent );
+}
+
+.dashboard-bill-list-row:active {
+  background: color-mix( in srgb, var(--theme-accent) 7%, transparent );
+}
+
+.dashboard-bill-list-row-muted {
+  opacity: 0.84;
+}
+
+.dashboard-bill-list-row-overdue {
+  background: linear-gradient( 90deg, color-mix(in srgb, var(--theme-accent) 7%, transparent), transparent 62% );
+}
+
+.dashboard-bill-icon {
+  display: grid;
+  height: 2.45rem;
+  width: 2.45rem;
+  flex: 0 0 2.45rem;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 18%, transparent);
+  border-radius: 0.82rem;
+  background:
+    linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 6%, transparent), transparent 56% ), color-mix(in srgb, var(--theme-accent) 7%, transparent);
+  color: color-mix( in srgb, var(--theme-accent) 88%, var(--theme-text) );
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--theme-text) 8%, transparent);
+}
+
+.dashboard-bill-icon svg {
+  height: 1.3rem;
+  width: 1.3rem;
+}
+
+.dashboard-bill-icon-muted {
+  color: color-mix( in srgb, var(--theme-muted) 84%, var(--theme-text) );
+  opacity: 0.74;
+}
+
+.dashboard-bill-copy {
+  min-width: 0;
+}
+
+.dashboard-bill-name {
+  overflow: hidden;
+  color: var(--theme-text);
+  font-size: 0.98rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-bill-name-muted {
+  color: color-mix(in srgb, var(--theme-text) 78%, transparent);
+}
+
+.dashboard-bill-due {
+  margin-top: 0.3rem;
+  color: color-mix(in srgb, var(--theme-muted) 88%, transparent);
+  font-size: 0.75rem;
+  font-weight: 520;
+  line-height: 1.2;
+}
+
+.dashboard-bill-due-overdue {
+  color: color-mix( in srgb, var(--theme-accent) 80%, var(--theme-text) );
+  font-weight: 620;
+}
+
+.dashboard-bill-trailing {
+  display: flex;
+  min-width: 4.75rem;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.38rem;
+  text-align: right;
+}
+
+.dashboard-bill-amount {
+  color: var(--theme-text);
+  font-size: 1.04rem;
+  font-weight: 720;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+}
+
+.dashboard-bill-amount-muted {
+  color: color-mix(in srgb, var(--theme-text) 78%, transparent);
+}
+
+.dashboard-pay-button {
+  min-width: 3.25rem;
+  border-color: color-mix( in srgb, var(--theme-accent) 23%, var(--theme-text) 6% );
+  padding: 0.27rem 0.68rem !important;
+  background:
+    linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 6%, transparent), transparent 54% ), color-mix(in srgb, var(--theme-accent) 7%, var(--theme-row-surface));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--theme-text) 8%, transparent);
+}
+
+.dashboard-bill-frequency {
+  color: color-mix(in srgb, var(--theme-accent) 66%, transparent);
+  font-size: 0.62rem;
+  font-weight: 650;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.dashboard-up-next-surface {
+  border-color: color-mix( in srgb, var(--theme-text) 14%, var(--theme-accent) 5% );
+  background:
+    radial-gradient( circle at 92% 0%, color-mix(in srgb, var(--theme-accent) 7%, transparent), transparent 34% ), linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 6%, transparent), transparent 42% ), color-mix(in srgb, var(--theme-panel) 84%, transparent);
+  box-shadow:
+    0 16px 44px color-mix(in srgb, var(--theme-shadow) 52%, transparent), 0 4px 14px color-mix(in srgb, var(--theme-shadow) 22%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 12%, transparent);
+}
+
+.dashboard-up-next-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.dashboard-up-next-group {
+  min-width: 0;
+}
+
+.dashboard-up-next-row {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-height: 4.7rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid color-mix(in srgb, var(--theme-text) 10%, var(--theme-accent) 3%);
+  border-radius: 1.15rem;
+  padding: 0.78rem 0.82rem;
+  background:
+    linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 5%, transparent), transparent 52% ), color-mix(in srgb, var(--theme-row-surface) 68%, transparent);
+  color: inherit;
+  box-shadow:
+    0 5px 16px color-mix(in srgb, var(--theme-shadow) 13%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 8%, transparent);
+}
+
+.dashboard-up-next-row::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient( 118deg, color-mix(in srgb, var(--theme-text) 5%, transparent), transparent 38% );
+  opacity: 0.45;
+}
+
+.dashboard-up-next-row > * {
+  position: relative;
+  z-index: 1;
+}
+
+.dashboard-up-next-row:hover {
+  border-color: color-mix( in srgb, var(--theme-accent) 22%, transparent );
+  background:
+    linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 6%, transparent), transparent 52% ), color-mix(in srgb, var(--theme-accent) 5%, var(--theme-row-surface));
+  box-shadow:
+    0 7px 19px color-mix(in srgb, var(--theme-shadow) 17%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 9%, transparent);
+}
+
+.dashboard-up-next-row-link {
+  text-decoration: none;
+}
+
+.dashboard-up-next-trailing {
+  display: flex;
+  min-width: 5.75rem;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+  text-align: right;
+}
+
+.dashboard-up-next-amount {
+  color: var(--theme-text);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+
+.dashboard-up-next-action {
+  display: inline-flex;
+  min-width: 3.35rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--theme-text) 11%, var(--theme-accent) 10%);
+  border-radius: 999px;
+  padding: 0.24rem 0.68rem;
+  background:
+    linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 6%, transparent), transparent 54% ), color-mix(in srgb, var(--theme-accent) 6%, var(--theme-row-surface));
+  color: color-mix(in srgb, var(--theme-text) 82%, transparent);
+  font-size: 0.72rem;
+  font-weight: 650;
+  line-height: 1;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--theme-text) 8%, transparent);
+}
+
+.dashboard-up-next-expanded {
+  margin-top: 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--theme-text) 8%, transparent);
+  border-radius: 1rem;
+  padding: 0.6rem;
+  background:
+    linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 4%, transparent), transparent 54% ), color-mix(in srgb, var(--theme-inset-surface) 66%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--theme-text) 6%, transparent);
+}
+
+@media (max-width: 370px) {
+  .dashboard-bill-list-row {
+    gap: 0.62rem;
+    padding-inline: 0.68rem;
+  }
+
+  .dashboard-bill-icon {
+    height: 2.25rem;
+    width: 2.25rem;
+    flex-basis: 2.25rem;
+    border-radius: 0.76rem;
+  }
+
+  .dashboard-bill-icon svg {
+    height: 1.18rem;
+    width: 1.18rem;
+  }
+
+  .dashboard-section-link {
+    padding-inline: 0.42rem;
+    font-size: 0.68rem;
+  }
+
+  .dashboard-up-next-row {
+    gap: 0.7rem;
+    padding-inline: 0.72rem;
+  }
+
+  .dashboard-up-next-trailing {
+    min-width: 5.1rem;
+  }
+
+  .dashboard-up-next-amount {
+    font-size: 0.98rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-bill-list-row {
+    transition: none;
+  }
+}
+
+/* v1.4 Dashboard intro and pay-period rhythm */
+.dashboard-intro {
+  padding-inline: 0.1rem;
+}
+
+.dashboard-pay-period-strip {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  border: 1px solid color-mix(in srgb, var(--theme-text) 12%, transparent);
+  background:
+    linear-gradient( 145deg, color-mix(in srgb, var(--theme-text) 5%, transparent), transparent 52% ), color-mix(in srgb, var(--theme-panel) 72%, transparent);
+  box-shadow:
+    0 10px 28px color-mix(in srgb, var(--theme-shadow) 24%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 9%, transparent);
+  backdrop-filter: blur(16px) saturate(122%);
+  -webkit-backdrop-filter: blur(16px) saturate(122%);
+}
+
+.dashboard-pay-period-strip::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient( circle at 88% 0%, color-mix(in srgb, var(--theme-accent) 8%, transparent), transparent 34% ), linear-gradient( 120deg, color-mix(in srgb, var(--theme-text) 6%, transparent), transparent 38% );
+  opacity: 0.62;
+}
+
+.dashboard-pay-period-strip > * {
+  position: relative;
+  z-index: 1;
+}
+
+.dashboard-pay-period-track {
+  height: 0.42rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix( in srgb, var(--theme-text) 8%, transparent );
+  box-shadow:
+    inset 0 1px 2px color-mix(in srgb, var(--theme-shadow) 28%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--theme-text) 4%, transparent);
+}
+
+.dashboard-pay-period-fill {
+  height: 100%;
+  border-radius: inherit;
+  transform-origin: left center;
+  background:
+    linear-gradient( 90deg, color-mix(in srgb, var(--theme-accent) 76%, var(--theme-text) 4%), var(--theme-accent) );
+  box-shadow:
+    0 0 14px color-mix(in srgb, var(--theme-accent) 18%, transparent), inset 0 1px 0 color-mix(in srgb, var(--theme-text) 14%, transparent);
+  animation: dashboard-pay-period-reveal 720ms var(--motion-apple) both;
+}
+
+@keyframes dashboard-pay-period-reveal {
+  from {
+    opacity: 0.72;
+    transform: scaleX(0.08);
+  }
+
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-pay-period-fill {
+    animation: none;
+  }
+}
+/* v1.4 Dashboard Concept C: one-line intro and native-style primary bill list */
+.dashboard-intro-title {
+  max-width: 100%;
+  white-space: nowrap;
+  font-size: clamp(1.9rem, 8.3vw, 2.25rem);
+}
+
+.dashboard-bill-list-primary {
+  overflow: visible;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--theme-text) 9%, transparent);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.dashboard-bill-list-primary::before {
+  display: none;
+}
+
+.dashboard-bill-list-primary .dashboard-bill-list-row {
+  min-height: 4.35rem;
+  gap: 0.72rem;
+  padding: 0.7rem 0.22rem;
+  background: transparent;
+}
+
+.dashboard-bill-list-primary .dashboard-bill-list-row:hover {
+  background: color-mix( in srgb, var(--theme-accent) 4.5%, transparent );
+}
+
+.dashboard-bill-list-primary
+  .dashboard-bill-list-row
+  + .dashboard-bill-list-row::before {
+  left: 3.05rem;
+  right: 0.22rem;
+  background: linear-gradient( 90deg, color-mix(in srgb, var(--theme-text) 10%, transparent), color-mix(in srgb, var(--theme-text) 7%, transparent), transparent );
+}
+
+.dashboard-bill-list-primary .dashboard-bill-icon {
+  height: 2rem;
+  width: 2rem;
+  flex-basis: 2rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: color-mix( in srgb, var(--theme-accent) 88%, var(--theme-text) );
+  box-shadow: none;
+}
+
+.dashboard-bill-list-primary .dashboard-bill-icon svg {
+  height: 1.45rem;
+  width: 1.45rem;
+}
+
+.dashboard-bill-list-primary .dashboard-bill-icon-spotify {
+  height: 1.92rem;
+  width: 1.92rem;
+  flex-basis: 1.92rem;
+  border-radius: 999px;
+  background: #1ed760;
+  color: #0a0c0b;
+  box-shadow:
+    0 4px 12px color-mix(in srgb, #1ed760 14%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.dashboard-bill-list-primary .dashboard-bill-icon-spotify svg {
+  height: 1.22rem;
+  width: 1.22rem;
+}
+
+.dashboard-bill-list-primary .dashboard-bill-icon-ai {
+  color: color-mix(in srgb, var(--theme-text) 94%, transparent);
+}
+
+.dashboard-bill-list-primary .dashboard-bill-icon-ai svg {
+  height: 1.58rem;
+  width: 1.58rem;
+}
+
+.dashboard-bill-list-primary .dashboard-bill-icon-phone {
+  color: color-mix( in srgb, var(--theme-accent) 88%, var(--theme-text) );
+}
+
+.dashboard-bill-list-primary .dashboard-bill-icon-phone svg {
+  height: 1.5rem;
+  width: 1.5rem;
+}
+
+.dashboard-bill-list-primary .dashboard-bill-icon-bill {
+  color: color-mix( in srgb, var(--theme-muted) 84%, var(--theme-text) );
+}
+
+.dashboard-bill-list-primary .dashboard-bill-icon-bill svg {
+  height: 1.4rem;
+  width: 1.4rem;
+}
+
+.dashboard-bill-list-primary .dashboard-bill-name {
+  font-size: 0.97rem;
+  font-weight: 660;
+}
+
+.dashboard-bill-list-primary .dashboard-bill-due {
+  margin-top: 0.24rem;
+  font-size: 0.73rem;
+  font-weight: 500;
+}
+
+.dashboard-bill-list-primary .dashboard-bill-trailing {
+  min-width: 4.5rem;
+  gap: 0.3rem;
+}
+
+.dashboard-bill-list-primary .dashboard-bill-amount {
+  font-size: 1rem;
+}
+
+.dashboard-bill-list-primary .dashboard-pay-button {
+  min-width: 3.05rem;
+  padding: 0.25rem 0.64rem !important;
+  box-shadow: none;
+}
+
+@media (max-width: 370px) {
+  .dashboard-intro-title {
+    font-size: clamp(1.8rem, 7.5vw, 2rem);
+  }
+
+  .dashboard-bill-list-primary .dashboard-bill-list-row {
+    gap: 0.58rem;
+    padding-inline: 0.12rem;
+  }
+
+  .dashboard-bill-list-primary .dashboard-bill-icon {
+    height: 1.88rem;
+    width: 1.88rem;
+    flex-basis: 1.88rem;
+  }
+
+  .dashboard-bill-list-primary .dashboard-bill-icon-spotify {
+    height: 1.82rem;
+    width: 1.82rem;
+    flex-basis: 1.82rem;
+  }
+
+  .dashboard-bill-list-primary
+    .dashboard-bill-list-row
+    + .dashboard-bill-list-row::before {
+    left: 2.7rem;
+    right: 0.12rem;
+  }
+}
+/* v1.4 Dashboard: flattened Up Next hierarchy */
+.dashboard-up-next-list-flat {
+  gap: 0;
+  border-top: 1px solid
+    color-mix(in srgb, var(--theme-text) 9%, transparent);
+}
+
+.dashboard-up-next-list-flat .dashboard-up-next-group {
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--theme-text) 8%, transparent);
+}
+
+.dashboard-up-next-list-flat .dashboard-up-next-row {
+  min-height: 4.2rem;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  padding: 0.72rem 0.22rem;
+  background: transparent;
+  box-shadow: none;
+}
+
+.dashboard-up-next-list-flat .dashboard-up-next-row::before {
+  display: none;
+}
+
+.dashboard-up-next-list-flat .dashboard-up-next-row:hover {
+  background: color-mix(
+    in srgb,
+    var(--theme-accent) 4.5%,
+    transparent
+  );
+  box-shadow: none;
+}
+
+.dashboard-up-next-list-flat .dashboard-up-next-row:active {
+  background: color-mix(
+    in srgb,
+    var(--theme-accent) 6.5%,
+    transparent
+  );
+}
+
+.dashboard-up-next-list-flat .dashboard-up-next-trailing {
+  min-width: 5.25rem;
+  gap: 0.28rem;
+}
+
+.dashboard-up-next-list-flat .dashboard-up-next-amount {
+  font-size: 1rem;
+}
+
+.dashboard-up-next-list-flat .dashboard-up-next-action {
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  color: color-mix(
+    in srgb,
+    var(--theme-accent) 80%,
+    var(--theme-text)
+  );
+  box-shadow: none;
+}
+
+.dashboard-up-next-list-flat .dashboard-up-next-expanded {
+  margin-top: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 0 0 0.35rem;
+  background: transparent;
+  box-shadow: none;
+}
+
+.dashboard-bill-list-up-next {
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.dashboard-bill-list-up-next::before {
+  display: none;
+}
+
+.dashboard-bill-list-up-next .dashboard-bill-list-row {
+  min-height: 4.2rem;
+  gap: 0.68rem;
+  padding: 0.68rem 0.22rem 0.68rem 0.42rem;
+  background: transparent;
+}
+
+.dashboard-bill-list-up-next
+  .dashboard-bill-list-row
+  + .dashboard-bill-list-row::before {
+  left: 3rem;
+  right: 0.22rem;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--theme-text) 8%, transparent),
+    color-mix(in srgb, var(--theme-text) 5%, transparent),
+    transparent
+  );
+}
+
+.dashboard-bill-list-up-next .dashboard-bill-list-row:hover {
+  background: color-mix(
+    in srgb,
+    var(--theme-accent) 3.5%,
+    transparent
+  );
+}
+
+.dashboard-bill-list-up-next .dashboard-bill-icon {
+  height: 2.05rem;
+  width: 2.05rem;
+  flex-basis: 2.05rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.dashboard-bill-list-up-next .dashboard-bill-icon svg {
+  height: 1.38rem;
+  width: 1.38rem;
+}
+
+.dashboard-bill-list-up-next .dashboard-bill-name {
+  font-size: 0.94rem;
+}
+
+.dashboard-bill-list-up-next .dashboard-bill-due {
+  margin-top: 0.23rem;
+  font-size: 0.71rem;
+}
+
+.dashboard-bill-list-up-next .dashboard-bill-trailing {
+  min-width: 4.4rem;
+  gap: 0.28rem;
+}
+
+.dashboard-bill-list-up-next .dashboard-bill-amount {
+  font-size: 0.98rem;
+}
+
+.dashboard-bill-list-up-next .dashboard-pay-button {
+  min-width: 3rem;
+  padding: 0.24rem 0.62rem !important;
+  box-shadow: none;
+}
+
+@media (max-width: 370px) {
+  .dashboard-up-next-list-flat .dashboard-up-next-row {
+    gap: 0.62rem;
+    padding-inline: 0.12rem;
+  }
+
+  .dashboard-up-next-list-flat .dashboard-up-next-trailing {
+    min-width: 4.8rem;
+  }
+
+  .dashboard-bill-list-up-next .dashboard-bill-list-row {
+    gap: 0.56rem;
+    padding-left: 0.22rem;
+    padding-right: 0.12rem;
+  }
+
+  .dashboard-bill-list-up-next .dashboard-bill-icon {
+    height: 1.9rem;
+    width: 1.9rem;
+    flex-basis: 1.9rem;
+  }
+
+  .dashboard-bill-list-up-next
+    .dashboard-bill-list-row
+    + .dashboard-bill-list-row::before {
+    left: 2.58rem;
+    right: 0.12rem;
+  }
+}
+/* v1.4 Dashboard: lightweight latest-payment status */
+.dashboard-latest-payment {
+  position: relative;
+}
+
+.dashboard-latest-payment-row {
+  display: grid;
+  min-height: 4.45rem;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.72rem;
+  padding: 0.45rem 0.22rem 0.2rem;
+}
+
+.dashboard-latest-payment-check {
+  display: grid;
+  height: 2.05rem;
+  width: 2.05rem;
+  place-items: center;
+  border: 1px solid
+    color-mix(in srgb, var(--theme-accent) 20%, transparent);
+  border-radius: 999px;
+  background: color-mix(
+    in srgb,
+    var(--theme-accent) 10%,
+    transparent
+  );
+  color: color-mix(
+    in srgb,
+    var(--theme-accent) 88%,
+    var(--theme-text)
+  );
+  font-size: 0.88rem;
+  font-weight: 760;
+  box-shadow:
+    0 5px 14px color-mix(in srgb, var(--theme-shadow) 12%, transparent),
+    inset 0 1px 0
+      color-mix(in srgb, var(--theme-text) 8%, transparent);
+}
+
+.dashboard-latest-payment-label {
+  color: color-mix(
+    in srgb,
+    var(--theme-accent) 76%,
+    var(--theme-text)
+  );
+  font-size: 0.61rem;
+  font-weight: 700;
+  letter-spacing: 0.17em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.dashboard-latest-payment-name {
+  margin-top: 0.3rem;
+  overflow: hidden;
+  color: var(--theme-text);
+  font-size: 0.94rem;
+  font-weight: 660;
+  letter-spacing: -0.012em;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-latest-payment-date {
+  margin-top: 0.22rem;
+  color: color-mix(
+    in srgb,
+    var(--theme-muted) 82%,
+    transparent
+  );
+  font-size: 0.71rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.dashboard-latest-payment-trailing {
+  display: flex;
+  min-width: 4.75rem;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.32rem;
+  text-align: right;
+}
+
+.dashboard-latest-payment-amount {
+  color: var(--theme-text);
+  font-size: 0.98rem;
+  font-weight: 720;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+}
+
+.dashboard-latest-payment-undo {
+  min-height: 1.65rem;
+  border: 0;
+  border-radius: 0;
+  padding: 0 0.08rem;
+  background: transparent;
+  color: color-mix(
+    in srgb,
+    var(--theme-accent) 78%,
+    var(--theme-text)
+  );
+  font-size: 0.72rem;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.dashboard-latest-payment-undo:hover {
+  color: var(--theme-text);
+}
+
+@media (max-width: 370px) {
+  .dashboard-latest-payment-row {
+    gap: 0.58rem;
+    padding-inline: 0.12rem;
+  }
+
+  .dashboard-latest-payment-check {
+    height: 1.9rem;
+    width: 1.9rem;
+  }
+
+  .dashboard-latest-payment-trailing {
+    min-width: 4.35rem;
+  }
+}
+/* v1.4 Dashboard: compact last-payment footer */
+.dashboard-last-payment-footer {
+  position: relative;
+}
+
+.dashboard-last-payment-row {
+  display: grid;
+  min-height: 3.85rem;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.22rem 0.22rem 0.08rem;
+}
+
+.dashboard-last-payment-check {
+  display: grid;
+  height: 1.8rem;
+  width: 1.8rem;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(
+    in srgb,
+    var(--theme-accent) 10%,
+    transparent
+  );
+  color: color-mix(
+    in srgb,
+    var(--theme-accent) 88%,
+    var(--theme-text)
+  );
+  font-size: 0.82rem;
+  font-weight: 760;
+}
+
+.dashboard-last-payment-label {
+  color: color-mix(
+    in srgb,
+    var(--theme-muted) 76%,
+    transparent
+  );
+  font-size: 0.61rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.dashboard-last-payment-name {
+  margin-top: 0.26rem;
+  overflow: hidden;
+  color: var(--theme-text);
+  font-size: 0.92rem;
+  font-weight: 660;
+  letter-spacing: -0.012em;
+  line-height: 1.08;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-last-payment-date {
+  margin-top: 0.18rem;
+  color: color-mix(
+    in srgb,
+    var(--theme-muted) 80%,
+    transparent
+  );
+  font-size: 0.69rem;
+  font-weight: 500;
+  line-height: 1.15;
+}
+
+.dashboard-last-payment-trailing {
+  display: grid;
+  min-width: 4.55rem;
+  justify-items: end;
+  gap: 0.24rem;
+  text-align: right;
+}
+
+.dashboard-last-payment-amount {
+  color: var(--theme-text);
+  font-size: 0.96rem;
+  font-weight: 720;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+}
+
+.dashboard-last-payment-undo {
+  min-height: 1.55rem;
+  border: 0;
+  padding: 0 0.08rem;
+  background: transparent;
+  color: color-mix(
+    in srgb,
+    var(--theme-accent) 78%,
+    var(--theme-text)
+  );
+  font-size: 0.7rem;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.dashboard-last-payment-undo:hover {
+  color: var(--theme-text);
+}
+
+@media (max-width: 370px) {
+  .dashboard-last-payment-row {
+    gap: 0.56rem;
+    padding-inline: 0.12rem;
+  }
+
+  .dashboard-last-payment-check {
+    height: 1.68rem;
+    width: 1.68rem;
+  }
+
+  .dashboard-last-payment-trailing {
+    min-width: 4.15rem;
+  }
+}
+
+/* v1.4 Dashboard: flattened credit-card summary */
+.dashboard-card-section-toggle {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border-radius: 1rem;
+}
+
+.dashboard-card-section-action {
+  flex-shrink: 0;
+  padding-top: 0.08rem;
+  color: color-mix(
+    in srgb,
+    var(--theme-accent) 80%,
+    var(--theme-text)
+  );
+  font-size: 0.72rem;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.dashboard-card-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid
+    color-mix(in srgb, var(--theme-text) 9%, transparent);
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--theme-text) 8%, transparent);
+}
+
+.dashboard-card-summary .dashboard-compact-stat {
+  border-radius: 0;
+  padding: 0.72rem 0.22rem !important;
+}
+
+.dashboard-card-summary
+  .dashboard-compact-stat
+  + .dashboard-compact-stat {
+  border-left: 1px solid
+    color-mix(in srgb, var(--theme-text) 8%, transparent);
+  padding-left: 0.85rem !important;
+}
+
+.dashboard-card-details {
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--theme-text) 8%, transparent);
+  padding-bottom: 0.18rem;
+}
+
+.dashboard-card-balance-list {
+  display: grid;
+}
+
+.dashboard-card-balance-row {
+  position: relative;
+  min-width: 0;
+  padding: 0.72rem 0.22rem;
+}
+
+.dashboard-card-balance-row
+  + .dashboard-card-balance-row::before {
+  content: "";
+  position: absolute;
+  left: 0.22rem;
+  right: 0.22rem;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--theme-text) 8%, transparent),
+    color-mix(in srgb, var(--theme-text) 5%, transparent),
+    transparent
+  );
+}
+
+.dashboard-card-balance-name {
+  overflow: hidden;
+  color: var(--theme-text);
+  font-size: 0.94rem;
+  font-weight: 660;
+  letter-spacing: -0.012em;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-card-balance-utilization {
+  margin-top: 0.24rem;
+  color: color-mix(
+    in srgb,
+    var(--theme-muted) 82%,
+    transparent
+  );
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1.15;
+}
+
+.dashboard-card-balance-amount {
+  flex-shrink: 0;
+  color: var(--theme-text);
+  font-size: 0.98rem;
+  font-weight: 720;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+  text-align: right;
+}
+
+.dashboard-card-balance-track {
+  height: 0.32rem;
+  margin-top: 0.6rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(
+    in srgb,
+    var(--theme-text) 7%,
+    transparent
+  );
+  box-shadow: inset 0 1px 2px
+    color-mix(in srgb, var(--theme-shadow) 24%, transparent);
+}
+
+.dashboard-card-balance-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--theme-accent) 72%, var(--theme-text) 5%),
+    var(--theme-accent)
+  );
+  box-shadow: 0 0 10px
+    color-mix(in srgb, var(--theme-accent) 16%, transparent);
+}
+
+.dashboard-card-footer-link {
+  display: flex;
+  min-height: 2.45rem;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid
+    color-mix(in srgb, var(--theme-text) 8%, transparent);
+  padding: 0.62rem 0.22rem 0.42rem;
+  color: color-mix(
+    in srgb,
+    var(--theme-accent) 80%,
+    var(--theme-text)
+  );
+  font-size: 0.74rem;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.dashboard-card-footer-link::after {
+  content: "›";
+  color: color-mix(
+    in srgb,
+    var(--theme-muted) 68%,
+    transparent
+  );
+  font-size: 1.1rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.dashboard-card-footer-link:hover {
+  color: var(--theme-text);
+}
+
+@media (max-width: 370px) {
+  .dashboard-card-summary .dashboard-compact-stat {
+    padding-inline: 0.12rem !important;
+  }
+
+  .dashboard-card-summary
+    .dashboard-compact-stat
+    + .dashboard-compact-stat {
+    padding-left: 0.66rem !important;
+  }
+
+  .dashboard-card-balance-row,
+  .dashboard-card-footer-link {
+    padding-left: 0.12rem;
+    padding-right: 0.12rem;
   }
 }

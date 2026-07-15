@@ -6,6 +6,21 @@ import TopNav from "../../components/TopNav";
 import { PageShell, Pill } from "../../components/Layout";
 import { bills } from "../../data/bandData";
 import {
+  activeBillOccurrencesStorageKey,
+  billsStorageKey,
+  legacyLastPaidActionStorageKey,
+  migrateBillOccurrenceState,
+  normalizeManualBillIds,
+  paidBillsStorageKey,
+  parseMoney,
+  preferencesStorageKey,
+  readJsonStorage,
+  recentPaidActionsStorageKey,
+  writeJsonStorage,
+  type ManualBill,
+  type PaidBillAction,
+} from "../../lib/financeData";
+import {
   defaultPayPeriodPreferences,
   getActiveBillOccurrence,
   getBillIdentity,
@@ -22,14 +37,6 @@ import {
   type PayPeriodPreferences,
 } from "../../lib/billStatus";
 
-type ManualBill = {
-  name: string;
-  amount: string;
-  dueDate: string;
-  status: "Paid" | "Upcoming" | "Due Soon" | "Overdue";
-  paymentMethod: string;
-};
-
 type ActiveBillOccurrenceDates = Record<string, string>;
 
 type BillOccurrenceItem = {
@@ -37,25 +44,8 @@ type BillOccurrenceItem = {
   occurrence: ActiveBillOccurrence;
 };
 
-type PaidBillAction = {
-  occurrenceKey: string;
-  occurrenceDateKey: string;
-  billIdentity: string;
-  billName: string;
-  nextOccurrenceDateKey: string | null;
-  paidAt: string;
-};
-
-const billsStorageKey = "finance-tracker-manual-bills";
-const billsEditSnapshotKey = "finance-tracker-bills-edit-snapshot";
-const paidBillsStorageKey = "leftovr-paid-bill-occurrences";
-const activeBillOccurrencesStorageKey =
-  "leftovr-active-bill-occurrences";
-const recentPaidActionsStorageKey =
-  "leftovr-recent-paid-bill-actions";
-const legacyLastPaidActionStorageKey =
-  "leftovr-last-paid-bill-action";
-const preferencesStorageKey = "leftovr-preferences";
+const billsEditSnapshotKey =
+  "finance-tracker-bills-edit-snapshot";
 
 const defaultManualBills: ManualBill[] = bills.map((bill) => ({
   name: bill.name,
@@ -64,11 +54,6 @@ const defaultManualBills: ManualBill[] = bills.map((bill) => ({
   status: bill.status,
   paymentMethod: bill.paymentMethod,
 }));
-
-function parseMoney(value: string) {
-  const numberValue = Number(value);
-  return Number.isNaN(numberValue) ? 0 : numberValue;
-}
 
 function formatMoney(amount: number) {
   return new Intl.NumberFormat("en-US", {
@@ -210,20 +195,6 @@ function normalizeActiveBillOccurrenceDates(
   return normalizedDates;
 }
 
-function readJsonStorage<T>(key: string, fallback: T) {
-  const savedValue = window.localStorage.getItem(key);
-
-  if (!savedValue) {
-    return fallback;
-  }
-
-  try {
-    return JSON.parse(savedValue) as T;
-  } catch {
-    return fallback;
-  }
-}
-
 function getBillsSnapshot(currentBills: ManualBill[]) {
   return JSON.stringify(currentBills);
 }
@@ -298,9 +269,16 @@ export default function BillsPage() {
 
   useEffect(() => {
     function loadBillsData(checkEditSnapshot: boolean) {
-      const savedBills = readJsonStorage(
+      const savedBills = normalizeManualBillIds(
+        readJsonStorage(
+          billsStorageKey,
+          defaultManualBills,
+        ),
+      );
+
+      writeJsonStorage(
         billsStorageKey,
-        defaultManualBills,
+        savedBills,
       );
 
       const savedPreferences = readPayPeriodPreferences();
@@ -308,9 +286,9 @@ export default function BillsPage() {
         getCurrentPayPeriodPreferences(savedPreferences);
 
       if (rolloverResult.didAdvance) {
-        window.localStorage.setItem(
+        writeJsonStorage(
           preferencesStorageKey,
-          JSON.stringify(rolloverResult.preferences),
+          rolloverResult.preferences,
         );
       }
 
@@ -324,23 +302,6 @@ export default function BillsPage() {
           activeBillOccurrencesStorageKey,
           {},
         );
-      const normalizedOccurrenceDates =
-        normalizeActiveBillOccurrenceDates(
-          savedBills,
-          savedActiveOccurrenceDates,
-          savedPaidOccurrences,
-        );
-
-      setManualBills(savedBills);
-      setPreferences(rolloverResult.preferences);
-      setPaidBillOccurrences(savedPaidOccurrences);
-      setActiveBillOccurrenceDates(normalizedOccurrenceDates);
-
-      window.localStorage.setItem(
-        activeBillOccurrencesStorageKey,
-        JSON.stringify(normalizedOccurrenceDates),
-      );
-
       const savedRecentPaidActions =
         readJsonStorage<PaidBillAction[]>(
           recentPaidActionsStorageKey,
@@ -357,15 +318,21 @@ export default function BillsPage() {
         legacyLastPaidAction.occurrenceDateKey &&
         legacyLastPaidAction.billIdentity &&
         legacyLastPaidAction.billName &&
-        savedPaidOccurrences[legacyLastPaidAction.occurrenceKey]
+        savedPaidOccurrences[
+          legacyLastPaidAction.occurrenceKey
+        ]
           ? ({
-              occurrenceKey: legacyLastPaidAction.occurrenceKey,
+              occurrenceKey:
+                legacyLastPaidAction.occurrenceKey,
               occurrenceDateKey:
                 legacyLastPaidAction.occurrenceDateKey,
-              billIdentity: legacyLastPaidAction.billIdentity,
-              billName: legacyLastPaidAction.billName,
+              billIdentity:
+                legacyLastPaidAction.billIdentity,
+              billName:
+                legacyLastPaidAction.billName,
               nextOccurrenceDateKey:
-                legacyLastPaidAction.nextOccurrenceDateKey ?? null,
+                legacyLastPaidAction
+                  .nextOccurrenceDateKey ?? null,
               paidAt:
                 legacyLastPaidAction.paidAt ||
                 savedPaidOccurrences[
@@ -374,21 +341,56 @@ export default function BillsPage() {
             } satisfies PaidBillAction)
           : null;
 
+      const migratedOccurrenceState =
+        migrateBillOccurrenceState(
+          savedBills,
+          savedActiveOccurrenceDates,
+          savedPaidOccurrences,
+          migratedLegacyAction
+            ? [
+                migratedLegacyAction,
+                ...savedRecentPaidActions,
+              ]
+            : savedRecentPaidActions,
+        );
+
+      const normalizedOccurrenceDates =
+        normalizeActiveBillOccurrenceDates(
+          savedBills,
+          migratedOccurrenceState.activeOccurrenceDates,
+          migratedOccurrenceState.paidOccurrences,
+        );
       const normalizedRecentPaidActions =
         normalizeRecentPaidActions(
-          migratedLegacyAction
-            ? [migratedLegacyAction, ...savedRecentPaidActions]
-            : savedRecentPaidActions,
-          savedPaidOccurrences,
+          migratedOccurrenceState.paidActions,
+          migratedOccurrenceState.paidOccurrences,
           rolloverResult.preferences,
         );
 
-      setRecentPaidActions(normalizedRecentPaidActions);
+      setManualBills(savedBills);
+      setPreferences(rolloverResult.preferences);
+      setPaidBillOccurrences(
+        migratedOccurrenceState.paidOccurrences,
+      );
+      setActiveBillOccurrenceDates(
+        normalizedOccurrenceDates,
+      );
+      setRecentPaidActions(
+        normalizedRecentPaidActions,
+      );
       setShowRecentPayments(false);
 
-      window.localStorage.setItem(
+      writeJsonStorage(
+        activeBillOccurrencesStorageKey,
+        normalizedOccurrenceDates,
+      );
+      writeJsonStorage(
+        paidBillsStorageKey,
+        migratedOccurrenceState.paidOccurrences,
+      );
+      writeJsonStorage(
         recentPaidActionsStorageKey,
-        JSON.stringify(normalizedRecentPaidActions),
+        normalizedRecentPaidActions,
       );
       window.localStorage.removeItem(
         legacyLastPaidActionStorageKey,
@@ -476,9 +478,9 @@ export default function BillsPage() {
         [billIdentity]: occurrenceDateKey,
       };
 
-      window.localStorage.setItem(
+      writeJsonStorage(
         activeBillOccurrencesStorageKey,
-        JSON.stringify(nextDates),
+        nextDates,
       );
 
       return nextDates;
@@ -502,9 +504,9 @@ export default function BillsPage() {
         [occurrence.occurrenceKey]: paidAt,
       };
 
-      window.localStorage.setItem(
+      writeJsonStorage(
         paidBillsStorageKey,
-        JSON.stringify(nextOccurrences),
+        nextOccurrences,
       );
 
       return nextOccurrences;
@@ -517,10 +519,10 @@ export default function BillsPage() {
           [occurrence.billIdentity]: nextOccurrenceDateKey,
         };
 
-        window.localStorage.setItem(
+        writeJsonStorage(
           activeBillOccurrencesStorageKey,
-          JSON.stringify(nextDates),
-        );
+          nextDates,
+      );
 
         return nextDates;
       });
@@ -530,9 +532,11 @@ export default function BillsPage() {
       occurrenceKey: occurrence.occurrenceKey,
       occurrenceDateKey: occurrence.dueDateKey,
       billIdentity: occurrence.billIdentity,
+      billId: bill.id,
       billName: bill.name || "Bill",
       nextOccurrenceDateKey,
       paidAt,
+      billAmount: bill.amount,
     };
 
     setRecentPaidActions((current) => {
@@ -552,9 +556,9 @@ export default function BillsPage() {
         preferences,
       );
 
-      window.localStorage.setItem(
+      writeJsonStorage(
         recentPaidActionsStorageKey,
-        JSON.stringify(nextActions),
+        nextActions,
       );
 
       return nextActions;
@@ -578,9 +582,9 @@ export default function BillsPage() {
       const nextOccurrences = { ...current };
       delete nextOccurrences[action.occurrenceKey];
 
-      window.localStorage.setItem(
+      writeJsonStorage(
         paidBillsStorageKey,
-        JSON.stringify(nextOccurrences),
+        nextOccurrences,
       );
 
       return nextOccurrences;
@@ -597,9 +601,9 @@ export default function BillsPage() {
           recentAction.occurrenceKey !== action.occurrenceKey,
       );
 
-      window.localStorage.setItem(
+      writeJsonStorage(
         recentPaidActionsStorageKey,
-        JSON.stringify(nextActions),
+        nextActions,
       );
 
       return nextActions;
@@ -749,13 +753,9 @@ export default function BillsPage() {
 
       <div className="min-h-[70vh]">
         <header className="-mt-1 mb-1.5 motion-card sm:-mt-2">
-          <div className="mb-1.5 flex items-center justify-between gap-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
-              Bill Tracker
-            </p>
-
-            <Pill>v1.3 Beta</Pill>
-          </div>
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
+            Bill Tracker
+          </p>
 
           <h1 className="text-[2.15rem] font-bold leading-tight tracking-tight text-[#f5f0e8] sm:text-4xl">
             Bills

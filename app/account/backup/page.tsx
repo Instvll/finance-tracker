@@ -11,12 +11,25 @@ type AccountUser = {
   email?: string;
 };
 
-type TrackerStateBackup = {
-  version: 1;
+type LegacyTrackerStateBackup = {
+  version?: 1;
+  preferences?: unknown;
+  activeBillOccurrences?: unknown;
+  paidBillOccurrences?: unknown;
+  recentPaidActions?: unknown;
+};
+
+type CompleteTrackerSnapshot = {
+  version: 2;
+  createdAt: string;
+  summaryData: unknown;
+  billsData: unknown[];
+  cardsData: unknown[];
+  manualLastSaved: string | null;
   preferences: unknown;
   activeBillOccurrences: unknown;
   paidBillOccurrences: unknown;
-  recentPaidActions: unknown;
+  recentPaidActions: unknown[];
 };
 
 const summaryStorageKey = "finance-tracker-manual-data";
@@ -31,6 +44,8 @@ const recentPaidActionsStorageKey =
   "leftovr-recent-paid-bill-actions";
 const legacyLastPaidActionStorageKey =
   "leftovr-last-paid-bill-action";
+const preRestoreSnapshotStorageKey =
+  "leftovr-pre-restore-snapshot";
 
 export default function BackupSettingsPage() {
   const [user, setUser] = useState<AccountUser | null>(null);
@@ -41,6 +56,7 @@ export default function BackupSettingsPage() {
   const [lastSaved, setLastSaved] = useState("");
   const [billCount, setBillCount] = useState(0);
   const [cardCount, setCardCount] = useState(0);
+  const [canUndoRestore, setCanUndoRestore] = useState(false);
 
   useEffect(() => {
     loadAccount();
@@ -77,6 +93,9 @@ export default function BackupSettingsPage() {
 
     setBillCount(getStoredArrayCount(billsStorageKey));
     setCardCount(getStoredArrayCount(cardsStorageKey));
+    setCanUndoRestore(
+      window.localStorage.getItem(preRestoreSnapshotStorageKey) !== null,
+    );
   }
 
   function getStoredArrayCount(key: string) {
@@ -122,9 +141,38 @@ export default function BackupSettingsPage() {
     }
   }
 
-  function getTrackerStateBackup(): TrackerStateBackup {
+  function asStoredObject(value: unknown) {
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? value
+      : {};
+  }
+
+  function asStoredArray(value: unknown) {
+    return Array.isArray(value) ? value : [];
+  }
+
+  function getCompleteLocalSnapshot(): CompleteTrackerSnapshot {
     return {
-      version: 1,
+      version: 2,
+      createdAt: new Date().toISOString(),
+      summaryData: parseStoredJson(
+        readStorageValue(summaryStorageKey, "{}"),
+        {},
+      ),
+      billsData: asStoredArray(
+        parseStoredJson(
+          readStorageValue(billsStorageKey, "[]"),
+          [],
+        ),
+      ),
+      cardsData: asStoredArray(
+        parseStoredJson(
+          readStorageValue(cardsStorageKey, "[]"),
+          [],
+        ),
+      ),
+      manualLastSaved:
+        window.localStorage.getItem(lastSavedStorageKey),
       preferences: parseStoredJson(
         readStorageValue(preferencesStorageKey, "{}"),
         {},
@@ -140,57 +188,155 @@ export default function BackupSettingsPage() {
         readStorageValue(paidBillsStorageKey, "{}"),
         {},
       ),
-      recentPaidActions: parseStoredJson(
-        readStorageValue(
-          recentPaidActionsStorageKey,
-          "[]",
+      recentPaidActions: asStoredArray(
+        parseStoredJson(
+          readStorageValue(
+            recentPaidActionsStorageKey,
+            "[]",
+          ),
+          [],
         ),
-        [],
       ),
     };
   }
 
-  function restoreTrackerStateBackup(value: unknown) {
+  function isCompleteTrackerSnapshot(
+    value: unknown,
+  ): value is CompleteTrackerSnapshot {
     if (!value || typeof value !== "object") {
-      window.localStorage.removeItem(
-        activeBillOccurrencesStorageKey,
-      );
-      window.localStorage.removeItem(paidBillsStorageKey);
-      window.localStorage.removeItem(
-        recentPaidActionsStorageKey,
-      );
-      window.localStorage.removeItem(
-        legacyLastPaidActionStorageKey,
-      );
-      return;
+      return false;
     }
 
-    const backup = value as Partial<TrackerStateBackup>;
+    const snapshot = value as Partial<CompleteTrackerSnapshot>;
 
-    if (backup.preferences !== undefined) {
-      window.localStorage.setItem(
-        preferencesStorageKey,
-        JSON.stringify(backup.preferences),
-      );
+    return (
+      snapshot.version === 2 &&
+      Array.isArray(snapshot.billsData) &&
+      Array.isArray(snapshot.cardsData) &&
+      Array.isArray(snapshot.recentPaidActions)
+    );
+  }
+
+  function createSnapshotFromCloudData(data: {
+    dashboard_data?: unknown;
+    bills_data?: unknown;
+    cards_data?: unknown;
+    plan_data?: unknown;
+    manual_last_saved?: string | null;
+    updated_at?: string | null;
+  }): CompleteTrackerSnapshot {
+    if (isCompleteTrackerSnapshot(data.plan_data)) {
+      return {
+        ...data.plan_data,
+        summaryData: asStoredObject(
+          data.plan_data.summaryData,
+        ),
+        billsData: asStoredArray(data.plan_data.billsData),
+        cardsData: asStoredArray(data.plan_data.cardsData),
+        preferences: asStoredObject(
+          data.plan_data.preferences,
+        ),
+        activeBillOccurrences: asStoredObject(
+          data.plan_data.activeBillOccurrences,
+        ),
+        paidBillOccurrences: asStoredObject(
+          data.plan_data.paidBillOccurrences,
+        ),
+        recentPaidActions: asStoredArray(
+          data.plan_data.recentPaidActions,
+        ),
+      };
     }
 
+    const legacyPlan =
+      data.plan_data &&
+      typeof data.plan_data === "object" &&
+      !Array.isArray(data.plan_data)
+        ? (data.plan_data as LegacyTrackerStateBackup)
+        : {};
+
+    return {
+      version: 2,
+      createdAt:
+        data.updated_at || new Date().toISOString(),
+      summaryData: asStoredObject(data.dashboard_data),
+      billsData: asStoredArray(data.bills_data),
+      cardsData: asStoredArray(data.cards_data),
+      manualLastSaved:
+        data.manual_last_saved || data.updated_at || null,
+      preferences: asStoredObject(legacyPlan.preferences),
+      activeBillOccurrences: asStoredObject(
+        legacyPlan.activeBillOccurrences,
+      ),
+      paidBillOccurrences: asStoredObject(
+        legacyPlan.paidBillOccurrences,
+      ),
+      recentPaidActions: asStoredArray(
+        legacyPlan.recentPaidActions,
+      ),
+    };
+  }
+
+  function applyCompleteSnapshot(
+    snapshot: CompleteTrackerSnapshot,
+  ) {
+    window.localStorage.setItem(
+      summaryStorageKey,
+      JSON.stringify(asStoredObject(snapshot.summaryData)),
+    );
+    window.localStorage.setItem(
+      billsStorageKey,
+      JSON.stringify(asStoredArray(snapshot.billsData)),
+    );
+    window.localStorage.setItem(
+      cardsStorageKey,
+      JSON.stringify(asStoredArray(snapshot.cardsData)),
+    );
+    window.localStorage.setItem(
+      preferencesStorageKey,
+      JSON.stringify(asStoredObject(snapshot.preferences)),
+    );
     window.localStorage.setItem(
       activeBillOccurrencesStorageKey,
       JSON.stringify(
-        backup.activeBillOccurrences ?? {},
+        asStoredObject(snapshot.activeBillOccurrences),
       ),
     );
     window.localStorage.setItem(
       paidBillsStorageKey,
-      JSON.stringify(backup.paidBillOccurrences ?? {}),
+      JSON.stringify(
+        asStoredObject(snapshot.paidBillOccurrences),
+      ),
     );
     window.localStorage.setItem(
       recentPaidActionsStorageKey,
-      JSON.stringify(backup.recentPaidActions ?? []),
+      JSON.stringify(
+        asStoredArray(snapshot.recentPaidActions),
+      ),
     );
+
+    if (snapshot.manualLastSaved) {
+      window.localStorage.setItem(
+        lastSavedStorageKey,
+        snapshot.manualLastSaved,
+      );
+    } else {
+      window.localStorage.removeItem(lastSavedStorageKey);
+    }
+
     window.localStorage.removeItem(
       legacyLastPaidActionStorageKey,
     );
+  }
+
+  function savePreRestoreSnapshot() {
+    const currentSnapshot = getCompleteLocalSnapshot();
+
+    window.localStorage.setItem(
+      preRestoreSnapshotStorageKey,
+      JSON.stringify(currentSnapshot),
+    );
+    setCanUndoRestore(true);
   }
 
   async function backUpThisDevice() {
@@ -202,32 +348,16 @@ export default function BackupSettingsPage() {
     setIsBackingUp(true);
     setMessage("");
 
-    const dashboardData = parseStoredJson(
-      readStorageValue(summaryStorageKey, "{}"),
-      {}
-    );
-
-    const billsData = parseStoredJson(
-      readStorageValue(billsStorageKey, "[]"),
-      []
-    );
-
-    const cardsData = parseStoredJson(
-      readStorageValue(cardsStorageKey, "[]"),
-      []
-    );
-
-    const manualLastSaved = window.localStorage.getItem(lastSavedStorageKey);
-    const trackerState = getTrackerStateBackup();
+    const snapshot = getCompleteLocalSnapshot();
 
     const { error } = await supabase.from("finance_data").upsert({
       user_id: user.id,
-      dashboard_data: dashboardData,
-      bills_data: billsData,
-      cards_data: cardsData,
-      plan_data: trackerState,
+      dashboard_data: snapshot.summaryData,
+      bills_data: snapshot.billsData,
+      cards_data: snapshot.cardsData,
+      plan_data: snapshot,
       notes_data: [],
-      manual_last_saved: manualLastSaved,
+      manual_last_saved: snapshot.manualLastSaved,
       plan_last_saved: null,
       notes_last_saved: null,
       updated_at: new Date().toISOString(),
@@ -278,35 +408,57 @@ export default function BackupSettingsPage() {
       return;
     }
 
-    window.localStorage.setItem(
-      summaryStorageKey,
-      JSON.stringify(data.dashboard_data || {})
-    );
+    savePreRestoreSnapshot();
 
-    window.localStorage.setItem(
-      billsStorageKey,
-      JSON.stringify(data.bills_data || [])
-    );
-
-    window.localStorage.setItem(
-      cardsStorageKey,
-      JSON.stringify(data.cards_data || [])
-    );
-
-    restoreTrackerStateBackup(data.plan_data);
-
-    if (data.manual_last_saved) {
-      window.localStorage.setItem(lastSavedStorageKey, data.manual_last_saved);
-      setLastSaved(data.manual_last_saved);
-    } else if (data.updated_at) {
-      window.localStorage.setItem(lastSavedStorageKey, data.updated_at);
-      setLastSaved(data.updated_at);
-    }
-
+    const restoredSnapshot = createSnapshotFromCloudData(data);
+    applyCompleteSnapshot(restoredSnapshot);
     loadLocalDataSummary();
 
-    setMessage("Restore complete.");
+    setMessage(
+      "Restore complete. Your previous device state is available to undo.",
+    );
     setIsRestoring(false);
+  }
+
+  function undoLastRestore() {
+    const savedSnapshot = window.localStorage.getItem(
+      preRestoreSnapshotStorageKey,
+    );
+
+    if (!savedSnapshot) {
+      setMessage("No previous device state is available.");
+      setCanUndoRestore(false);
+      return;
+    }
+
+    const parsedSnapshot = parseStoredJson<unknown>(
+      savedSnapshot,
+      null,
+    );
+
+    if (!isCompleteTrackerSnapshot(parsedSnapshot)) {
+      setMessage(
+        "The previous device state could not be read safely.",
+      );
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Undo the last restore and return to the device data that existed immediately before it?",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    applyCompleteSnapshot(parsedSnapshot);
+    window.localStorage.removeItem(
+      preRestoreSnapshotStorageKey,
+    );
+    loadLocalDataSummary();
+
+    setMessage("The last restore was undone.");
+    setCanUndoRestore(false);
   }
 
   const accountStatus = isLoading
@@ -431,6 +583,17 @@ export default function BackupSettingsPage() {
                   {isRestoring ? "Restoring..." : "Restore"}
                 </button>
               </div>
+
+              {canUndoRestore ? (
+                <button
+                  type="button"
+                  onClick={undoLastRestore}
+                  disabled={isBackingUp || isRestoring}
+                  className="pressable mt-2 w-full border-0 bg-transparent px-3 py-1 text-center text-xs font-semibold text-[#c7ad75]/85 transition hover:text-[#c7ad75] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Undo Last Restore
+                </button>
+              ) : null}
 
               <div className="mt-2 flex items-start gap-2 border-t border-[#f5f0e8]/8 px-1 pt-2">
                 <DeviceIcon />

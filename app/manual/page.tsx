@@ -6,6 +6,30 @@ import TopNav from "../../components/TopNav";
 import { PageShell, Pill } from "../../components/Layout";
 import { bills, creditCards, financeSummary } from "../../data/bandData";
 import {
+  activeBillOccurrencesStorageKey,
+  applyManualCardBalanceRevisions,
+  billsStorageKey,
+  cardsStorageKey,
+  createPersistentId,
+  getPaymentMethodLabel,
+  getPaymentSourceLabel,
+  lastSavedStorageKey,
+  legacyLastPaidActionStorageKey,
+  normalizeManualBills,
+  normalizeManualCards,
+  migrateBillOccurrenceState,
+  paidBillsStorageKey,
+  parseMoney,
+  readJsonStorage,
+  recentPaidActionsStorageKey,
+  resolveBillPaymentSource,
+  summaryStorageKey,
+  type ManualBill,
+  type ManualCreditCard,
+  type PaidBillAction,
+  type PaymentSource,
+} from "../../lib/financeData";
+import {
   getBillIdentity,
   sortIndexedBillsByDueDay,
   type PaidBillOccurrences,
@@ -25,45 +49,12 @@ type ManualFinanceData = {
   nextPayday: string;
 };
 
-type ManualBill = {
-  name: string;
-  amount: string;
-  dueDate: string;
-  status: "Paid" | "Upcoming" | "Due Soon" | "Overdue";
-  paymentMethod: string;
-};
-
-type ManualCreditCard = {
-  name: string;
-  balance: string;
-  limit: string;
-  minimumPayment: string;
-  dueDate: string;
-  status: "Good" | "Watch" | "Pay Down";
-};
-
-type PaidBillAction = {
-  occurrenceKey: string;
-  occurrenceDateKey: string;
-  billIdentity: string;
-  billName: string;
-  nextOccurrenceDateKey: string | null;
-  paidAt: string;
-};
+type EditableManualBillField = Exclude<
+  keyof ManualBill,
+  "paymentMethod" | "paymentSource"
+>;
 
 type ActiveBillOccurrenceDates = Record<string, string>;
-
-const summaryStorageKey = "finance-tracker-manual-data";
-const billsStorageKey = "finance-tracker-manual-bills";
-const cardsStorageKey = "finance-tracker-manual-cards";
-const lastSavedStorageKey = "finance-tracker-last-saved";
-const paidBillsStorageKey = "leftovr-paid-bill-occurrences";
-const activeBillOccurrencesStorageKey =
-  "leftovr-active-bill-occurrences";
-const recentPaidActionsStorageKey =
-  "leftovr-recent-paid-bill-actions";
-const legacyLastPaidActionStorageKey =
-  "leftovr-last-paid-bill-action";
 
 const defaultManualData: ManualFinanceData = {
   checkingBalance: String(financeSummary.checkingBalance),
@@ -89,36 +80,8 @@ const defaultManualCards: ManualCreditCard[] = creditCards.map((card) => ({
   status: card.status,
 }));
 
-function readJsonStorage<T>(key: string, fallback: T) {
-  const savedValue = window.localStorage.getItem(key);
-
-  if (!savedValue) {
-    return fallback;
-  }
-
-  try {
-    return JSON.parse(savedValue) as T;
-  } catch {
-    return fallback;
-  }
-}
-
 function cloneBill(bill: ManualBill) {
   return { ...bill };
-}
-
-function getOccurrenceKeyForIdentity(
-  occurrenceKey: string,
-  oldIdentity: string,
-  newIdentity: string,
-) {
-  const oldPrefix = `${oldIdentity}|`;
-
-  if (!occurrenceKey.startsWith(oldPrefix)) {
-    return occurrenceKey;
-  }
-
-  return `${newIdentity}|${occurrenceKey.slice(oldPrefix.length)}`;
 }
 
 function reconcileBillOccurrenceStorage(
@@ -142,25 +105,26 @@ function reconcileBillOccurrenceStorage(
       [],
     );
 
+  const migratedState = migrateBillOccurrenceState(
+    nextBills,
+    savedActiveOccurrences,
+    savedPaidOccurrences,
+    savedRecentPaidActions,
+  );
   const nextActiveOccurrences = {
-    ...savedActiveOccurrences,
+    ...migratedState.activeOccurrenceDates,
   };
   const nextPaidOccurrences = {
-    ...savedPaidOccurrences,
+    ...migratedState.paidOccurrences,
   };
-  let nextRecentPaidActions = [...savedRecentPaidActions];
+  let nextRecentPaidActions = [
+    ...migratedState.paidActions,
+  ];
 
   nextBills.forEach((nextBill, index) => {
     const originalBill = originalBills[index];
 
-    if (!originalBill) {
-      return;
-    }
-
-    const oldIdentity = getBillIdentity(originalBill);
-    const newIdentity = getBillIdentity(nextBill);
-
-    if (oldIdentity === newIdentity) {
+    if (!originalBill || !nextBill.id) {
       return;
     }
 
@@ -168,115 +132,98 @@ function reconcileBillOccurrenceStorage(
       originalBill.dueDate.trim().toLowerCase() !==
       nextBill.dueDate.trim().toLowerCase();
 
-    if (
-      !dueDateChanged &&
-      nextActiveOccurrences[oldIdentity]
-    ) {
-      nextActiveOccurrences[newIdentity] =
-        nextActiveOccurrences[oldIdentity];
+    if (dueDateChanged) {
+      delete nextActiveOccurrences[nextBill.id];
     }
 
-    delete nextActiveOccurrences[oldIdentity];
+    nextRecentPaidActions =
+      nextRecentPaidActions.map((action) =>
+        action.billId === nextBill.id
+          ? {
+              ...action,
+              billIdentity: nextBill.id as string,
+              billId: nextBill.id,
+              billName: nextBill.name || "Bill",
+            }
+          : action,
+      );
+  });
 
-    Object.entries(nextPaidOccurrences).forEach(
-      ([occurrenceKey, paidAt]) => {
-        if (!occurrenceKey.startsWith(`${oldIdentity}|`)) {
-          return;
-        }
+  const removedBillIds = new Set(
+    removedBills
+      .map((bill) => bill.id)
+      .filter((id): id is string => Boolean(id)),
+  );
 
-        const migratedOccurrenceKey =
-          getOccurrenceKeyForIdentity(
-            occurrenceKey,
-            oldIdentity,
-            newIdentity,
-          );
+  for (const removedBillId of removedBillIds) {
+    delete nextActiveOccurrences[removedBillId];
 
-        nextPaidOccurrences[migratedOccurrenceKey] = paidAt;
+    for (const occurrenceKey of Object.keys(
+      nextPaidOccurrences,
+    )) {
+      if (
+        occurrenceKey.startsWith(
+          `${removedBillId}|`,
+        )
+      ) {
         delete nextPaidOccurrences[occurrenceKey];
-      },
-    );
+      }
+    }
+  }
 
-    nextRecentPaidActions = nextRecentPaidActions.flatMap(
-      (action) => {
-        if (action.billIdentity !== oldIdentity) {
-          return [action];
-        }
-
-        if (dueDateChanged) {
-          return [];
-        }
-
-        return [
-          {
-            ...action,
-            occurrenceKey: getOccurrenceKeyForIdentity(
-              action.occurrenceKey,
-              oldIdentity,
-              newIdentity,
-            ),
-            billIdentity: newIdentity,
-            billName: nextBill.name || "Bill",
-          },
-        ];
-      },
-    );
-  });
-
-  const removedIdentities = new Set(
-    removedBills.map((bill) => getBillIdentity(bill)),
-  );
-
-  removedIdentities.forEach((identity) => {
-    delete nextActiveOccurrences[identity];
-
-    Object.keys(nextPaidOccurrences).forEach(
-      (occurrenceKey) => {
-        if (occurrenceKey.startsWith(`${identity}|`)) {
-          delete nextPaidOccurrences[occurrenceKey];
-        }
-      },
-    );
-
-    nextRecentPaidActions = nextRecentPaidActions.filter(
+  nextRecentPaidActions =
+    nextRecentPaidActions.filter(
       (action) =>
-        action.billIdentity !== identity &&
-        !action.occurrenceKey.startsWith(`${identity}|`),
+        !(
+          action.billId &&
+          removedBillIds.has(action.billId)
+        ),
     );
-  });
 
-  const validBillIdentities = nextBills.map((bill) =>
-    getBillIdentity(bill),
+  const validBillIds = new Set(
+    nextBills
+      .map((bill) => bill.id)
+      .filter((id): id is string => Boolean(id)),
   );
-  const isValidOccurrenceKey = (occurrenceKey: string) =>
-    validBillIdentities.some((identity) =>
-      occurrenceKey.startsWith(`${identity}|`),
-    );
 
-  Object.keys(nextActiveOccurrences).forEach((identity) => {
-    if (!validBillIdentities.includes(identity)) {
+  for (const identity of Object.keys(
+    nextActiveOccurrences,
+  )) {
+    if (!validBillIds.has(identity)) {
       delete nextActiveOccurrences[identity];
     }
-  });
+  }
 
-  Object.keys(nextPaidOccurrences).forEach((occurrenceKey) => {
-    if (!isValidOccurrenceKey(occurrenceKey)) {
+  for (const occurrenceKey of Object.keys(
+    nextPaidOccurrences,
+  )) {
+    const belongsToCurrentBill = [...validBillIds].some(
+      (billId) =>
+        occurrenceKey.startsWith(`${billId}|`),
+    );
+
+    if (!belongsToCurrentBill) {
       delete nextPaidOccurrences[occurrenceKey];
     }
-  });
+  }
 
-  const seenRecentOccurrenceKeys = new Set<string>();
+  const seenOccurrenceKeys = new Set<string>();
 
   nextRecentPaidActions = nextRecentPaidActions
     .filter((action) => {
+      const hasValidBill =
+        Boolean(action.billId) &&
+        validBillIds.has(action.billId as string);
+
       if (
-        !validBillIdentities.includes(action.billIdentity) ||
+        !hasValidBill ||
         !nextPaidOccurrences[action.occurrenceKey] ||
-        seenRecentOccurrenceKeys.has(action.occurrenceKey)
+        seenOccurrenceKeys.has(action.occurrenceKey)
       ) {
         return false;
       }
 
-      seenRecentOccurrenceKeys.add(action.occurrenceKey);
+      seenOccurrenceKeys.add(action.occurrenceKey);
       return true;
     })
     .sort(
@@ -314,16 +261,6 @@ function formatSavedTime(value: string) {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(value));
-}
-
-function parseMoney(value: string) {
-  const numberValue = Number(value);
-
-  if (Number.isNaN(numberValue)) {
-    return 0;
-  }
-
-  return numberValue;
 }
 
 function formatCurrency(amount: number) {
@@ -410,21 +347,74 @@ export default function ManualPage() {
   );
   const originalBillsRef =
     useRef<Array<ManualBill | null>>([]);
+  const originalCardsRef = useRef<ManualCreditCard[]>([]);
   const removedBillsRef = useRef<ManualBill[]>([]);
 
   useEffect(() => {
-    const savedBills = readJsonStorage(
-      billsStorageKey,
-      defaultManualBills,
+    const savedCards = normalizeManualCards(
+      readJsonStorage(cardsStorageKey, defaultManualCards),
+    );
+    const savedBills = normalizeManualBills(
+      readJsonStorage(billsStorageKey, defaultManualBills),
+      savedCards,
+      true,
     );
 
     setManualData(readJsonStorage(summaryStorageKey, defaultManualData));
     setManualBills(savedBills);
-    setManualCards(readJsonStorage(cardsStorageKey, defaultManualCards));
+    setManualCards(savedCards);
+
+    window.localStorage.setItem(
+      cardsStorageKey,
+      JSON.stringify(savedCards),
+    );
+    window.localStorage.setItem(
+      billsStorageKey,
+      JSON.stringify(savedBills),
+    );
+
+    const migratedOccurrenceState =
+      migrateBillOccurrenceState(
+        savedBills,
+        readJsonStorage<ActiveBillOccurrenceDates>(
+          activeBillOccurrencesStorageKey,
+          {},
+        ),
+        readJsonStorage<PaidBillOccurrences>(
+          paidBillsStorageKey,
+          {},
+        ),
+        readJsonStorage<PaidBillAction[]>(
+          recentPaidActionsStorageKey,
+          [],
+        ),
+      );
+
+    window.localStorage.setItem(
+      activeBillOccurrencesStorageKey,
+      JSON.stringify(
+        migratedOccurrenceState.activeOccurrenceDates,
+      ),
+    );
+    window.localStorage.setItem(
+      paidBillsStorageKey,
+      JSON.stringify(
+        migratedOccurrenceState.paidOccurrences,
+      ),
+    );
+    window.localStorage.setItem(
+      recentPaidActionsStorageKey,
+      JSON.stringify(
+        migratedOccurrenceState.paidActions,
+      ),
+    );
 
     originalBillsRef.current = savedBills.map((bill) =>
       cloneBill(bill),
     );
+    originalCardsRef.current = savedCards.map((card) => ({
+      ...card,
+    }));
     removedBillsRef.current = [];
 
     const savedTime = window.localStorage.getItem(lastSavedStorageKey);
@@ -548,11 +538,42 @@ export default function ManualPage() {
     markUnsaved();
   }
 
-  function updateBill(index: number, field: keyof ManualBill, value: string) {
+  function updateBill(
+    index: number,
+    field: EditableManualBillField,
+    value: string,
+  ) {
     setManualBills((currentBills) =>
       currentBills.map((bill, billIndex) =>
-        billIndex === index ? { ...bill, [field]: value } : bill
-      )
+        billIndex === index
+          ? {
+              ...bill,
+              [field]: value,
+            }
+          : bill,
+      ),
+    );
+
+    markUnsaved();
+  }
+
+  function updateBillPaymentSource(
+    index: number,
+    paymentSource: PaymentSource,
+  ) {
+    setManualBills((currentBills) =>
+      currentBills.map((bill, billIndex) =>
+        billIndex === index
+          ? {
+              ...bill,
+              paymentMethod: getPaymentMethodLabel(
+                paymentSource,
+                manualCards,
+              ),
+              paymentSource,
+            }
+          : bill,
+      ),
     );
 
     markUnsaved();
@@ -578,11 +599,13 @@ export default function ManualPage() {
     setManualBills((currentBills) => [
       ...currentBills,
       {
+        id: createPersistentId("bill"),
         name: "",
         amount: "",
         dueDate: "",
         status: "Paid",
-        paymentMethod: "",
+        paymentMethod: "Checking",
+        paymentSource: { type: "checking" },
       },
     ]);
 
@@ -659,8 +682,10 @@ export default function ManualPage() {
     setManualCards((currentCards) => [
       ...currentCards,
       {
+        id: createPersistentId("card"),
         name: "",
         balance: "",
+        balanceRevision: 0,
         limit: "",
         minimumPayment: "0",
         dueDate: "TBD",
@@ -718,21 +743,37 @@ export default function ManualPage() {
 
   function saveChanges() {
     const savedTime = new Date().toISOString();
+    const normalizedCards = normalizeManualCards(manualCards);
+    const revisedCards = applyManualCardBalanceRevisions(
+      normalizedCards,
+      originalCardsRef.current,
+    );
+    const normalizedBills = normalizeManualBills(
+      manualBills,
+      revisedCards,
+      true,
+    );
 
     reconcileBillOccurrenceStorage(
       originalBillsRef.current,
       removedBillsRef.current,
-      manualBills,
+      normalizedBills,
     );
 
     window.localStorage.setItem(summaryStorageKey, JSON.stringify(manualData));
-    window.localStorage.setItem(billsStorageKey, JSON.stringify(manualBills));
-    window.localStorage.setItem(cardsStorageKey, JSON.stringify(manualCards));
+    window.localStorage.setItem(billsStorageKey, JSON.stringify(normalizedBills));
+    window.localStorage.setItem(cardsStorageKey, JSON.stringify(revisedCards));
     window.localStorage.setItem(lastSavedStorageKey, savedTime);
 
-    originalBillsRef.current = manualBills.map((bill) =>
+    setManualBills(normalizedBills);
+    setManualCards(revisedCards);
+
+    originalBillsRef.current = normalizedBills.map((bill) =>
       cloneBill(bill),
     );
+    originalCardsRef.current = revisedCards.map((card) => ({
+      ...card,
+    }));
     removedBillsRef.current = [];
 
     setLastSaved(savedTime);
@@ -1038,6 +1079,7 @@ export default function ManualPage() {
                       key={`bill-${index}`}
                       itemIndex={index}
                       bill={bill}
+                      cards={manualCards}
                       isEditing={editingBills.includes(index)}
                       isDimmed={
                         editingBills.length > 0 &&
@@ -1051,6 +1093,9 @@ export default function ManualPage() {
                       onRemove={() => removeBill(index)}
                       onChange={(field, value) =>
                         updateBill(index, field, value)
+                      }
+                      onPaymentSourceChange={(paymentSource) =>
+                        updateBillPaymentSource(index, paymentSource)
                       }
                     />
                   ))
@@ -1242,21 +1287,25 @@ function SectionHeading({ title }: { title: string }) {
 function BillEditorRow({
   itemIndex,
   bill,
+  cards,
   isEditing,
   isDimmed,
   isNewlyAdded,
   onToggleEditing,
   onRemove,
   onChange,
+  onPaymentSourceChange,
 }: {
   itemIndex: number;
   bill: ManualBill;
+  cards: ManualCreditCard[];
   isEditing: boolean;
   isDimmed: boolean;
   isNewlyAdded: boolean;
   onToggleEditing: () => void;
   onRemove: () => void;
-  onChange: (field: keyof ManualBill, value: string) => void;
+  onChange: (field: EditableManualBillField, value: string) => void;
+  onPaymentSourceChange: (paymentSource: PaymentSource) => void;
 }) {
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
 
@@ -1331,7 +1380,7 @@ function BillEditorRow({
               </p>
 
               <p className="mt-0.5 text-xs text-stone-500">
-                Recurring monthly
+                Paid from {getPaymentSourceLabel(bill.paymentSource, cards)}
               </p>
 
               <p className="mt-1 text-sm font-medium text-stone-300">
@@ -1377,11 +1426,10 @@ function BillEditorRow({
               onChange={(value) => onChange("dueDate", value)}
             />
 
-            <TextInput
-              label="Payment Method"
-              value={bill.paymentMethod}
-              placeholder="Example: Checking"
-              onChange={(value) => onChange("paymentMethod", value)}
+            <PaymentSourceSelect
+              value={bill.paymentSource ?? { type: "checking" }}
+              cards={cards}
+              onChange={onPaymentSourceChange}
             />
           </div>
 
@@ -1764,6 +1812,95 @@ function CalendarIcon() {
     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
         d="M6 4v3M18 4v3M4 9h16M6 6h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function PaymentSourceSelect({
+  value,
+  cards,
+  onChange,
+}: {
+  value: PaymentSource;
+  cards: ManualCreditCard[];
+  onChange: (paymentSource: PaymentSource) => void;
+}) {
+  const selectedValue =
+    value.type === "credit-card"
+      ? `credit-card:${value.creditCardId}`
+      : "checking";
+
+  function handleChange(nextValue: string) {
+    if (nextValue === "checking") {
+      onChange({ type: "checking" });
+      return;
+    }
+
+    const creditCardId = nextValue.replace("credit-card:", "");
+
+    if (!creditCardId) {
+      return;
+    }
+
+    onChange({
+      type: "credit-card",
+      creditCardId,
+    });
+  }
+
+  return (
+    <label className="flex items-center justify-between gap-4 border-b border-[#f5f0e8]/8 px-3.5 py-2 transition-colors last:border-b-0 focus-within:bg-[#c7ad75]/[0.035]">
+      <span className="shrink-0 text-sm font-medium text-stone-400">
+        Paid From
+      </span>
+
+      <span className="relative min-w-0 flex-1">
+        <select
+          value={selectedValue}
+          onChange={(event) => handleChange(event.target.value)}
+          className="w-full appearance-none bg-transparent py-0.5 pl-3 pr-7 text-right text-[15px] font-semibold text-[#f5f0e8] outline-none"
+          aria-label="Payment source"
+        >
+          <option value="checking">Checking account</option>
+
+          {cards.map((card, index) =>
+            card.id ? (
+              <option
+                key={card.id}
+                value={`credit-card:${card.id}`}
+              >
+                {card.name.trim() || `Credit Card ${index + 1}`}
+              </option>
+            ) : null,
+          )}
+        </select>
+
+        <span
+          className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-[#c7ad75]/75"
+          aria-hidden="true"
+        >
+          <ChevronDownIcon />
+        </span>
+      </span>
+    </label>
+  );
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg
+      className="h-3.5 w-3.5"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="m7 9.5 5 5 5-5"
         stroke="currentColor"
         strokeWidth="1.8"
         strokeLinecap="round"

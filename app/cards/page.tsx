@@ -140,13 +140,9 @@ export default function CardsPage() {
 
       <div className="min-h-[70vh]">
         <header className="-mt-1 mb-1.5 motion-card sm:-mt-2">
-          <div className="mb-1.5 flex items-center justify-between gap-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
-              Card Tracker
-            </p>
-
-            <Pill>v1.3 Beta</Pill>
-          </div>
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
+            Card Tracker
+          </p>
 
           <h1 className="text-[2.15rem] font-bold leading-tight tracking-tight text-[#f5f0e8] sm:text-4xl">
             Credit Cards

@@ -17,6 +17,7 @@ export type PayPeriodPreferences = {
 };
 
 export type BillOccurrenceBill = {
+  id?: string;
   name: string;
   amount: string | number;
   dueDate: string;
@@ -313,13 +314,23 @@ export function getFollowingBillDueDate(
   );
 }
 
-export function getBillIdentity(bill: BillOccurrenceBill) {
+export function getLegacyBillIdentity(
+  bill: BillOccurrenceBill,
+) {
   return [
     bill.name.trim().toLowerCase(),
     String(bill.amount).trim(),
     bill.dueDate.trim().toLowerCase(),
     (bill.paymentMethod ?? "").trim().toLowerCase(),
   ].join("|");
+}
+
+export function getBillIdentity(
+  bill: BillOccurrenceBill,
+) {
+  const persistentId = bill.id?.trim();
+
+  return persistentId || getLegacyBillIdentity(bill);
 }
 
 export function getBillOccurrenceKey(
