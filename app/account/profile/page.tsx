@@ -144,8 +144,8 @@ export default function ProfileSettingsPage() {
 
         setSyncMessage(
           backgroundSyncActivated
-            ? "The local and cloud finance states match. Background uploads are now active on this verified device."
-            : "The local and cloud finance states match, but background uploads could not be enabled on this device.",
+            ? "Everything is up to date. New saves will be protected automatically."
+            : "Your data matches, but automatic saving could not be enabled on this device.",
         );
       } else {
         setSyncMessage(
@@ -202,8 +202,8 @@ export default function ProfileSettingsPage() {
 
       setSyncMessage(
         backgroundSyncActivated
-          ? "Upload verified. Background uploads are now active on this verified device."
-          : "Upload verified, but background uploads could not be enabled on this device.",
+          ? "This device is now saved to your account. New changes will upload automatically."
+          : "This device was saved to your account, but automatic saving could not be enabled.",
       );
     } catch (error) {
       setSyncError(getSyncErrorMessage(error));
@@ -303,8 +303,8 @@ export default function ProfileSettingsPage() {
 
       setSyncMessage(
         backgroundSyncActivated
-          ? "Cloud restore verified. Background uploads are now active on this verified device."
-          : "Cloud restore verified, but background uploads could not be enabled on this device.",
+          ? "This device is up to date. New changes will upload automatically."
+          : "This device was updated, but automatic saving could not be enabled.",
       );
     } catch (error) {
       setSyncError(getSyncErrorMessage(error));
@@ -359,6 +359,19 @@ export default function ProfileSettingsPage() {
       isBackgroundSyncActive,
       backgroundSyncStatus,
     );
+
+  const syncStatusMessage = getSyncStatusMessage(
+    isSignedIn,
+    syncComparison,
+    isBackgroundSyncActive,
+    backgroundSyncStatus,
+    isCheckingCloud,
+    isUploadingState,
+    isRestoringState,
+  );
+
+  const hasPrimarySyncAction =
+    canUploadLocalState || canRestoreCloudState;
 
   return (
     <PageShell>
@@ -511,11 +524,11 @@ export default function ProfileSettingsPage() {
 
                     <div className="min-w-0 flex-1">
                       <p className="text-[0.95rem] font-semibold text-[#f5f0e8]">
-                        Data on This Device
+                        Backup & Recovery
                       </p>
 
                       <p className="mt-0.5 text-xs leading-5 text-stone-500 sm:text-sm">
-                        Review, back up, or restore your saved finance data.
+                        Export a copy or recover saved data manually.
                       </p>
                     </div>
 
@@ -534,12 +547,12 @@ export default function ProfileSettingsPage() {
             <div className="dashboard-surface-glow" aria-hidden="true" />
 
             <div className="liquid-content">
-              <div className="mb-2 flex items-start justify-between gap-3">
+              <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <SectionTitle title="Account Sync" />
+                  <SectionTitle title="Cloud Sync" />
 
                   <p className="mt-1 text-sm leading-5 text-stone-400">
-                    Keep verified finance changes protected across devices.
+                    Keep your saved finance data available across your devices.
                   </p>
                 </div>
 
@@ -548,89 +561,94 @@ export default function ProfileSettingsPage() {
                 </div>
               </div>
 
-              <div className="rounded-[1.1rem] border border-[#c7ad75]/18 bg-[#c7ad75]/[0.055] px-3 py-2.5">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#c7ad75]/80">
-                  Controlled Sync
-                </p>
+              <div className="mt-2 flex items-start gap-3 rounded-[1.2rem] border border-[#f5f0e8]/8 bg-[#11100d]/18 px-3 py-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[1rem] border border-[#9dbdb4]/24 bg-[#9dbdb4]/10 text-[#9dbdb4] shadow-[inset_0_1px_0_rgba(245,240,232,0.06)]">
+                  <CloudSyncIcon
+                    comparison={syncComparison}
+                    isBusy={isSyncBusy}
+                  />
+                </span>
 
-                <p className="mt-1 text-sm leading-5 text-stone-400">
-                  After this device is verified, local changes upload quietly
-                  after a short pause. Cloud restores remain manual and create
-                  a rollback snapshot before replacing anything.
-                </p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[0.95rem] font-semibold text-[#f5f0e8]">
+                    {syncStatusLabel}
+                  </p>
+
+                  <p className="mt-0.5 text-sm leading-5 text-stone-400">
+                    {syncStatusMessage}
+                  </p>
+
+                  <p className="mt-1 text-xs leading-5 text-stone-500">
+                    {syncComparison === null
+                      ? "Check once before using this device."
+                      : `Last checked ${formatSyncTimestamp(
+                          cloudFinanceState?.updatedAt ??
+                            localFinanceState?.updatedAt,
+                        )}`}
+                  </p>
+                </div>
               </div>
 
-              <div className="mt-2 overflow-hidden rounded-[1.15rem] border border-[#f5f0e8]/8 bg-[#11100d]/18">
-                <SyncMetricRow
-                  label="Local Revision"
-                  value={formatStateRevision(localFinanceState)}
-                />
+              <div
+                className={`mt-2 grid gap-2 ${
+                  hasPrimarySyncAction
+                    ? "sm:grid-cols-2"
+                    : ""
+                }`}
+              >
+                {canUploadLocalState ? (
+                  <button
+                    type="button"
+                    onClick={uploadLocalFinanceState}
+                    disabled={isSyncBusy}
+                    className="pressable rounded-full border border-[#c7ad75]/38 bg-[#c7ad75]/16 px-4 py-2.5 text-sm font-semibold text-[#f5f0e8] transition hover:border-[#c7ad75]/50 hover:bg-[#c7ad75]/22 disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    {isUploadingState
+                      ? "Saving to Account…"
+                      : "Save This Device to My Account"}
+                  </button>
+                ) : null}
 
-                <SyncMetricRow
-                  label="Cloud Revision"
-                  value={
-                    syncComparison === null
-                      ? "Not Checked"
-                      : formatStateRevision(cloudFinanceState)
-                  }
-                />
+                {canRestoreCloudState ? (
+                  <button
+                    type="button"
+                    onClick={requestCloudFinanceRestore}
+                    disabled={isSyncBusy}
+                    className="pressable rounded-full border border-[#9dbdb4]/34 bg-[#9dbdb4]/12 px-4 py-2.5 text-sm font-semibold text-[#f5f0e8] transition hover:border-[#9dbdb4]/48 hover:bg-[#9dbdb4]/18 disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    {isRestoringState
+                      ? "Updating This Device…"
+                      : "Update This Device"}
+                  </button>
+                ) : null}
 
-                <SyncMetricRow
-                  label="Comparison"
-                  value={getSyncComparisonLabel(syncComparison)}
-                />
-
-                <SyncMetricRow
-                  label="Background Uploads"
-                  value={backgroundUploadLabel}
-                  last
-                />
-              </div>
-
-              <div className="mt-2 grid gap-2 sm:grid-cols-3">
                 <button
                   type="button"
                   onClick={checkCloudFinanceState}
                   disabled={!isSignedIn || isSyncBusy}
                   className="pressable rounded-full border border-[#f5f0e8]/12 bg-[#f5f0e8]/[0.055] px-4 py-2.5 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#f5f0e8]/[0.085] disabled:cursor-not-allowed disabled:opacity-45"
                 >
-                  {isCheckingCloud ? "Checking Cloud…" : "Check Cloud"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={uploadLocalFinanceState}
-                  disabled={!canUploadLocalState}
-                  className="pressable rounded-full border border-[#c7ad75]/38 bg-[#c7ad75]/16 px-4 py-2.5 text-sm font-semibold text-[#f5f0e8] transition hover:border-[#c7ad75]/50 hover:bg-[#c7ad75]/22 disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  {isUploadingState ? "Uploading…" : "Upload This Device"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={requestCloudFinanceRestore}
-                  disabled={!canRestoreCloudState}
-                  className="pressable rounded-full border border-[#9dbdb4]/34 bg-[#9dbdb4]/12 px-4 py-2.5 text-sm font-semibold text-[#f5f0e8] transition hover:border-[#9dbdb4]/48 hover:bg-[#9dbdb4]/18 disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  {isRestoringState ? "Restoring…" : "Use Cloud Data"}
+                  {isCheckingCloud
+                    ? "Checking…"
+                    : syncComparison === null
+                      ? "Check for Updates"
+                      : "Check Again"}
                 </button>
               </div>
 
               {isConfirmingCloudRestore && canRestoreCloudState ? (
                 <div
                   role="dialog"
-                  aria-label="Confirm cloud finance restore"
+                  aria-label="Confirm device update"
                   className="mt-2 rounded-[1.05rem] border border-[#9dbdb4]/28 bg-[#9dbdb4]/[0.075] px-3 py-2.5"
                 >
                   <p className="text-sm font-semibold text-[#f5f0e8]">
-                    Replace this device with{" "}
-                    {formatStateRevision(cloudFinanceState)}?
+                    Update this device with your saved account data?
                   </p>
 
                   <p className="mt-1 text-xs leading-5 text-stone-400">
-                    The current local finance data will be saved as a rollback
-                    snapshot first. This will not change or delete the cloud
-                    copy.
+                    leftovr will save a recovery copy first, then bring the
+                    newer account data onto this device.
                   </p>
 
                   <div className="mt-2 grid grid-cols-2 gap-2">
@@ -639,7 +657,7 @@ export default function ProfileSettingsPage() {
                       onClick={cancelCloudFinanceRestore}
                       className="pressable rounded-full border border-[#f5f0e8]/12 bg-[#f5f0e8]/[0.045] px-3 py-2 text-xs font-semibold text-stone-300 transition hover:bg-[#f5f0e8]/[0.075]"
                     >
-                      Cancel
+                      Not Now
                     </button>
 
                     <button
@@ -647,37 +665,10 @@ export default function ProfileSettingsPage() {
                       onClick={restoreCloudFinanceState}
                       className="pressable rounded-full border border-[#9dbdb4]/42 bg-[#9dbdb4]/18 px-3 py-2 text-xs font-semibold text-[#f5f0e8] transition hover:border-[#9dbdb4]/58 hover:bg-[#9dbdb4]/24"
                     >
-                      Restore Cloud Data
+                      Update This Device
                     </button>
                   </div>
                 </div>
-              ) : null}
-
-              {!isSignedIn ? (
-                <p className="mt-2 text-xs leading-5 text-stone-500">
-                  Sign in to check and protect your cloud finance data.
-                </p>
-              ) : syncComparison === "conflict" ? (
-                <p className="mt-2 text-xs leading-5 text-[#d7b27d]">
-                  Upload and restore are blocked because both copies share a
-                  revision but do not match.
-                </p>
-              ) : syncComparison === "cloud-only" ||
-                syncComparison === "cloud-newer" ? (
-                <p className="mt-2 text-xs leading-5 text-[#9dbdb4]">
-                  Cloud restore is available. Nothing changes until you review
-                  and confirm it.
-                </p>
-              ) : syncComparison === "in-sync" &&
-                isBackgroundSyncActive ? (
-                <p className="mt-2 text-xs leading-5 text-[#9dbdb4]">
-                  Background uploads are active. Cloud restores still require
-                  review and confirmation.
-                </p>
-              ) : syncComparison === null ? (
-                <p className="mt-2 text-xs leading-5 text-stone-500">
-                  Check the cloud before uploading or restoring anything.
-                </p>
               ) : null}
 
               {syncMessage ? (
@@ -703,25 +694,60 @@ export default function ProfileSettingsPage() {
                 </div>
               ) : null}
 
-              <div className="mt-2 grid gap-1 text-xs text-stone-500 sm:grid-cols-2">
-                <p>
-                  Local updated{" "}
-                  {formatSyncTimestamp(localFinanceState?.updatedAt)}
-                </p>
+              <details className="mt-2 rounded-[1.05rem] border border-[#f5f0e8]/8 bg-[#11100d]/14">
+                <summary className="cursor-pointer px-3 py-2.5 text-xs font-semibold text-stone-500 transition hover:text-stone-300">
+                  Advanced sync details
+                </summary>
 
-                <p className="sm:text-right">
-                  Cloud updated{" "}
-                  {syncComparison === null
-                    ? "not checked"
-                    : formatSyncTimestamp(cloudFinanceState?.updatedAt)}
-                </p>
-              </div>
+                <div className="border-t border-[#f5f0e8]/8">
+                  <SyncMetricRow
+                    label="This Device"
+                    value={formatStateRevision(localFinanceState)}
+                  />
 
-              {backgroundSyncStatus && isBackgroundSyncActive ? (
-                <p className="mt-1 text-xs leading-5 text-stone-500">
-                  {backgroundSyncStatus.message}
-                </p>
-              ) : null}
+                  <SyncMetricRow
+                    label="Saved Account"
+                    value={
+                      syncComparison === null
+                        ? "Not Checked"
+                        : formatStateRevision(cloudFinanceState)
+                    }
+                  />
+
+                  <SyncMetricRow
+                    label="Status"
+                    value={getSyncComparisonLabel(syncComparison)}
+                  />
+
+                  <SyncMetricRow
+                    label="Automatic Saves"
+                    value={backgroundUploadLabel}
+                    last
+                  />
+                </div>
+
+                <div className="grid gap-1 border-t border-[#f5f0e8]/8 px-3 py-2.5 text-xs text-stone-600 sm:grid-cols-2">
+                  <p>
+                    Device updated{" "}
+                    {formatSyncTimestamp(localFinanceState?.updatedAt)}
+                  </p>
+
+                  <p className="sm:text-right">
+                    Account updated{" "}
+                    {syncComparison === null
+                      ? "not checked"
+                      : formatSyncTimestamp(
+                          cloudFinanceState?.updatedAt,
+                        )}
+                  </p>
+                </div>
+
+                {backgroundSyncStatus && isBackgroundSyncActive ? (
+                  <p className="border-t border-[#f5f0e8]/8 px-3 py-2.5 text-xs leading-5 text-stone-600">
+                    {backgroundSyncStatus.message}
+                  </p>
+                ) : null}
+              </details>
             </div>
           </section>
 
@@ -869,7 +895,7 @@ function SyncMetricRow({
 }
 
 function formatStateRevision(state: FinanceState | null) {
-  return state ? `Revision ${state.revision}` : "None";
+  return state ? `Version ${state.revision}` : "None";
 }
 
 function formatSyncTimestamp(value?: string) {
@@ -901,39 +927,37 @@ function getBackgroundUploadLabel(
   }
 
   if (!isActive) {
-    return "Protected";
+    return "Waiting";
   }
 
   switch (status?.status) {
     case "uploading":
-      return "Uploading";
+      return "Saving";
     case "offline":
-      return "Waiting";
+      return "Waiting for Internet";
     case "blocked":
-      return "Review Needed";
+      return "Needs Attention";
     case "error":
-      return "Retrying";
+      return "Try Again";
     default:
-      return "Active";
+      return "On";
   }
 }
 
 function getSyncComparisonLabel(comparison: FinanceStateComparison | null) {
   switch (comparison) {
     case "no-local-or-cloud-state":
-      return "No Data";
+      return "Ready";
     case "local-only":
-      return "Device Only";
-    case "cloud-only":
-      return "Cloud Only";
-    case "in-sync":
-      return "In Sync";
     case "local-newer":
-      return "Device Newer";
+      return "Save Needed";
+    case "cloud-only":
     case "cloud-newer":
-      return "Cloud Newer";
+      return "Update Available";
+    case "in-sync":
+      return "Up to Date";
     case "conflict":
-      return "Needs Review";
+      return "Needs Attention";
     default:
       return "Not Checked";
   }
@@ -942,20 +966,175 @@ function getSyncComparisonLabel(comparison: FinanceStateComparison | null) {
 function getSyncCheckMessage(comparison: FinanceStateComparison) {
   switch (comparison) {
     case "local-only":
-      return "No cloud finance state exists yet. This device is safe to upload.";
-    case "cloud-only":
-      return "A cloud finance state exists and is available to restore on this device.";
-    case "in-sync":
-      return "The local and cloud finance states match.";
     case "local-newer":
-      return "This device has the newer revision and is safe to upload.";
+      return "This device has newer changes. Save them to your account before switching devices.";
+    case "cloud-only":
     case "cloud-newer":
-      return "The cloud has the newer revision and can be restored after confirmation.";
+      return "Newer saved account data is ready for this device.";
+    case "in-sync":
+      return "Everything is up to date.";
     case "conflict":
-      return "Local and cloud data share a revision but do not match. Upload is blocked.";
+      return "Changes were found in two places. Nothing was replaced.";
     default:
-      return "No local or cloud finance state was found.";
+      return "Cloud sync is ready for your next save.";
   }
+}
+
+function getSyncStatusMessage(
+  isSignedIn: boolean,
+  comparison: FinanceStateComparison | null,
+  isBackgroundSyncActive: boolean,
+  backgroundStatus: FinanceBackgroundSyncStatus | null,
+  isChecking: boolean,
+  isUploading: boolean,
+  isRestoring: boolean,
+) {
+  if (!isSignedIn) {
+    return "Sign in to protect your data and use it on your other devices.";
+  }
+
+  if (isChecking) {
+    return "Checking for the latest saved data.";
+  }
+
+  if (isUploading) {
+    return "Saving this device to your account.";
+  }
+
+  if (isRestoring) {
+    return "Bringing your latest saved data onto this device.";
+  }
+
+  switch (backgroundStatus?.status) {
+    case "uploading":
+      return "Saving your latest changes.";
+    case "offline":
+      return "Your changes are safe here and will save when the internet returns.";
+    case "blocked":
+      return "Changes were found in more than one place. Nothing was replaced.";
+    case "error":
+      return "Your changes are safe on this device, but cloud saving needs another try.";
+    default:
+      break;
+  }
+
+  switch (comparison) {
+    case "no-local-or-cloud-state":
+      return "Sync is ready. Your next save can be protected by your account.";
+    case "local-only":
+    case "local-newer":
+      return "This device has newer changes. Save them to your account before switching devices.";
+    case "cloud-only":
+    case "cloud-newer":
+      return "A newer saved copy is ready. Update this device before making changes.";
+    case "in-sync":
+      return isBackgroundSyncActive
+        ? "You’re all set. New changes upload automatically after you press Save."
+        : "Your data matches. Check again to finish turning on automatic saving.";
+    case "conflict":
+      return "Changes were found in two places. Nothing has been replaced.";
+    default:
+      return "Check for updates before using leftovr on this device.";
+  }
+}
+
+function CloudSyncIcon({
+  comparison,
+  isBusy,
+}: {
+  comparison: FinanceStateComparison | null;
+  isBusy: boolean;
+}) {
+  if (isBusy) {
+    return (
+      <svg
+        className="h-5 w-5 animate-pulse"
+        viewBox="0 0 24 24"
+        fill="none"
+        aria-hidden="true"
+      >
+        <path
+          d="M7 19h9.5a4.5 4.5 0 0 0 .7-8.95A6.2 6.2 0 0 0 5.45 8.3 4.7 4.7 0 0 0 7 19Z"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  if (comparison === "in-sync") {
+    return (
+      <svg
+        className="h-5 w-5"
+        viewBox="0 0 24 24"
+        fill="none"
+        aria-hidden="true"
+      >
+        <path
+          d="M7 19h9.5a4.5 4.5 0 0 0 .7-8.95A6.2 6.2 0 0 0 5.45 8.3 4.7 4.7 0 0 0 7 19Z"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="m8.5 13 2.1 2.1 4.8-5"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  if (
+    comparison === "cloud-only" ||
+    comparison === "cloud-newer"
+  ) {
+    return (
+      <svg
+        className="h-5 w-5"
+        viewBox="0 0 24 24"
+        fill="none"
+        aria-hidden="true"
+      >
+        <path
+          d="M7 19h9.5a4.5 4.5 0 0 0 .7-8.95A6.2 6.2 0 0 0 5.45 8.3 4.7 4.7 0 0 0 7 19Z"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M12 9v6m0 0-2.3-2.3M12 15l2.3-2.3"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <svg
+      className="h-5 w-5"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M7 19h9.5a4.5 4.5 0 0 0 .7-8.95A6.2 6.2 0 0 0 5.45 8.3 4.7 4.7 0 0 0 7 19Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 function getSyncErrorMessage(error: unknown) {
