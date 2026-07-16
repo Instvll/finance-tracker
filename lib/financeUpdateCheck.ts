@@ -5,7 +5,11 @@ import {
   type FinanceStateComparison,
 } from "./financeCloud";
 import { flushFinanceStateRefresh } from "./financeStorage";
-import { waitForFinanceBackgroundSyncIdle } from "./financeSync";
+import {
+  isFinanceBackgroundSyncActiveForUser,
+  scheduleFinanceCloudUpload,
+  waitForFinanceBackgroundSyncIdle,
+} from "./financeSync";
 import { supabase } from "./supabase/client";
 
 const financeUpdateCheckStatusStorageKey =
@@ -326,9 +330,56 @@ async function performFinanceUpdateCheck() {
   }
 
   const localState = await flushFinanceStateRefresh();
-  const handshake = await getFinanceCloudHandshake(localState);
+  let handshake = await getFinanceCloudHandshake(localState);
 
   latestFinanceUpdateCheckHandshake = handshake;
+
+  const shouldResumeInterruptedUpload =
+    (handshake.comparison === "local-only" ||
+      handshake.comparison === "local-newer") &&
+    Boolean(handshake.localState) &&
+    isFinanceBackgroundSyncActiveForUser(data.user.id);
+
+  if (shouldResumeInterruptedUpload && handshake.localState) {
+    publishFinanceUpdateCheckStatus(
+      "checking",
+      "Saving this device's latest changes to the account.",
+      handshake.comparison,
+      handshake.localState.revision,
+      handshake.cloudState?.revision ?? null,
+    );
+
+    scheduleFinanceCloudUpload(handshake.localState);
+
+    const uploadBecameIdle = await waitForFinanceBackgroundSyncIdle({
+      timeoutMs: 16000,
+      quietPeriodMs: 500,
+    });
+
+    if (!uploadBecameIdle) {
+      return publishFinanceUpdateCheckStatus(
+        "deferred",
+        "leftovr is still saving this device's latest changes.",
+        handshake.comparison,
+        handshake.localState.revision,
+        handshake.cloudState?.revision ?? null,
+      );
+    }
+
+    if (!window.navigator.onLine) {
+      return publishFinanceUpdateCheckStatus(
+        "offline",
+        "Your data remains available on this device. leftovr will save it when the internet returns.",
+        handshake.comparison,
+        handshake.localState.revision,
+        handshake.cloudState?.revision ?? null,
+      );
+    }
+
+    const refreshedLocalState = await flushFinanceStateRefresh();
+    handshake = await getFinanceCloudHandshake(refreshedLocalState);
+    latestFinanceUpdateCheckHandshake = handshake;
+  }
 
   return mapFinanceComparisonToStatus(
     handshake.comparison,
