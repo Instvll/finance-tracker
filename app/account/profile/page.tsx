@@ -15,6 +15,13 @@ import {
   restoreFinanceStateFromCloud,
 } from "../../../lib/financeStorage";
 import type { FinanceState } from "../../../lib/financeState";
+import {
+  activateFinanceBackgroundSyncForCurrentUser,
+  getFinanceBackgroundSyncStatus,
+  isFinanceBackgroundSyncActiveForUser,
+  subscribeFinanceBackgroundSyncStatus,
+  type FinanceBackgroundSyncStatus,
+} from "../../../lib/financeSync";
 
 type AccountUser = {
   id: string;
@@ -41,10 +48,22 @@ export default function ProfileSettingsPage() {
     useState(false);
   const [syncMessage, setSyncMessage] = useState("");
   const [syncError, setSyncError] = useState("");
+  const [isBackgroundSyncActive, setIsBackgroundSyncActive] =
+    useState(false);
+  const [backgroundSyncStatus, setBackgroundSyncStatus] =
+    useState<FinanceBackgroundSyncStatus | null>(null);
 
   useEffect(() => {
     void loadAccount();
     void refreshLocalFinanceState();
+
+    setBackgroundSyncStatus(
+      getFinanceBackgroundSyncStatus(),
+    );
+
+    return subscribeFinanceBackgroundSyncStatus(
+      setBackgroundSyncStatus,
+    );
   }, []);
 
   async function loadAccount() {
@@ -65,6 +84,14 @@ export default function ProfileSettingsPage() {
       emailConfirmedAt: data.user.email_confirmed_at,
       lastSignInAt: data.user.last_sign_in_at,
     });
+    setIsBackgroundSyncActive(
+      isFinanceBackgroundSyncActiveForUser(
+        data.user.id,
+      ),
+    );
+    setBackgroundSyncStatus(
+      getFinanceBackgroundSyncStatus(),
+    );
 
     setIsLoading(false);
   }
@@ -79,6 +106,18 @@ export default function ProfileSettingsPage() {
 
     setLocalFinanceState(state);
     return state;
+  }
+
+  async function enableVerifiedBackgroundSync() {
+    const wasActivated =
+      await activateFinanceBackgroundSyncForCurrentUser();
+
+    setIsBackgroundSyncActive(wasActivated);
+    setBackgroundSyncStatus(
+      getFinanceBackgroundSyncStatus(),
+    );
+
+    return wasActivated;
   }
 
   async function checkCloudFinanceState() {
@@ -98,7 +137,21 @@ export default function ProfileSettingsPage() {
 
       setCloudFinanceState(handshake.cloudState);
       setSyncComparison(handshake.comparison);
-      setSyncMessage(getSyncCheckMessage(handshake.comparison));
+
+      if (handshake.comparison === "in-sync") {
+        const backgroundSyncActivated =
+          await enableVerifiedBackgroundSync();
+
+        setSyncMessage(
+          backgroundSyncActivated
+            ? "The local and cloud finance states match. Background uploads are now active on this verified device."
+            : "The local and cloud finance states match, but background uploads could not be enabled on this device.",
+        );
+      } else {
+        setSyncMessage(
+          getSyncCheckMessage(handshake.comparison),
+        );
+      }
     } catch (error) {
       setSyncError(getSyncErrorMessage(error));
     } finally {
@@ -144,8 +197,13 @@ export default function ProfileSettingsPage() {
         );
       }
 
+      const backgroundSyncActivated =
+        await enableVerifiedBackgroundSync();
+
       setSyncMessage(
-        "Upload verified. This device and the cloud now contain the same finance state.",
+        backgroundSyncActivated
+          ? "Upload verified. Background uploads are now active on this verified device."
+          : "Upload verified, but background uploads could not be enabled on this device.",
       );
     } catch (error) {
       setSyncError(getSyncErrorMessage(error));
@@ -240,8 +298,13 @@ export default function ProfileSettingsPage() {
         );
       }
 
+      const backgroundSyncActivated =
+        await enableVerifiedBackgroundSync();
+
       setSyncMessage(
-        "Cloud restore verified. This device now matches the saved cloud finance state.",
+        backgroundSyncActivated
+          ? "Cloud restore verified. Background uploads are now active on this verified device."
+          : "Cloud restore verified, but background uploads could not be enabled on this device.",
       );
     } catch (error) {
       setSyncError(getSyncErrorMessage(error));
@@ -289,6 +352,13 @@ export default function ProfileSettingsPage() {
     !isSyncBusy &&
     Boolean(cloudFinanceState) &&
     (syncComparison === "cloud-only" || syncComparison === "cloud-newer");
+
+  const backgroundUploadLabel =
+    getBackgroundUploadLabel(
+      isSignedIn,
+      isBackgroundSyncActive,
+      backgroundSyncStatus,
+    );
 
   return (
     <PageShell>
@@ -466,10 +536,10 @@ export default function ProfileSettingsPage() {
             <div className="liquid-content">
               <div className="mb-2 flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <SectionTitle title="Sync Preview" />
+                  <SectionTitle title="Account Sync" />
 
                   <p className="mt-1 text-sm leading-5 text-stone-400">
-                    Manually test the new account sync foundation.
+                    Keep verified finance changes protected across devices.
                   </p>
                 </div>
 
@@ -480,13 +550,13 @@ export default function ProfileSettingsPage() {
 
               <div className="rounded-[1.1rem] border border-[#c7ad75]/18 bg-[#c7ad75]/[0.055] px-3 py-2.5">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#c7ad75]/80">
-                  Guarded Test Mode
+                  Controlled Sync
                 </p>
 
                 <p className="mt-1 text-sm leading-5 text-stone-400">
-                  Cloud restore is manual and requires confirmation. leftovr
-                  saves a local rollback snapshot before replacing anything on
-                  this device.
+                  After this device is verified, local changes upload quietly
+                  after a short pause. Cloud restores remain manual and create
+                  a rollback snapshot before replacing anything.
                 </p>
               </div>
 
@@ -508,6 +578,11 @@ export default function ProfileSettingsPage() {
                 <SyncMetricRow
                   label="Comparison"
                   value={getSyncComparisonLabel(syncComparison)}
+                />
+
+                <SyncMetricRow
+                  label="Background Uploads"
+                  value={backgroundUploadLabel}
                   last
                 />
               </div>
@@ -580,7 +655,7 @@ export default function ProfileSettingsPage() {
 
               {!isSignedIn ? (
                 <p className="mt-2 text-xs leading-5 text-stone-500">
-                  Sign in to test the cloud connection.
+                  Sign in to check and protect your cloud finance data.
                 </p>
               ) : syncComparison === "conflict" ? (
                 <p className="mt-2 text-xs leading-5 text-[#d7b27d]">
@@ -592,6 +667,12 @@ export default function ProfileSettingsPage() {
                 <p className="mt-2 text-xs leading-5 text-[#9dbdb4]">
                   Cloud restore is available. Nothing changes until you review
                   and confirm it.
+                </p>
+              ) : syncComparison === "in-sync" &&
+                isBackgroundSyncActive ? (
+                <p className="mt-2 text-xs leading-5 text-[#9dbdb4]">
+                  Background uploads are active. Cloud restores still require
+                  review and confirmation.
                 </p>
               ) : syncComparison === null ? (
                 <p className="mt-2 text-xs leading-5 text-stone-500">
@@ -635,6 +716,12 @@ export default function ProfileSettingsPage() {
                     : formatSyncTimestamp(cloudFinanceState?.updatedAt)}
                 </p>
               </div>
+
+              {backgroundSyncStatus && isBackgroundSyncActive ? (
+                <p className="mt-1 text-xs leading-5 text-stone-500">
+                  {backgroundSyncStatus.message}
+                </p>
+              ) : null}
             </div>
           </section>
 
@@ -802,6 +889,33 @@ function formatSyncTimestamp(value?: string) {
     hour: "numeric",
     minute: "2-digit",
   }).format(date);
+}
+
+function getBackgroundUploadLabel(
+  isSignedIn: boolean,
+  isActive: boolean,
+  status: FinanceBackgroundSyncStatus | null,
+) {
+  if (!isSignedIn) {
+    return "Off";
+  }
+
+  if (!isActive) {
+    return "Protected";
+  }
+
+  switch (status?.status) {
+    case "uploading":
+      return "Uploading";
+    case "offline":
+      return "Waiting";
+    case "blocked":
+      return "Review Needed";
+    case "error":
+      return "Retrying";
+    default:
+      return "Active";
+  }
 }
 
 function getSyncComparisonLabel(comparison: FinanceStateComparison | null) {

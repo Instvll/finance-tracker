@@ -31,6 +31,7 @@ import {
   type FinanceState,
   type FinanceSummaryData,
 } from "./financeState";
+import { scheduleFinanceCloudUpload } from "./financeSync";
 
 export const financeStateStorageKey = "leftovr-finance-state";
 
@@ -76,6 +77,10 @@ export type FinanceSnapshotOptions = FinanceStorageLoadOptions &
 export type SaveFinanceStateResult = {
   state: FinanceState;
   savedAt: string;
+};
+
+export type SaveFinanceStateOptions = {
+  scheduleCloudUpload?: boolean;
 };
 
 export type PersistCurrentFinanceStateOptions = FinanceStorageLoadOptions & {
@@ -388,7 +393,10 @@ function applyFinanceStorageWrites(writes: FinanceStorageWrite[]) {
   }
 }
 
-export function saveFinanceState(state: FinanceState): SaveFinanceStateResult {
+export function saveFinanceState(
+  state: FinanceState,
+  options: SaveFinanceStateOptions = {},
+): SaveFinanceStateResult {
   if (!isFinanceState(state)) {
     throw new Error("Cannot save an invalid leftovr finance state.");
   }
@@ -439,6 +447,10 @@ export function saveFinanceState(state: FinanceState): SaveFinanceStateResult {
   ];
 
   applyFinanceStorageWrites(writes);
+
+  if (options.scheduleCloudUpload ?? true) {
+    scheduleFinanceCloudUpload(state);
+  }
 
   return {
     state,
@@ -535,7 +547,9 @@ export function restoreFinanceStateFromCloud(
   }
 
   try {
-    saveFinanceState(cloudState);
+    saveFinanceState(cloudState, {
+      scheduleCloudUpload: false,
+    });
 
     const verifiedState = loadPersistedFinanceState();
 

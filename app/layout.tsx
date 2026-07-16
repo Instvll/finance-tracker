@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import type { ReactNode } from "react";
 import "./globals.css";
 import AuthGate from "@/components/AuthGate";
 import UpdateAnnouncements from "@/components/UpdateAnnouncements";
@@ -55,7 +56,7 @@ const themeScript = `
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: ReactNode;
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
