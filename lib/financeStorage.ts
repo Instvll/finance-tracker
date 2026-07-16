@@ -4,6 +4,7 @@ import {
   cardsStorageKey,
   lastSavedStorageKey,
   legacyLastPaidActionStorageKey,
+  migrateBillOccurrenceState,
   normalizeManualBills,
   normalizeManualCards,
   paidBillsStorageKey,
@@ -22,6 +23,17 @@ import {
   type PaidBillOccurrences,
   type PayPeriodPreferences,
 } from "./billStatus";
+import {
+  createFinanceState,
+  isFinanceState,
+  type CreateFinanceStateOptions,
+  type FinanceState,
+  type FinanceSummaryData,
+} from "./financeState";
+
+
+export const financeStateStorageKey =
+  "leftovr-finance-state";
 
 export type FinanceStorageDefaults<TSummary> = {
   summary: TSummary;
@@ -44,6 +56,20 @@ export type FinanceStorageState<TSummary> = {
 export type FinanceStorageLoadOptions = {
   syncLegacyPaymentMethod?: boolean;
 };
+
+export type FinanceSnapshotOptions =
+  FinanceStorageLoadOptions &
+  CreateFinanceStateOptions;
+
+export type SaveFinanceStateResult = {
+  state: FinanceState;
+  savedAt: string;
+};
+
+export type PersistCurrentFinanceStateOptions =
+  FinanceStorageLoadOptions & {
+    updatedAt?: string;
+  };
 
 export type BillOccurrenceStorageState = {
   activeOccurrenceDates: ActiveBillOccurrenceDates;
@@ -109,6 +135,330 @@ export function loadFinanceStorageState<TSummary>(
       window.localStorage.getItem(
         lastSavedStorageKey,
       ) ?? "",
+  };
+}
+
+function getPaidActionsIncludingLegacyAction(
+  storedState: FinanceStorageState<FinanceSummaryData>,
+) {
+  const legacyAction = storedState.legacyPaidAction;
+
+  const migratedLegacyAction =
+    legacyAction?.occurrenceKey &&
+    legacyAction.occurrenceDateKey &&
+    legacyAction.billIdentity &&
+    legacyAction.billName &&
+    storedState.paidOccurrences[
+      legacyAction.occurrenceKey
+    ]
+      ? ({
+          occurrenceKey:
+            legacyAction.occurrenceKey,
+          occurrenceDateKey:
+            legacyAction.occurrenceDateKey,
+          billIdentity:
+            legacyAction.billIdentity,
+          billId:
+            legacyAction.billId,
+          billName:
+            legacyAction.billName,
+          nextOccurrenceDateKey:
+            legacyAction.nextOccurrenceDateKey ?? null,
+          paidAt:
+            legacyAction.paidAt ||
+            storedState.paidOccurrences[
+              legacyAction.occurrenceKey
+            ],
+          billAmount:
+            legacyAction.billAmount,
+          paymentSource:
+            legacyAction.paymentSource,
+          creditCardAdjustment:
+            legacyAction.creditCardAdjustment,
+        } satisfies PaidBillAction)
+      : null;
+
+  return migratedLegacyAction
+    ? [
+        migratedLegacyAction,
+        ...storedState.paidActions,
+      ]
+    : storedState.paidActions;
+}
+
+export function loadFinanceState<
+  TSummary extends FinanceSummaryData,
+>(
+  defaults: FinanceStorageDefaults<TSummary>,
+  options: FinanceSnapshotOptions = {},
+): FinanceState {
+  const storedState = loadFinanceStorageState(
+    defaults,
+    options,
+  );
+  const migratedOccurrenceState =
+    migrateBillOccurrenceState(
+      storedState.bills,
+      storedState.activeOccurrenceDates,
+      storedState.paidOccurrences,
+      getPaidActionsIncludingLegacyAction(
+        storedState,
+      ),
+    );
+
+  return createFinanceState(
+    {
+      summary: storedState.summary,
+      bills: storedState.bills,
+      cards: storedState.cards,
+      preferences: storedState.preferences,
+      activeOccurrenceDates:
+        migratedOccurrenceState
+          .activeOccurrenceDates,
+      paidOccurrences:
+        migratedOccurrenceState.paidOccurrences,
+      paidActions:
+        migratedOccurrenceState.paidActions,
+    },
+    {
+      revision: options.revision,
+      updatedAt:
+        options.updatedAt ||
+        storedState.lastSaved ||
+        undefined,
+    },
+  );
+}
+
+export function createFinanceSnapshot<
+  TSummary extends FinanceSummaryData,
+>(
+  defaults: FinanceStorageDefaults<TSummary>,
+  options: FinanceSnapshotOptions = {},
+): FinanceState {
+  return loadFinanceState(defaults, options);
+}
+
+let financeStateRefreshScheduled = false;
+
+function getFinanceStateRefreshDefaults():
+  FinanceStorageDefaults<FinanceSummaryData> {
+  const persistedState =
+    loadPersistedFinanceState();
+
+  return {
+    summary:
+      persistedState?.summary ?? {
+        checkingBalance: "0",
+        savingsBalance: "0",
+      },
+    bills: persistedState?.bills ?? [],
+    cards: persistedState?.cards ?? [],
+  };
+}
+
+function scheduleFinanceStateRefresh() {
+  if (
+    typeof window === "undefined" ||
+    financeStateRefreshScheduled
+  ) {
+    return;
+  }
+
+  financeStateRefreshScheduled = true;
+
+  queueMicrotask(() => {
+    financeStateRefreshScheduled = false;
+
+    try {
+      persistCurrentFinanceState(
+        getFinanceStateRefreshDefaults(),
+      );
+    } catch (error) {
+      console.error(
+        "leftovr could not refresh its local finance state.",
+        error,
+      );
+    }
+  });
+}
+
+export async function flushFinanceStateRefresh() {
+  if (financeStateRefreshScheduled) {
+    await Promise.resolve();
+  }
+
+  return loadPersistedFinanceState();
+}
+
+export function loadPersistedFinanceState():
+  FinanceState | null {
+  const savedValue = window.localStorage.getItem(
+    financeStateStorageKey,
+  );
+
+  if (!savedValue) {
+    return null;
+  }
+
+  try {
+    const parsedValue = JSON.parse(savedValue);
+
+    if (!isFinanceState(parsedValue)) {
+      return null;
+    }
+
+    return createFinanceState(parsedValue, {
+      revision: parsedValue.revision,
+      updatedAt: parsedValue.updatedAt,
+    });
+  } catch {
+    return null;
+  }
+}
+
+export function createNextFinanceSnapshot<
+  TSummary extends FinanceSummaryData,
+>(
+  defaults: FinanceStorageDefaults<TSummary>,
+  options: PersistCurrentFinanceStateOptions = {},
+): FinanceState {
+  const currentPersistedState =
+    loadPersistedFinanceState();
+
+  return createFinanceSnapshot(defaults, {
+    ...options,
+    revision:
+      (currentPersistedState?.revision ?? 0) + 1,
+    updatedAt:
+      options.updatedAt ??
+      new Date().toISOString(),
+  });
+}
+
+export function persistCurrentFinanceState<
+  TSummary extends FinanceSummaryData,
+>(
+  defaults: FinanceStorageDefaults<TSummary>,
+  options: PersistCurrentFinanceStateOptions = {},
+): SaveFinanceStateResult {
+  const nextState = createNextFinanceSnapshot(
+    defaults,
+    options,
+  );
+
+  return saveFinanceState(nextState);
+}
+
+type FinanceStorageWrite = {
+  key: string;
+  value: string | null;
+};
+
+function applyFinanceStorageWrites(
+  writes: FinanceStorageWrite[],
+) {
+  const previousValues = writes.map(({ key }) => ({
+    key,
+    value: window.localStorage.getItem(key),
+  }));
+
+  try {
+    for (const write of writes) {
+      if (write.value === null) {
+        window.localStorage.removeItem(write.key);
+      } else {
+        window.localStorage.setItem(
+          write.key,
+          write.value,
+        );
+      }
+    }
+  } catch (error) {
+    for (const previousValue of previousValues) {
+      try {
+        if (previousValue.value === null) {
+          window.localStorage.removeItem(
+            previousValue.key,
+          );
+        } else {
+          window.localStorage.setItem(
+            previousValue.key,
+            previousValue.value,
+          );
+        }
+      } catch {
+        // Best-effort rollback if storage is unavailable.
+      }
+    }
+
+    throw error;
+  }
+}
+
+export function saveFinanceState(
+  state: FinanceState,
+): SaveFinanceStateResult {
+  if (!isFinanceState(state)) {
+    throw new Error(
+      "Cannot save an invalid leftovr finance state.",
+    );
+  }
+
+  const savedAt = state.updatedAt;
+
+  const writes: FinanceStorageWrite[] = [
+    {
+      key: financeStateStorageKey,
+      value: JSON.stringify(state),
+    },
+    {
+      key: summaryStorageKey,
+      value: JSON.stringify(state.summary),
+    },
+    {
+      key: billsStorageKey,
+      value: JSON.stringify(state.bills),
+    },
+    {
+      key: cardsStorageKey,
+      value: JSON.stringify(state.cards),
+    },
+    {
+      key: preferencesStorageKey,
+      value: JSON.stringify(state.preferences),
+    },
+    {
+      key: activeBillOccurrencesStorageKey,
+      value: JSON.stringify(
+        state.activeOccurrenceDates,
+      ),
+    },
+    {
+      key: paidBillsStorageKey,
+      value: JSON.stringify(
+        state.paidOccurrences,
+      ),
+    },
+    {
+      key: recentPaidActionsStorageKey,
+      value: JSON.stringify(state.paidActions),
+    },
+    {
+      key: lastSavedStorageKey,
+      value: savedAt,
+    },
+    {
+      key: legacyLastPaidActionStorageKey,
+      value: null,
+    },
+  ];
+
+  applyFinanceStorageWrites(writes);
+
+  return {
+    state,
+    savedAt,
   };
 }
 
@@ -178,18 +528,21 @@ export function saveFinanceSummary<TSummary>(
   summary: TSummary,
 ) {
   writeJsonStorage(summaryStorageKey, summary);
+  scheduleFinanceStateRefresh();
 }
 
 export function saveFinanceBills(
   bills: ManualBill[],
 ) {
   writeJsonStorage(billsStorageKey, bills);
+  scheduleFinanceStateRefresh();
 }
 
 export function saveFinanceCards(
   cards: ManualCreditCard[],
 ) {
   writeJsonStorage(cardsStorageKey, cards);
+  scheduleFinanceStateRefresh();
 }
 
 export function saveFinancePreferences(
@@ -199,6 +552,7 @@ export function saveFinancePreferences(
     preferencesStorageKey,
     preferences,
   );
+  scheduleFinanceStateRefresh();
 }
 
 export function saveActiveBillOccurrenceDates(
@@ -208,6 +562,7 @@ export function saveActiveBillOccurrenceDates(
     activeBillOccurrencesStorageKey,
     activeOccurrenceDates,
   );
+  scheduleFinanceStateRefresh();
 }
 
 export function savePaidBillOccurrences(
@@ -217,6 +572,7 @@ export function savePaidBillOccurrences(
     paidBillsStorageKey,
     paidOccurrences,
   );
+  scheduleFinanceStateRefresh();
 }
 
 export function saveRecentPaidActions(
@@ -226,6 +582,7 @@ export function saveRecentPaidActions(
     recentPaidActionsStorageKey,
     paidActions,
   );
+  scheduleFinanceStateRefresh();
 }
 
 export function saveLastSavedTime(
