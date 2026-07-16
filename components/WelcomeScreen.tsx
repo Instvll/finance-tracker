@@ -6,6 +6,8 @@ import LogoMark from "@/components/LogoMark";
 
 const welcomeStorageKey = "leftovr-welcome-seen";
 const lastSeenVersionStorageKey = "leftovr-last-seen-version";
+const guidedSetupStorageKey =
+  "leftovr-finance-onboarding-active";
 const currentRelease = "v1.3-beta";
 
 export default function WelcomeScreen() {
@@ -37,7 +39,10 @@ export default function WelcomeScreen() {
       lastSeenVersionStorageKey,
       currentRelease,
     );
+    window.localStorage.setItem(guidedSetupStorageKey, "true");
+
     setShowWelcome(false);
+    window.location.assign("/manual?setup=1");
   }
 
   if (!hasMounted || !showWelcome) {
@@ -110,28 +115,29 @@ export default function WelcomeScreen() {
             </h1>
 
             <p className="mt-3 max-w-[23rem] text-sm leading-6 text-stone-400">
-              See your balances, upcoming bills, and payment progress in one
-              calm view that stays aligned with your next paycheck.
+              Start with the essentials. leftovr will guide you through the
+              real Editor, save as you go, and build your Dashboard around
+              your numbers.
             </p>
           </div>
 
           <div className="relative mt-4 overflow-hidden rounded-[1.3rem] border border-[#f5f0e8]/10 bg-[#11100d]/18 shadow-[inset_0_1px_0_rgba(245,240,232,0.045)]">
             <WelcomeMetricRow
-              label="Money Left"
-              value="After bills"
-              detail="Before payday"
+              label="Balances"
+              value="Checking, savings & income"
+              detail="Start here"
             />
 
             <WelcomeMetricRow
-              label="Bill Progress"
-              value="Due, paid & overdue"
-              detail="Kept in sync"
+              label="Bills"
+              value="Payments & due dates"
+              detail="Optional"
             />
 
             <WelcomeMetricRow
               label="Credit Cards"
               value="Balances & utilization"
-              detail="Easy to read"
+              detail="Optional"
               last
             />
           </div>
@@ -141,11 +147,11 @@ export default function WelcomeScreen() {
             onClick={handleGetStarted}
             className="pressable relative mt-4 w-full rounded-full border border-[#c7ad75]/38 bg-[#c7ad75]/16 px-4 py-3 text-sm font-semibold text-[#f5f0e8] shadow-[inset_0_1px_0_rgba(245,240,232,0.09),0_14px_30px_rgba(0,0,0,0.18)] transition hover:border-[#c7ad75]/50 hover:bg-[#c7ad75]/22 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c7ad75]/35"
           >
-            Get Started
+            Set Up leftovr
           </button>
 
           <p className="relative mt-2.5 text-center text-[11px] leading-5 text-stone-500">
-            Built to make everyday money decisions feel clearer.
+            Usually takes about two minutes. You can change anything later.
           </p>
         </div>
       </section>

@@ -51,6 +51,10 @@ type PersistEditorChangesOptions = {
 };
 
 const editorAutosaveDelay = 900;
+const guidedSetupStorageKey =
+  "leftovr-finance-onboarding-active";
+const guidedSetupCompleteStorageKey =
+  "leftovr-finance-onboarding-complete";
 
 type ManualFinanceData = {
   checkingBalance: string;
@@ -294,6 +298,7 @@ export default function ManualPage() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [showSavedConfirmation, setShowSavedConfirmation] = useState(false);
+  const [isGuidedSetup, setIsGuidedSetup] = useState(false);
   const [editingBills, setEditingBills] = useState<number[]>([]);
   const [editingCards, setEditingCards] = useState<number[]>([]);
   const [newlyAddedItem, setNewlyAddedItem] = useState<NewlyAddedItem | null>(
@@ -371,10 +376,19 @@ export default function ManualPage() {
       setLastSaved(storedState.lastSaved);
     }
 
-    const tab = new URLSearchParams(window.location.search).get("tab");
+    const searchParams = new URLSearchParams(window.location.search);
+    const tab = searchParams.get("tab");
+    const setupRequested = searchParams.get("setup") === "1";
+    const setupAlreadyActive =
+      window.localStorage.getItem(guidedSetupStorageKey) === "true";
 
     if (tab === "bills" || tab === "cards" || tab === "overview") {
       setActiveTab(tab);
+    }
+
+    if (setupRequested || setupAlreadyActive) {
+      window.localStorage.setItem(guidedSetupStorageKey, "true");
+      setIsGuidedSetup(true);
     }
 
     hasLoadedStoredStateRef.current = true;
@@ -636,8 +650,29 @@ export default function ManualPage() {
   function chooseTab(tab: EditorTab) {
     setActiveTab(tab);
 
-    const nextUrl = tab === "overview" ? "/manual" : `/manual?tab=${tab}`;
+    const nextUrl =
+      tab === "overview"
+        ? isGuidedSetup
+          ? "/manual?setup=1"
+          : "/manual"
+        : isGuidedSetup
+          ? `/manual?tab=${tab}&setup=1`
+          : `/manual?tab=${tab}`;
+
     window.history.replaceState(null, "", nextUrl);
+  }
+
+  function finishGuidedSetup() {
+    persistChanges({ updateUi: false });
+
+    window.localStorage.removeItem(guidedSetupStorageKey);
+    window.localStorage.setItem(
+      guidedSetupCompleteStorageKey,
+      "true",
+    );
+
+    setIsGuidedSetup(false);
+    window.location.assign("/");
   }
 
   function updateManualData(field: keyof ManualFinanceData, value: string) {
@@ -934,6 +969,14 @@ export default function ManualPage() {
             Editor
           </h1>
         </header>
+
+        {isGuidedSetup ? (
+          <GuidedSetupPanel
+            activeTab={activeTab}
+            onSelectStep={chooseTab}
+            onFinish={finishGuidedSetup}
+          />
+        ) : null}
 
         <section className="motion-card motion-card-delay-1 mb-2">
           <div
@@ -1236,6 +1279,194 @@ export default function ManualPage() {
         )}
       </div>
     </PageShell>
+  );
+}
+
+function GuidedSetupPanel({
+  activeTab,
+  onSelectStep,
+  onFinish,
+}: {
+  activeTab: EditorTab;
+  onSelectStep: (tab: EditorTab) => void;
+  onFinish: () => void;
+}) {
+  const stepNumber =
+    activeTab === "overview" ? 1 : activeTab === "bills" ? 2 : 3;
+
+  const stepTitle =
+    activeTab === "overview"
+      ? "Start with the numbers you use every day."
+      : activeTab === "bills"
+        ? "Add the bills that shape your month."
+        : "Add credit cards when you want the full picture.";
+
+  const stepDetail =
+    activeTab === "overview"
+      ? "Enter checking, savings, and monthly income. Everything saves automatically."
+      : activeTab === "bills"
+        ? "Bills are optional for now. Add the recurring payments you want leftovr to organize."
+        : "Credit cards are optional too. Add balances, limits, and minimums now or return later.";
+
+  return (
+    <section className="dashboard-surface motion-card motion-card-delay-1 relative mb-2 overflow-hidden rounded-[1.55rem] p-2.5">
+      <div className="dashboard-surface-glow" aria-hidden="true" />
+
+      <div className="liquid-content">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5">
+              <span className="dashboard-section-dot h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75]" />
+
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
+                Guided Setup
+              </p>
+            </div>
+
+            <p className="mt-1 text-xs leading-5 text-stone-500">
+              A quick first pass through the parts that power your Dashboard.
+            </p>
+          </div>
+
+          <span className="dashboard-pill-button shrink-0 !px-2.5 !py-0.5 text-[10px] uppercase tracking-[0.14em]">
+            Step {stepNumber} of 3
+          </span>
+        </div>
+
+        <div className="mt-2.5 grid grid-cols-3 gap-1.5">
+          <GuidedStepButton
+            label="Balances"
+            step={1}
+            active={activeTab === "overview"}
+            complete={stepNumber > 1}
+            onClick={() => onSelectStep("overview")}
+          />
+
+          <GuidedStepButton
+            label="Bills"
+            step={2}
+            active={activeTab === "bills"}
+            complete={stepNumber > 2}
+            onClick={() => onSelectStep("bills")}
+          />
+
+          <GuidedStepButton
+            label="Cards"
+            step={3}
+            active={activeTab === "cards"}
+            complete={false}
+            onClick={() => onSelectStep("cards")}
+          />
+        </div>
+
+        <div className="mt-2.5 rounded-[1.15rem] border border-[#f5f0e8]/8 bg-[#11100d]/18 p-3">
+          <p className="text-base font-semibold text-[#f5f0e8]">
+            {stepTitle}
+          </p>
+
+          <p className="mt-1 text-sm leading-6 text-stone-400">
+            {stepDetail}
+          </p>
+
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {activeTab !== "overview" ? (
+              <button
+                type="button"
+                onClick={() =>
+                  onSelectStep(
+                    activeTab === "cards" ? "bills" : "overview",
+                  )
+                }
+                className="pressable rounded-full border border-[#f5f0e8]/12 bg-[#f5f0e8]/[0.045] px-4 py-2.5 text-sm font-semibold text-stone-300 transition hover:bg-[#f5f0e8]/[0.075]"
+              >
+                Back
+              </button>
+            ) : (
+              <div className="hidden sm:block" aria-hidden="true" />
+            )}
+
+            {activeTab === "overview" ? (
+              <button
+                type="button"
+                onClick={() => onSelectStep("bills")}
+                className="pressable rounded-full border border-[#c7ad75]/38 bg-[#c7ad75]/16 px-4 py-2.5 text-sm font-semibold text-[#f5f0e8] transition hover:border-[#c7ad75]/50 hover:bg-[#c7ad75]/22"
+              >
+                Continue to Bills
+              </button>
+            ) : activeTab === "bills" ? (
+              <button
+                type="button"
+                onClick={() => onSelectStep("cards")}
+                className="pressable rounded-full border border-[#c7ad75]/38 bg-[#c7ad75]/16 px-4 py-2.5 text-sm font-semibold text-[#f5f0e8] transition hover:border-[#c7ad75]/50 hover:bg-[#c7ad75]/22"
+              >
+                Continue to Cards
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onFinish}
+                className="pressable rounded-full border border-[#c7ad75]/38 bg-[#c7ad75]/16 px-4 py-2.5 text-sm font-semibold text-[#f5f0e8] transition hover:border-[#c7ad75]/50 hover:bg-[#c7ad75]/22"
+              >
+                Open Dashboard
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function GuidedStepButton({
+  label,
+  step,
+  active,
+  complete,
+  onClick,
+}: {
+  label: string;
+  step: number;
+  active: boolean;
+  complete: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-current={active ? "step" : undefined}
+      onClick={onClick}
+      className={`pressable rounded-[1rem] border px-2 py-2 text-left transition ${
+        active
+          ? "border-[#c7ad75]/34 bg-[#c7ad75]/12"
+          : "border-[#f5f0e8]/8 bg-[#f5f0e8]/[0.025] hover:border-[#c7ad75]/20 hover:bg-[#c7ad75]/[0.055]"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span
+          className={`grid h-5 w-5 place-items-center rounded-full text-[10px] font-bold ${
+            active || complete
+              ? "bg-[#c7ad75]/18 text-[#c7ad75]"
+              : "bg-[#f5f0e8]/6 text-stone-600"
+          }`}
+        >
+          {complete ? "✓" : step}
+        </span>
+
+        <span
+          className={`h-1.5 w-1.5 rounded-full ${
+            active ? "bg-[#c7ad75]" : "bg-[#f5f0e8]/14"
+          }`}
+        />
+      </div>
+
+      <p
+        className={`mt-1.5 truncate text-xs font-semibold ${
+          active ? "text-[#f5f0e8]" : "text-stone-500"
+        }`}
+      >
+        {label}
+      </p>
+    </button>
   );
 }
 
