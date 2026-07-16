@@ -15,7 +15,12 @@ const financeBackgroundSyncStatusStorageKey =
   "leftovr-finance-background-sync-status";
 const financeBackgroundSyncEventName =
   "leftovr:finance-background-sync";
+const financeBackgroundSyncActivityEventName =
+  "leftovr:finance-background-sync-activity";
+
 const financeBackgroundUploadDelay = 1800;
+const defaultFinanceBackgroundSyncIdleTimeout = 12000;
+const defaultFinanceBackgroundSyncQuietPeriod = 500;
 
 export type FinanceBackgroundSyncStatusName =
   | "inactive"
@@ -34,10 +39,26 @@ export type FinanceBackgroundSyncStatus = {
   revision: number | null;
 };
 
+export type FinanceBackgroundSyncActivity = {
+  pending: boolean;
+  scheduled: boolean;
+  inFlight: boolean;
+  lastCompletedAt: string | null;
+  lastCompletedRevision: number | null;
+};
+
+export type WaitForFinanceBackgroundSyncIdleOptions = {
+  timeoutMs?: number;
+  quietPeriodMs?: number;
+};
+
 let pendingFinanceState: FinanceState | null = null;
 let backgroundUploadTimer: number | null = null;
 let backgroundUploadInFlight = false;
 let onlineListenerRegistered = false;
+
+let lastBackgroundUploadCompletedAt: string | null = null;
+let lastBackgroundUploadCompletedRevision: number | null = null;
 
 function isBrowser() {
   return typeof window !== "undefined";
@@ -88,6 +109,159 @@ function publishBackgroundSyncStatus(
   );
 }
 
+export function getFinanceBackgroundSyncActivity():
+  FinanceBackgroundSyncActivity {
+  if (!isBrowser()) {
+    return {
+      pending: false,
+      scheduled: false,
+      inFlight: false,
+      lastCompletedAt: null,
+      lastCompletedRevision: null,
+    };
+  }
+
+  return {
+    pending: pendingFinanceState !== null,
+    scheduled: backgroundUploadTimer !== null,
+    inFlight: backgroundUploadInFlight,
+    lastCompletedAt: lastBackgroundUploadCompletedAt,
+    lastCompletedRevision: lastBackgroundUploadCompletedRevision,
+  };
+}
+
+function publishFinanceBackgroundSyncActivity() {
+  if (!isBrowser()) {
+    return;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent<FinanceBackgroundSyncActivity>(
+      financeBackgroundSyncActivityEventName,
+      {
+        detail: getFinanceBackgroundSyncActivity(),
+      },
+    ),
+  );
+}
+
+export function subscribeFinanceBackgroundSyncActivity(
+  listener: (activity: FinanceBackgroundSyncActivity) => void,
+) {
+  if (!isBrowser()) {
+    return () => undefined;
+  }
+
+  const handleActivity = (event: Event) => {
+    const customEvent =
+      event as CustomEvent<FinanceBackgroundSyncActivity>;
+
+    listener(customEvent.detail);
+  };
+
+  window.addEventListener(
+    financeBackgroundSyncActivityEventName,
+    handleActivity,
+  );
+
+  return () => {
+    window.removeEventListener(
+      financeBackgroundSyncActivityEventName,
+      handleActivity,
+    );
+  };
+}
+
+export function isFinanceBackgroundSyncBusy(
+  activity = getFinanceBackgroundSyncActivity(),
+) {
+  return (
+    activity.pending ||
+    activity.scheduled ||
+    activity.inFlight
+  );
+}
+
+export function waitForFinanceBackgroundSyncIdle(
+  options: WaitForFinanceBackgroundSyncIdleOptions = {},
+): Promise<boolean> {
+  if (!isBrowser()) {
+    return Promise.resolve(true);
+  }
+
+  const timeoutMs = Math.max(
+    0,
+    options.timeoutMs ??
+      defaultFinanceBackgroundSyncIdleTimeout,
+  );
+
+  const quietPeriodMs = Math.max(
+    0,
+    options.quietPeriodMs ??
+      defaultFinanceBackgroundSyncQuietPeriod,
+  );
+
+  return new Promise((resolve) => {
+    let quietTimer: number | null = null;
+    let timeoutTimer: number | null = null;
+    let hasSettled = false;
+    let unsubscribe: () => void = () => {};
+
+    const clearQuietTimer = () => {
+      if (quietTimer === null) {
+        return;
+      }
+
+      window.clearTimeout(quietTimer);
+      quietTimer = null;
+    };
+
+    const finish = (becameIdle: boolean) => {
+      if (hasSettled) {
+        return;
+      }
+
+      hasSettled = true;
+      clearQuietTimer();
+
+      if (timeoutTimer !== null) {
+        window.clearTimeout(timeoutTimer);
+      }
+
+      unsubscribe();
+      resolve(becameIdle);
+    };
+
+    const evaluateActivity = () => {
+      const activity =
+        getFinanceBackgroundSyncActivity();
+
+      if (isFinanceBackgroundSyncBusy(activity)) {
+        clearQuietTimer();
+        return;
+      }
+
+      if (quietTimer !== null) {
+        return;
+      }
+
+      quietTimer = window.setTimeout(() => {
+        finish(true);
+      }, quietPeriodMs);
+    };
+
+    unsubscribe = subscribeFinanceBackgroundSyncActivity(
+      evaluateActivity,
+    );
+
+    timeoutTimer = window.setTimeout(() => {
+      finish(false);
+    }, timeoutMs);
+
+    evaluateActivity();
+  });
+}
+
 function registerOnlineListener() {
   if (!isBrowser() || onlineListenerRegistered) {
     return;
@@ -107,14 +281,17 @@ function schedulePendingFinanceCloudUpload(delay: number) {
     return;
   }
 
-  if (backgroundUploadTimer) {
+  if (backgroundUploadTimer !== null) {
     window.clearTimeout(backgroundUploadTimer);
   }
 
   backgroundUploadTimer = window.setTimeout(() => {
     backgroundUploadTimer = null;
+    publishFinanceBackgroundSyncActivity();
     void flushFinanceCloudUpload();
   }, delay);
+
+  publishFinanceBackgroundSyncActivity();
 }
 
 function getFinanceSyncOwnerId() {
@@ -243,9 +420,29 @@ export function scheduleFinanceCloudUpload(
 
   pendingFinanceState = state;
   registerOnlineListener();
+
   schedulePendingFinanceCloudUpload(
     financeBackgroundUploadDelay,
   );
+}
+
+function finishFinanceBackgroundUploadPreparation(
+  shouldReschedulePendingState: boolean,
+) {
+  backgroundUploadInFlight = false;
+
+  if (
+    shouldReschedulePendingState &&
+    pendingFinanceState &&
+    backgroundUploadTimer === null
+  ) {
+    schedulePendingFinanceCloudUpload(
+      financeBackgroundUploadDelay,
+    );
+    return;
+  }
+
+  publishFinanceBackgroundSyncActivity();
 }
 
 export async function flushFinanceCloudUpload() {
@@ -259,14 +456,20 @@ export async function flushFinanceCloudUpload() {
 
   const stateToUpload = pendingFinanceState;
   pendingFinanceState = null;
+  backgroundUploadInFlight = true;
+
+  publishFinanceBackgroundSyncActivity();
 
   if (!window.navigator.onLine) {
     pendingFinanceState = stateToUpload;
+
     publishBackgroundSyncStatus(
       "offline",
       "Finance changes are safe on this device and will retry when the connection returns.",
       stateToUpload.revision,
     );
+
+    finishFinanceBackgroundUploadPreparation(false);
     return;
   }
 
@@ -278,6 +481,8 @@ export async function flushFinanceCloudUpload() {
       "Finance changes remain on this device until the account is signed in.",
       stateToUpload.revision,
     );
+
+    finishFinanceBackgroundUploadPreparation(true);
     return;
   }
 
@@ -287,10 +492,11 @@ export async function flushFinanceCloudUpload() {
       "Automatic upload is paused until this device is verified for the signed-in account.",
       stateToUpload.revision,
     );
+
+    finishFinanceBackgroundUploadPreparation(true);
     return;
   }
 
-  backgroundUploadInFlight = true;
   publishBackgroundSyncStatus(
     "uploading",
     "Saving the latest finance changes to the cloud.",
@@ -301,12 +507,22 @@ export async function flushFinanceCloudUpload() {
     const uploadedState =
       await uploadCloudFinanceState(stateToUpload);
 
+    lastBackgroundUploadCompletedAt =
+      new Date().toISOString();
+    lastBackgroundUploadCompletedRevision =
+      uploadedState.revision;
+
     publishBackgroundSyncStatus(
       "saved",
       "The latest finance changes are safely stored in the cloud.",
       uploadedState.revision,
     );
   } catch (uploadError) {
+    lastBackgroundUploadCompletedAt =
+      new Date().toISOString();
+    lastBackgroundUploadCompletedRevision =
+      stateToUpload.revision;
+
     if (
       uploadError instanceof FinanceCloudError &&
       (uploadError.code === "cloud-newer" ||
@@ -327,10 +543,15 @@ export async function flushFinanceCloudUpload() {
   } finally {
     backgroundUploadInFlight = false;
 
-    if (pendingFinanceState) {
+    if (
+      pendingFinanceState &&
+      backgroundUploadTimer === null
+    ) {
       schedulePendingFinanceCloudUpload(
         financeBackgroundUploadDelay,
       );
+    } else {
+      publishFinanceBackgroundSyncActivity();
     }
   }
 }

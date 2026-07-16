@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
 import AuthGate from "@/components/AuthGate";
+import FinanceUpdateChecker from "@/components/FinanceUpdateChecker";
 import UpdateAnnouncements from "@/components/UpdateAnnouncements";
 import WelcomeScreen from "@/components/WelcomeScreen";
 
@@ -66,6 +67,7 @@ export default function RootLayout({
 
       <body>
         <AuthGate>
+          <FinanceUpdateChecker />
           {children}
           <WelcomeScreen />
           <UpdateAnnouncements />

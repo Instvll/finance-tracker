@@ -55,7 +55,8 @@ export type FinanceCloudErrorCode =
   | "upload-failed"
   | "cloud-newer"
   | "conflict"
-  | "verification-failed";
+  | "verification-failed"
+  | "reset-failed";
 
 export class FinanceCloudError extends Error {
   constructor(
@@ -241,6 +242,10 @@ async function updateCloudFinanceStateIfUnchanged(
     .update(createFinanceCloudWritePayload(userId, state))
     .eq("user_id", userId)
     .eq("finance_revision", expectedCloudState.revision)
+    .eq(
+      "finance_state_updated_at",
+      expectedCloudState.updatedAt,
+    )
     .select(financeCloudSelectColumns)
     .maybeSingle<FinanceCloudRow>();
 
@@ -424,6 +429,173 @@ export async function uploadCloudFinanceState(
   }
 
   return uploadedState;
+}
+
+export async function replaceCloudFinanceStateFromConfirmedLocal(
+  localState: FinanceState,
+  expectedCloudState: FinanceState,
+): Promise<FinanceState> {
+  if (
+    !isFinanceState(localState) ||
+    !isFinanceState(expectedCloudState)
+  ) {
+    throw new FinanceCloudError(
+      "leftovr cannot resolve cloud data with an invalid finance state.",
+      undefined,
+      "invalid-state",
+    );
+  }
+
+  if (
+    localState.schemaVersion !== currentFinanceStateSchemaVersion ||
+    expectedCloudState.schemaVersion !==
+      currentFinanceStateSchemaVersion
+  ) {
+    throw new FinanceCloudError(
+      "leftovr cannot resolve an unsupported finance-state version.",
+      undefined,
+      "invalid-state",
+    );
+  }
+
+  const userId = await getAuthenticatedUserId();
+  const currentCloudState =
+    await loadCloudFinanceStateForUser(userId);
+
+  if (!currentCloudState) {
+    throw new FinanceCloudError(
+      "The saved account data changed before confirmation. Nothing was overwritten.",
+      undefined,
+      "conflict",
+    );
+  }
+
+  const expectedCloudStillMatches =
+    currentCloudState.revision ===
+      expectedCloudState.revision &&
+    currentCloudState.updatedAt ===
+      expectedCloudState.updatedAt &&
+    getComparableStateValue(currentCloudState) ===
+      getComparableStateValue(expectedCloudState);
+
+  if (!expectedCloudStillMatches) {
+    throw new FinanceCloudError(
+      "The saved account data changed before confirmation. Nothing was overwritten.",
+      undefined,
+      "conflict",
+    );
+  }
+
+  const resolvedState = {
+    ...localState,
+    revision:
+      Math.max(
+        localState.revision,
+        currentCloudState.revision,
+      ) + 1,
+    updatedAt: new Date().toISOString(),
+  } satisfies FinanceState;
+
+  const { data, error } = await supabase
+    .from(financeTableName)
+    .update(
+      createFinanceCloudWritePayload(
+        userId,
+        resolvedState,
+      ),
+    )
+    .eq("user_id", userId)
+    .eq(
+      "finance_revision",
+      currentCloudState.revision,
+    )
+    .eq(
+      "finance_state_updated_at",
+      currentCloudState.updatedAt,
+    )
+    .select(financeCloudSelectColumns)
+    .maybeSingle<FinanceCloudRow>();
+
+  if (error) {
+    throw new FinanceCloudError(
+      "leftovr could not use this device as the saved account source.",
+      error,
+      "upload-failed",
+    );
+  }
+
+  if (!data) {
+    throw new FinanceCloudError(
+      "The saved account data changed before confirmation. Nothing was overwritten.",
+      undefined,
+      "conflict",
+    );
+  }
+
+  const uploadedState = normalizeCloudFinanceState(data);
+
+  if (
+    compareFinanceStates(
+      resolvedState,
+      uploadedState,
+    ) !== "in-sync"
+  ) {
+    throw new FinanceCloudError(
+      "The saved account update completed, but verification did not match this device.",
+      undefined,
+      "verification-failed",
+    );
+  }
+
+  return uploadedState;
+}
+
+export async function resetCloudFinanceData(): Promise<void> {
+  const userId = await getAuthenticatedUserId();
+  const resetAt = new Date().toISOString();
+
+  const { error } = await supabase
+    .from(financeTableName)
+    .upsert(
+      {
+        user_id: userId,
+        finance_state: null,
+        finance_revision: 0,
+        finance_schema_version: currentFinanceStateSchemaVersion,
+        finance_state_updated_at: null,
+        dashboard_data: {},
+        bills_data: [],
+        cards_data: [],
+        plan_data: {},
+        notes_data: [],
+        manual_last_saved: null,
+        plan_last_saved: null,
+        notes_last_saved: null,
+        updated_at: resetAt,
+      },
+      {
+        onConflict: "user_id",
+      },
+    );
+
+  if (error) {
+    throw new FinanceCloudError(
+      "leftovr could not erase the saved finance data.",
+      error,
+      "reset-failed",
+    );
+  }
+
+  const verifiedCloudState =
+    await loadCloudFinanceStateForUser(userId);
+
+  if (verifiedCloudState !== null) {
+    throw new FinanceCloudError(
+      "The saved finance data could not be verified as empty.",
+      undefined,
+      "verification-failed",
+    );
+  }
 }
 
 export async function getFinanceCloudHandshake(

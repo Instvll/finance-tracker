@@ -7,12 +7,14 @@ import { PageShell, Pill } from "../../../components/Layout";
 import { supabase } from "../../../lib/supabase/client";
 import {
   getFinanceCloudHandshake,
+  replaceCloudFinanceStateFromConfirmedLocal,
   uploadCloudFinanceState,
   type FinanceStateComparison,
 } from "../../../lib/financeCloud";
 import {
   flushFinanceStateRefresh,
   restoreFinanceStateFromCloud,
+  saveFinanceState,
 } from "../../../lib/financeStorage";
 import type { FinanceState } from "../../../lib/financeState";
 import {
@@ -20,8 +22,16 @@ import {
   getFinanceBackgroundSyncStatus,
   isFinanceBackgroundSyncActiveForUser,
   subscribeFinanceBackgroundSyncStatus,
+  waitForFinanceBackgroundSyncIdle,
   type FinanceBackgroundSyncStatus,
 } from "../../../lib/financeSync";
+import {
+  checkForFinanceUpdates,
+  getFinanceUpdateCheckStatus,
+  getLatestFinanceUpdateCheckHandshake,
+  subscribeFinanceUpdateCheckStatus,
+  type FinanceUpdateCheckStatus,
+} from "../../../lib/financeUpdateCheck";
 
 type AccountUser = {
   id: string;
@@ -46,24 +56,55 @@ export default function ProfileSettingsPage() {
   const [isRestoringState, setIsRestoringState] = useState(false);
   const [isConfirmingCloudRestore, setIsConfirmingCloudRestore] =
     useState(false);
+  const [
+    isConfirmingLocalRecovery,
+    setIsConfirmingLocalRecovery,
+  ] = useState(false);
   const [syncMessage, setSyncMessage] = useState("");
   const [syncError, setSyncError] = useState("");
   const [isBackgroundSyncActive, setIsBackgroundSyncActive] =
     useState(false);
   const [backgroundSyncStatus, setBackgroundSyncStatus] =
     useState<FinanceBackgroundSyncStatus | null>(null);
+  const [automaticUpdateStatus, setAutomaticUpdateStatus] =
+    useState<FinanceUpdateCheckStatus | null>(null);
 
   useEffect(() => {
+    let isDisposed = false;
+
     void loadAccount();
     void refreshLocalFinanceState();
 
     setBackgroundSyncStatus(
       getFinanceBackgroundSyncStatus(),
     );
-
-    return subscribeFinanceBackgroundSyncStatus(
-      setBackgroundSyncStatus,
+    setAutomaticUpdateStatus(
+      getFinanceUpdateCheckStatus(),
     );
+    applyLatestAutomaticUpdateHandshake();
+
+    const unsubscribeBackgroundSync =
+      subscribeFinanceBackgroundSyncStatus(
+        setBackgroundSyncStatus,
+      );
+
+    const unsubscribeUpdateCheck =
+      subscribeFinanceUpdateCheckStatus((status) => {
+        if (isDisposed) {
+          return;
+        }
+
+        setAutomaticUpdateStatus(status);
+        applyLatestAutomaticUpdateHandshake();
+      });
+
+    void refreshAutomaticUpdateStatus();
+
+    return () => {
+      isDisposed = true;
+      unsubscribeBackgroundSync();
+      unsubscribeUpdateCheck();
+    };
   }, []);
 
   async function loadAccount() {
@@ -120,6 +161,30 @@ export default function ProfileSettingsPage() {
     return wasActivated;
   }
 
+  function applyLatestAutomaticUpdateHandshake() {
+    const handshake =
+      getLatestFinanceUpdateCheckHandshake();
+
+    if (!handshake) {
+      return false;
+    }
+
+    setLocalFinanceState(handshake.localState);
+    setCloudFinanceState(handshake.cloudState);
+    setSyncComparison(handshake.comparison);
+
+    return true;
+  }
+
+  async function refreshAutomaticUpdateStatus() {
+    const status = await checkForFinanceUpdates();
+
+    setAutomaticUpdateStatus(status);
+    applyLatestAutomaticUpdateHandshake();
+
+    return status;
+  }
+
   async function checkCloudFinanceState() {
     if (!user) {
       setSyncError("Sign in before checking cloud finance data.");
@@ -132,11 +197,19 @@ export default function ProfileSettingsPage() {
     setSyncError("");
 
     try {
-      const localState = await refreshLocalFinanceState();
-      const handshake = await getFinanceCloudHandshake(localState);
+      const automaticStatus =
+        await refreshAutomaticUpdateStatus();
+      const handshake =
+        getLatestFinanceUpdateCheckHandshake();
 
-      setCloudFinanceState(handshake.cloudState);
-      setSyncComparison(handshake.comparison);
+      if (!handshake) {
+        if (automaticStatus.status === "error") {
+          throw new Error(automaticStatus.message);
+        }
+
+        setSyncMessage(automaticStatus.message);
+        return;
+      }
 
       if (handshake.comparison === "in-sync") {
         const backgroundSyncActivated =
@@ -174,6 +247,7 @@ export default function ProfileSettingsPage() {
 
     setIsUploadingState(true);
     setIsConfirmingCloudRestore(false);
+    setIsConfirmingLocalRecovery(false);
     setSyncMessage("");
     setSyncError("");
 
@@ -218,9 +292,13 @@ export default function ProfileSettingsPage() {
       return;
     }
 
-    if (syncComparison !== "cloud-only" && syncComparison !== "cloud-newer") {
+    if (
+      syncComparison !== "cloud-only" &&
+      syncComparison !== "cloud-newer" &&
+      syncComparison !== "conflict"
+    ) {
       setSyncError(
-        "Check the cloud first. Restore is only allowed when the cloud is the confirmed source.",
+        "Check the cloud first. The saved account must be available before this device can be updated.",
       );
       return;
     }
@@ -232,7 +310,135 @@ export default function ProfileSettingsPage() {
 
     setSyncMessage("");
     setSyncError("");
+    setIsConfirmingLocalRecovery(false);
     setIsConfirmingCloudRestore(true);
+  }
+
+  function requestLocalFinanceRecovery() {
+    if (!user) {
+      setSyncError("Sign in before using this device as the saved source.");
+      return;
+    }
+
+    if (
+      syncComparison !== "cloud-newer" &&
+      syncComparison !== "conflict"
+    ) {
+      setSyncError(
+        "Check again before choosing this device as the saved source.",
+      );
+      return;
+    }
+
+    if (!localFinanceState || !cloudFinanceState) {
+      setSyncError(
+        "Both this device and the saved account must be verified first.",
+      );
+      return;
+    }
+
+    setSyncMessage("");
+    setSyncError("");
+    setIsConfirmingCloudRestore(false);
+    setIsConfirmingLocalRecovery(true);
+  }
+
+  function cancelLocalFinanceRecovery() {
+    setIsConfirmingLocalRecovery(false);
+  }
+
+  async function recoverCloudFromThisDevice() {
+    if (!user) {
+      setSyncError("Sign in before using this device as the saved source.");
+      return;
+    }
+
+    setIsUploadingState(true);
+    setIsConfirmingCloudRestore(false);
+    setIsConfirmingLocalRecovery(false);
+    setSyncMessage("");
+    setSyncError("");
+
+    try {
+      const becameIdle = await waitForFinanceBackgroundSyncIdle({
+        timeoutMs: 12000,
+        quietPeriodMs: 500,
+      });
+
+      if (!becameIdle) {
+        throw new Error(
+          "This device is still finishing a save. Wait a moment, then try again.",
+        );
+      }
+
+      const localState = await refreshLocalFinanceState();
+
+      if (!localState) {
+        throw new Error(
+          "No verified finance state is available on this device.",
+        );
+      }
+
+      const currentHandshake =
+        await getFinanceCloudHandshake(localState);
+
+      setLocalFinanceState(currentHandshake.localState);
+      setCloudFinanceState(currentHandshake.cloudState);
+      setSyncComparison(currentHandshake.comparison);
+
+      if (
+        currentHandshake.comparison !== "cloud-newer" &&
+        currentHandshake.comparison !== "conflict"
+      ) {
+        throw new Error(
+          "The device or saved account changed before confirmation. Check again before continuing.",
+        );
+      }
+
+      if (!currentHandshake.cloudState) {
+        throw new Error(
+          "No verified saved account state is available to replace.",
+        );
+      }
+
+      const resolvedState =
+        await replaceCloudFinanceStateFromConfirmedLocal(
+          localState,
+          currentHandshake.cloudState,
+        );
+
+      saveFinanceState(resolvedState, {
+        scheduleCloudUpload: false,
+      });
+
+      const verifiedHandshake =
+        await getFinanceCloudHandshake(resolvedState);
+
+      setLocalFinanceState(verifiedHandshake.localState);
+      setCloudFinanceState(verifiedHandshake.cloudState);
+      setSyncComparison(verifiedHandshake.comparison);
+
+      if (verifiedHandshake.comparison !== "in-sync") {
+        throw new Error(
+          "This device was saved to the account, but final verification did not match.",
+        );
+      }
+
+      const backgroundSyncActivated =
+        await enableVerifiedBackgroundSync();
+
+      setSyncMessage(
+        backgroundSyncActivated
+          ? "This device is now the saved account source. Your other devices can update from it."
+          : "This device was saved to the account, but automatic saving could not be enabled.",
+      );
+
+      window.location.reload();
+    } catch (error) {
+      setSyncError(getSyncErrorMessage(error));
+    } finally {
+      setIsUploadingState(false);
+    }
   }
 
   function cancelCloudFinanceRestore() {
@@ -245,9 +451,13 @@ export default function ProfileSettingsPage() {
       return;
     }
 
-    if (syncComparison !== "cloud-only" && syncComparison !== "cloud-newer") {
+    if (
+      syncComparison !== "cloud-only" &&
+      syncComparison !== "cloud-newer" &&
+      syncComparison !== "conflict"
+    ) {
       setSyncError(
-        "The cloud is no longer confirmed as the restore source. Check the cloud again.",
+        "The saved account is no longer available as the update source. Check again before continuing.",
       );
       setIsConfirmingCloudRestore(false);
       return;
@@ -259,6 +469,17 @@ export default function ProfileSettingsPage() {
     setSyncError("");
 
     try {
+      const becameIdle = await waitForFinanceBackgroundSyncIdle({
+        timeoutMs: 12000,
+        quietPeriodMs: 500,
+      });
+
+      if (!becameIdle) {
+        throw new Error(
+          "This device is still finishing a save. Wait a moment, then try updating again.",
+        );
+      }
+
       const localState = await refreshLocalFinanceState();
       const currentHandshake = await getFinanceCloudHandshake(localState);
 
@@ -267,10 +488,11 @@ export default function ProfileSettingsPage() {
 
       if (
         currentHandshake.comparison !== "cloud-only" &&
-        currentHandshake.comparison !== "cloud-newer"
+        currentHandshake.comparison !== "cloud-newer" &&
+        currentHandshake.comparison !== "conflict"
       ) {
         throw new Error(
-          "The local or cloud finance state changed before restore. Check the cloud again before continuing.",
+          "The device or saved account changed before the update. Check again before continuing.",
         );
       }
 
@@ -306,6 +528,8 @@ export default function ProfileSettingsPage() {
           ? "This device is up to date. New changes will upload automatically."
           : "This device was updated, but automatic saving could not be enabled.",
       );
+
+      window.location.reload();
     } catch (error) {
       setSyncError(getSyncErrorMessage(error));
     } finally {
@@ -332,9 +556,16 @@ export default function ProfileSettingsPage() {
       ? "Your leftovr account is active on this device."
       : "Sign in to manage your account and restore saved data.";
 
-  const isSyncBusy = isCheckingCloud || isUploadingState || isRestoringState;
+  const isAutomaticCheckRunning =
+    automaticUpdateStatus?.status === "checking";
 
-  const syncStatusLabel = isCheckingCloud
+  const isSyncBusy =
+    isCheckingCloud ||
+    isAutomaticCheckRunning ||
+    isUploadingState ||
+    isRestoringState;
+
+  const syncStatusLabel = isCheckingCloud || isAutomaticCheckRunning
     ? "Checking"
     : isUploadingState
       ? "Uploading"
@@ -347,11 +578,23 @@ export default function ProfileSettingsPage() {
     !isSyncBusy &&
     (syncComparison === "local-only" || syncComparison === "local-newer");
 
+  const isConflictResolution = syncComparison === "conflict";
+
   const canRestoreCloudState =
     isSignedIn &&
     !isSyncBusy &&
     Boolean(cloudFinanceState) &&
-    (syncComparison === "cloud-only" || syncComparison === "cloud-newer");
+    (syncComparison === "cloud-only" ||
+      syncComparison === "cloud-newer" ||
+      isConflictResolution);
+
+  const canUseThisDeviceData =
+    isSignedIn &&
+    !isSyncBusy &&
+    Boolean(localFinanceState) &&
+    Boolean(cloudFinanceState) &&
+    (syncComparison === "cloud-newer" ||
+      isConflictResolution);
 
   const backgroundUploadLabel =
     getBackgroundUploadLabel(
@@ -365,13 +608,16 @@ export default function ProfileSettingsPage() {
     syncComparison,
     isBackgroundSyncActive,
     backgroundSyncStatus,
-    isCheckingCloud,
+    isCheckingCloud || isAutomaticCheckRunning,
     isUploadingState,
     isRestoringState,
+    automaticUpdateStatus,
   );
 
   const hasPrimarySyncAction =
-    canUploadLocalState || canRestoreCloudState;
+    canUploadLocalState ||
+    canRestoreCloudState ||
+    canUseThisDeviceData;
 
   return (
     <PageShell>
@@ -580,9 +826,10 @@ export default function ProfileSettingsPage() {
 
                   <p className="mt-1 text-xs leading-5 text-stone-500">
                     {syncComparison === null
-                      ? "Check once before using this device."
+                      ? "leftovr checks automatically when this device becomes active."
                       : `Last checked ${formatSyncTimestamp(
-                          cloudFinanceState?.updatedAt ??
+                          automaticUpdateStatus?.updatedAt ??
+                            cloudFinanceState?.updatedAt ??
                             localFinanceState?.updatedAt,
                         )}`}
                   </p>
@@ -609,6 +856,17 @@ export default function ProfileSettingsPage() {
                   </button>
                 ) : null}
 
+                {canUseThisDeviceData ? (
+                  <button
+                    type="button"
+                    onClick={requestLocalFinanceRecovery}
+                    disabled={isSyncBusy}
+                    className="pressable rounded-full border border-[#c7ad75]/38 bg-[#c7ad75]/16 px-4 py-2.5 text-sm font-semibold text-[#f5f0e8] transition hover:border-[#c7ad75]/50 hover:bg-[#c7ad75]/22 disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    Use This Device Data
+                  </button>
+                ) : null}
+
                 {canRestoreCloudState ? (
                   <button
                     type="button"
@@ -618,7 +876,9 @@ export default function ProfileSettingsPage() {
                   >
                     {isRestoringState
                       ? "Updating This Device…"
-                      : "Update This Device"}
+                      : isConflictResolution
+                        ? "Use Saved Account Data"
+                        : "Update This Device"}
                   </button>
                 ) : null}
 
@@ -636,6 +896,44 @@ export default function ProfileSettingsPage() {
                 </button>
               </div>
 
+              {isConfirmingLocalRecovery &&
+              canUseThisDeviceData ? (
+                <div
+                  role="dialog"
+                  aria-label="Confirm saved account replacement"
+                  className="mt-2 rounded-[1.05rem] border border-[#c7ad75]/28 bg-[#c7ad75]/[0.075] px-3 py-2.5"
+                >
+                  <p className="text-sm font-semibold text-[#f5f0e8]">
+                    Use this device as the saved account source?
+                  </p>
+
+                  <p className="mt-1 text-xs leading-5 text-stone-400">
+                    This will keep the finance data currently shown on this
+                    device, create a newer verified version, and replace the
+                    saved account copy. Use this only on the device with the
+                    correct data.
+                  </p>
+
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={cancelLocalFinanceRecovery}
+                      className="pressable rounded-full border border-[#f5f0e8]/12 bg-[#f5f0e8]/[0.045] px-3 py-2 text-xs font-semibold text-stone-300 transition hover:bg-[#f5f0e8]/[0.075]"
+                    >
+                      Not Now
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={recoverCloudFromThisDevice}
+                      className="pressable rounded-full border border-[#c7ad75]/42 bg-[#c7ad75]/18 px-3 py-2 text-xs font-semibold text-[#f5f0e8] transition hover:border-[#c7ad75]/58 hover:bg-[#c7ad75]/24"
+                    >
+                      Use This Device Data
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
               {isConfirmingCloudRestore && canRestoreCloudState ? (
                 <div
                   role="dialog"
@@ -643,12 +941,15 @@ export default function ProfileSettingsPage() {
                   className="mt-2 rounded-[1.05rem] border border-[#9dbdb4]/28 bg-[#9dbdb4]/[0.075] px-3 py-2.5"
                 >
                   <p className="text-sm font-semibold text-[#f5f0e8]">
-                    Update this device with your saved account data?
+                    {isConflictResolution
+                      ? "Use your saved account data on this device?"
+                      : "Update this device with your saved account data?"}
                   </p>
 
                   <p className="mt-1 text-xs leading-5 text-stone-400">
-                    leftovr will save a recovery copy first, then bring the
-                    newer account data onto this device.
+                    {isConflictResolution
+                      ? "This device and your saved account contain different changes. leftovr will create a recovery copy first, then replace this device with the saved account version."
+                      : "leftovr will save a recovery copy first, then bring the newer account data onto this device."}
                   </p>
 
                   <div className="mt-2 grid grid-cols-2 gap-2">
@@ -665,7 +966,9 @@ export default function ProfileSettingsPage() {
                       onClick={restoreCloudFinanceState}
                       className="pressable rounded-full border border-[#9dbdb4]/42 bg-[#9dbdb4]/18 px-3 py-2 text-xs font-semibold text-[#f5f0e8] transition hover:border-[#9dbdb4]/58 hover:bg-[#9dbdb4]/24"
                     >
-                      Update This Device
+                      {isConflictResolution
+                        ? "Use Saved Account Data"
+                        : "Update This Device"}
                     </button>
                   </div>
                 </div>
@@ -988,6 +1291,7 @@ function getSyncStatusMessage(
   isChecking: boolean,
   isUploading: boolean,
   isRestoring: boolean,
+  automaticUpdateStatus: FinanceUpdateCheckStatus | null,
 ) {
   if (!isSignedIn) {
     return "Sign in to protect your data and use it on your other devices.";
@@ -1003,6 +1307,17 @@ function getSyncStatusMessage(
 
   if (isRestoring) {
     return "Bringing your latest saved data onto this device.";
+  }
+
+  switch (automaticUpdateStatus?.status) {
+    case "offline":
+      return "Your data remains available here. leftovr will check again when the internet returns.";
+    case "deferred":
+      return "leftovr is waiting for this device to finish saving before checking again.";
+    case "error":
+      return "leftovr could not check for updates. Your data was not changed.";
+    default:
+      break;
   }
 
   switch (backgroundStatus?.status) {

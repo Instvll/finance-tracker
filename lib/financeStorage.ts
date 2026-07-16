@@ -100,10 +100,35 @@ export type BillTrackingStorageState = BillOccurrenceStorageState & {
   preferences: PayPeriodPreferences;
 };
 
+function mergeStoredObjectWithDefaults<TValue>(
+  defaults: TValue,
+  storedValue: TValue,
+): TValue {
+  if (
+    defaults === null ||
+    storedValue === null ||
+    Array.isArray(defaults) ||
+    Array.isArray(storedValue) ||
+    typeof defaults !== "object" ||
+    typeof storedValue !== "object"
+  ) {
+    return storedValue;
+  }
+
+  return {
+    ...(defaults as Record<string, unknown>),
+    ...(storedValue as Record<string, unknown>),
+  } as TValue;
+}
+
 export function loadFinanceStorageState<TSummary>(
   defaults: FinanceStorageDefaults<TSummary>,
   options: FinanceStorageLoadOptions = {},
 ): FinanceStorageState<TSummary> {
+  const storedSummary = readJsonStorage(
+    summaryStorageKey,
+    defaults.summary,
+  );
   const cards = normalizeManualCards(
     readJsonStorage(cardsStorageKey, defaults.cards),
   );
@@ -114,7 +139,10 @@ export function loadFinanceStorageState<TSummary>(
   );
 
   return {
-    summary: readJsonStorage(summaryStorageKey, defaults.summary),
+    summary: mergeStoredObjectWithDefaults(
+      defaults.summary,
+      storedSummary,
+    ),
     bills,
     cards,
     preferences: readPayPeriodPreferences(),
@@ -208,14 +236,31 @@ export function createFinanceSnapshot<TSummary extends FinanceSummaryData>(
 
 let financeStateRefreshScheduled = false;
 
+function getEmptyFinanceSummary(): FinanceSummaryData {
+  return {
+    checkingBalance: "0",
+    monthlyIncome: "0",
+    savingsBalance: "0",
+    nextPayday: "",
+  };
+}
+
+function normalizeFinanceSummary(
+  summary: FinanceSummaryData | null | undefined,
+): FinanceSummaryData {
+  return {
+    ...getEmptyFinanceSummary(),
+    ...(summary ?? {}),
+  };
+}
+
 function getFinanceStateRefreshDefaults(): FinanceStorageDefaults<FinanceSummaryData> {
   const persistedState = loadPersistedFinanceState();
 
   return {
-    summary: persistedState?.summary ?? {
-      checkingBalance: "0",
-      savingsBalance: "0",
-    },
+    summary: normalizeFinanceSummary(
+      persistedState?.summary,
+    ),
     bills: persistedState?.bills ?? [],
     cards: persistedState?.cards ?? [],
   };
@@ -264,10 +309,18 @@ export function loadPersistedFinanceState(): FinanceState | null {
       return null;
     }
 
-    return createFinanceState(parsedValue, {
-      revision: parsedValue.revision,
-      updatedAt: parsedValue.updatedAt,
-    });
+    return createFinanceState(
+      {
+        ...parsedValue,
+        summary: normalizeFinanceSummary(
+          parsedValue.summary,
+        ),
+      },
+      {
+        revision: parsedValue.revision,
+        updatedAt: parsedValue.updatedAt,
+      },
+    );
   } catch {
     return null;
   }
@@ -286,11 +339,56 @@ export function createNextFinanceSnapshot<TSummary extends FinanceSummaryData>(
   });
 }
 
+function getComparableFinanceStateContent(state: FinanceState) {
+  return {
+    schemaVersion: state.schemaVersion,
+    summary: state.summary,
+    bills: state.bills,
+    cards: state.cards,
+    preferences: state.preferences,
+    activeOccurrenceDates: state.activeOccurrenceDates,
+    paidOccurrences: state.paidOccurrences,
+    paidActions: state.paidActions,
+  };
+}
+
+function financeStateContentMatches(
+  firstState: FinanceState,
+  secondState: FinanceState,
+) {
+  return (
+    JSON.stringify(
+      canonicalizeJsonValue(
+        getComparableFinanceStateContent(firstState),
+      ),
+    ) ===
+    JSON.stringify(
+      canonicalizeJsonValue(
+        getComparableFinanceStateContent(secondState),
+      ),
+    )
+  );
+}
+
 export function persistCurrentFinanceState<TSummary extends FinanceSummaryData>(
   defaults: FinanceStorageDefaults<TSummary>,
   options: PersistCurrentFinanceStateOptions = {},
 ): SaveFinanceStateResult {
+  const currentPersistedState = loadPersistedFinanceState();
   const nextState = createNextFinanceSnapshot(defaults, options);
+
+  if (
+    currentPersistedState &&
+    financeStateContentMatches(
+      currentPersistedState,
+      nextState,
+    )
+  ) {
+    return {
+      state: currentPersistedState,
+      savedAt: currentPersistedState.updatedAt,
+    };
+  }
 
   return saveFinanceState(nextState);
 }
