@@ -4,22 +4,30 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import TopNav from "../../components/TopNav";
 import { PageShell, Pill } from "../../components/Layout";
-import { bills } from "../../data/bandData";
+import { bills, creditCards } from "../../data/bandData";
 import {
-  activeBillOccurrencesStorageKey,
-  billsStorageKey,
-  legacyLastPaidActionStorageKey,
   migrateBillOccurrenceState,
-  normalizeManualBillIds,
-  paidBillsStorageKey,
   parseMoney,
-  preferencesStorageKey,
-  readJsonStorage,
-  recentPaidActionsStorageKey,
-  writeJsonStorage,
   type ManualBill,
+  type ManualCreditCard,
   type PaidBillAction,
 } from "../../lib/financeData";
+import {
+  clearLegacyPaidAction,
+  loadBillTrackingStorageState,
+  saveActiveBillOccurrenceDates,
+  saveFinanceBills,
+  saveFinanceCards,
+  saveFinancePreferences,
+  savePaidBillOccurrences,
+  saveRecentPaidActions,
+} from "../../lib/financeStorage";
+import {
+  markBillOccurrencePaid,
+  normalizeRecentPaidActions,
+  undoBillPayment,
+} from "../../lib/financePayments";
+
 import {
   defaultPayPeriodPreferences,
   getActiveBillOccurrence,
@@ -31,7 +39,6 @@ import {
   getPlanningAmount,
   isDateInCurrentPayPeriod,
   parseLocalDate,
-  readPayPeriodPreferences,
   type ActiveBillOccurrence,
   type PaidBillOccurrences,
   type PayPeriodPreferences,
@@ -54,6 +61,17 @@ const defaultManualBills: ManualBill[] = bills.map((bill) => ({
   status: bill.status,
   paymentMethod: bill.paymentMethod,
 }));
+
+const defaultManualCards: ManualCreditCard[] =
+  creditCards.map((card) => ({
+    name: card.name,
+    balance: String(card.balance),
+    limit: String(card.limit),
+    minimumPayment: String(card.minimumPayment),
+    dueDate: card.dueDate,
+    status: card.status,
+  }));
+
 
 function formatMoney(amount: number) {
   return new Intl.NumberFormat("en-US", {
@@ -199,55 +217,13 @@ function getBillsSnapshot(currentBills: ManualBill[]) {
   return JSON.stringify(currentBills);
 }
 
-function normalizeRecentPaidActions(
-  actions: PaidBillAction[],
-  paidOccurrences: PaidBillOccurrences,
-  preferences: PayPeriodPreferences,
-  referenceDate = new Date(),
-) {
-  const seenOccurrenceKeys = new Set<string>();
-
-  return actions
-    .filter((action) => {
-      const paidAt =
-        action?.paidAt ||
-        paidOccurrences[action?.occurrenceKey ?? ""];
-
-      if (
-        !action?.occurrenceKey ||
-        !paidOccurrences[action.occurrenceKey] ||
-        seenOccurrenceKeys.has(action.occurrenceKey) ||
-        !paidAt ||
-        !isDateInCurrentPayPeriod(
-          paidAt,
-          preferences,
-          referenceDate,
-        )
-      ) {
-        return false;
-      }
-
-      seenOccurrenceKeys.add(action.occurrenceKey);
-      return true;
-    })
-    .map((action) => ({
-      ...action,
-      paidAt:
-        action.paidAt ||
-        paidOccurrences[action.occurrenceKey] ||
-        new Date(0).toISOString(),
-    }))
-    .sort(
-      (firstAction, secondAction) =>
-        new Date(secondAction.paidAt).getTime() -
-        new Date(firstAction.paidAt).getTime(),
-    )
-    .slice(0, 8);
-}
-
 export default function BillsPage() {
   const [manualBills, setManualBills] =
     useState<ManualBill[]>(defaultManualBills);
+  const [manualCards, setManualCards] =
+    useState<ManualCreditCard[]>(
+      defaultManualCards,
+    );
   const [preferences, setPreferences] = useState<PayPeriodPreferences>(
     defaultPayPeriodPreferences,
   );
@@ -263,55 +239,45 @@ export default function BillsPage() {
   const [showPaidConfirmation, setShowPaidConfirmation] = useState(false);
   const [showRecentPayments, setShowRecentPayments] = useState(false);
 
-  const paidConfirmationTimeout = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
+  const paidConfirmationTimeout =
+    useRef<ReturnType<typeof setTimeout> | null>(
+      null,
+    );
+  const processingPaymentKeys =
+    useRef<Set<string>>(new Set());
 
   useEffect(() => {
     function loadBillsData(checkEditSnapshot: boolean) {
-      const savedBills = normalizeManualBillIds(
-        readJsonStorage(
-          billsStorageKey,
+      const storedState =
+        loadBillTrackingStorageState(
           defaultManualBills,
-        ),
-      );
+          defaultManualCards,
+        );
+      const savedBills = storedState.bills;
+      const savedCards = storedState.cards;
 
-      writeJsonStorage(
-        billsStorageKey,
-        savedBills,
-      );
+      saveFinanceBills(savedBills);
+      saveFinanceCards(savedCards);
 
-      const savedPreferences = readPayPeriodPreferences();
       const rolloverResult =
-        getCurrentPayPeriodPreferences(savedPreferences);
+        getCurrentPayPeriodPreferences(
+          storedState.preferences,
+        );
 
       if (rolloverResult.didAdvance) {
-        writeJsonStorage(
-          preferencesStorageKey,
+        saveFinancePreferences(
           rolloverResult.preferences,
         );
       }
 
       const savedPaidOccurrences =
-        readJsonStorage<PaidBillOccurrences>(
-          paidBillsStorageKey,
-          {},
-        );
+        storedState.paidOccurrences;
       const savedActiveOccurrenceDates =
-        readJsonStorage<ActiveBillOccurrenceDates>(
-          activeBillOccurrencesStorageKey,
-          {},
-        );
+        storedState.activeOccurrenceDates;
       const savedRecentPaidActions =
-        readJsonStorage<PaidBillAction[]>(
-          recentPaidActionsStorageKey,
-          [],
-        );
+        storedState.paidActions;
       const legacyLastPaidAction =
-        readJsonStorage<Partial<PaidBillAction> | null>(
-          legacyLastPaidActionStorageKey,
-          null,
-        );
+        storedState.legacyPaidAction;
 
       const migratedLegacyAction =
         legacyLastPaidAction?.occurrenceKey &&
@@ -365,9 +331,12 @@ export default function BillsPage() {
           migratedOccurrenceState.paidActions,
           migratedOccurrenceState.paidOccurrences,
           rolloverResult.preferences,
+          new Date(),
+          8,
         );
 
       setManualBills(savedBills);
+      setManualCards(savedCards);
       setPreferences(rolloverResult.preferences);
       setPaidBillOccurrences(
         migratedOccurrenceState.paidOccurrences,
@@ -380,21 +349,16 @@ export default function BillsPage() {
       );
       setShowRecentPayments(false);
 
-      writeJsonStorage(
-        activeBillOccurrencesStorageKey,
+      saveActiveBillOccurrenceDates(
         normalizedOccurrenceDates,
       );
-      writeJsonStorage(
-        paidBillsStorageKey,
+      savePaidBillOccurrences(
         migratedOccurrenceState.paidOccurrences,
       );
-      writeJsonStorage(
-        recentPaidActionsStorageKey,
+      saveRecentPaidActions(
         normalizedRecentPaidActions,
       );
-      window.localStorage.removeItem(
-        legacyLastPaidActionStorageKey,
-      );
+      clearLegacyPaidAction();
 
       if (!checkEditSnapshot) {
         return;
@@ -451,7 +415,7 @@ export default function BillsPage() {
   function rememberBillsEditSnapshot() {
     window.sessionStorage.setItem(
       billsEditSnapshotKey,
-      getBillsSnapshot(readJsonStorage(billsStorageKey, defaultManualBills)),
+      getBillsSnapshot(manualBills),
     );
   }
 
@@ -468,107 +432,74 @@ export default function BillsPage() {
 
   const payPeriodDays = getPayPeriodLength(preferences.payFrequency);
 
-  function updateActiveOccurrenceDate(
-    billIdentity: string,
-    occurrenceDateKey: string,
-  ) {
-    setActiveBillOccurrenceDates((current) => {
-      const nextDates = {
-        ...current,
-        [billIdentity]: occurrenceDateKey,
-      };
-
-      writeJsonStorage(
-        activeBillOccurrencesStorageKey,
-        nextDates,
-      );
-
-      return nextDates;
-    });
-  }
 
   function markBillPaid(item: BillOccurrenceItem) {
-    const { bill, occurrence } = item;
-    const paidAt = new Date().toISOString();
-    const followingOccurrence = getFollowingBillDueDate(
-      bill.dueDate,
-      occurrence.dueDate,
-    );
-    const nextOccurrenceDateKey = followingOccurrence
-      ? formatLocalDateKey(followingOccurrence)
-      : null;
+    const occurrenceKey =
+      item.occurrence.occurrenceKey;
 
-    setPaidBillOccurrences((current) => {
-      const nextOccurrences = {
-        ...current,
-        [occurrence.occurrenceKey]: paidAt,
-      };
-
-      writeJsonStorage(
-        paidBillsStorageKey,
-        nextOccurrences,
-      );
-
-      return nextOccurrences;
-    });
-
-    if (nextOccurrenceDateKey) {
-      setActiveBillOccurrenceDates((current) => {
-        const nextDates = {
-          ...current,
-          [occurrence.billIdentity]: nextOccurrenceDateKey,
-        };
-
-        writeJsonStorage(
-          activeBillOccurrencesStorageKey,
-          nextDates,
-      );
-
-        return nextDates;
-      });
+    if (
+      paidBillOccurrences[occurrenceKey] ||
+      processingPaymentKeys.current.has(
+        occurrenceKey,
+      )
+    ) {
+      return;
     }
 
-    const nextPaidAction: PaidBillAction = {
-      occurrenceKey: occurrence.occurrenceKey,
-      occurrenceDateKey: occurrence.dueDateKey,
-      billIdentity: occurrence.billIdentity,
-      billId: bill.id,
-      billName: bill.name || "Bill",
-      nextOccurrenceDateKey,
-      paidAt,
-      billAmount: bill.amount,
-    };
+    processingPaymentKeys.current.add(
+      occurrenceKey,
+    );
 
-    setRecentPaidActions((current) => {
-      const nextActions = normalizeRecentPaidActions(
-        [
-          nextPaidAction,
-          ...current.filter(
-            (action) =>
-              action.occurrenceKey !==
-              nextPaidAction.occurrenceKey,
-          ),
-        ],
-        {
-          ...paidBillOccurrences,
-          [occurrence.occurrenceKey]: paidAt,
-        },
-        preferences,
-      );
-
-      writeJsonStorage(
-        recentPaidActionsStorageKey,
-        nextActions,
-      );
-
-      return nextActions;
+    const result = markBillOccurrencePaid({
+      item,
+      cards: manualCards,
+      activeOccurrenceDates:
+        activeBillOccurrenceDates,
+      paidOccurrences: paidBillOccurrences,
+      paidActions: recentPaidActions,
+      preferences,
+      recentActionLimit: 8,
     });
 
-    setPaidConfirmationAction(nextPaidAction);
+    if (!result.didApply || !result.paidAction) {
+      processingPaymentKeys.current.delete(
+        occurrenceKey,
+      );
+      return;
+    }
+
+    if (result.cards !== manualCards) {
+      setManualCards(result.cards);
+      saveFinanceCards(result.cards);
+    }
+
+    setPaidBillOccurrences(
+      result.paidOccurrences,
+    );
+    setActiveBillOccurrenceDates(
+      result.activeOccurrenceDates,
+    );
+    setRecentPaidActions(result.paidActions);
+
+    savePaidBillOccurrences(
+      result.paidOccurrences,
+    );
+    saveActiveBillOccurrenceDates(
+      result.activeOccurrenceDates,
+    );
+    saveRecentPaidActions(
+      result.paidActions,
+    );
+
+    setPaidConfirmationAction(
+      result.paidAction,
+    );
     setShowPaidConfirmation(true);
 
     if (paidConfirmationTimeout.current) {
-      clearTimeout(paidConfirmationTimeout.current);
+      clearTimeout(
+        paidConfirmationTimeout.current,
+      );
     }
 
     paidConfirmationTimeout.current = setTimeout(() => {
@@ -578,36 +509,41 @@ export default function BillsPage() {
   }
 
   function undoPaidBill(action: PaidBillAction) {
-    setPaidBillOccurrences((current) => {
-      const nextOccurrences = { ...current };
-      delete nextOccurrences[action.occurrenceKey];
-
-      writeJsonStorage(
-        paidBillsStorageKey,
-        nextOccurrences,
-      );
-
-      return nextOccurrences;
+    const result = undoBillPayment({
+      action,
+      cards: manualCards,
+      activeOccurrenceDates:
+        activeBillOccurrenceDates,
+      paidOccurrences: paidBillOccurrences,
+      paidActions: recentPaidActions,
     });
 
-    updateActiveOccurrenceDate(
-      action.billIdentity,
-      action.occurrenceDateKey,
+    if (result.cards !== manualCards) {
+      setManualCards(result.cards);
+      saveFinanceCards(result.cards);
+    }
+
+    setPaidBillOccurrences(
+      result.paidOccurrences,
+    );
+    setActiveBillOccurrenceDates(
+      result.activeOccurrenceDates,
+    );
+    setRecentPaidActions(result.paidActions);
+
+    savePaidBillOccurrences(
+      result.paidOccurrences,
+    );
+    saveActiveBillOccurrenceDates(
+      result.activeOccurrenceDates,
+    );
+    saveRecentPaidActions(
+      result.paidActions,
     );
 
-    setRecentPaidActions((current) => {
-      const nextActions = current.filter(
-        (recentAction) =>
-          recentAction.occurrenceKey !== action.occurrenceKey,
-      );
-
-      writeJsonStorage(
-        recentPaidActionsStorageKey,
-        nextActions,
-      );
-
-      return nextActions;
-    });
+    processingPaymentKeys.current.delete(
+      action.occurrenceKey,
+    );
 
     if (
       paidConfirmationAction?.occurrenceKey ===
@@ -618,7 +554,9 @@ export default function BillsPage() {
     }
 
     if (paidConfirmationTimeout.current) {
-      clearTimeout(paidConfirmationTimeout.current);
+      clearTimeout(
+        paidConfirmationTimeout.current,
+      );
       paidConfirmationTimeout.current = null;
     }
   }

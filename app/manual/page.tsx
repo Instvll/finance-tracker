@@ -6,33 +6,31 @@ import TopNav from "../../components/TopNav";
 import { PageShell, Pill } from "../../components/Layout";
 import { bills, creditCards, financeSummary } from "../../data/bandData";
 import {
-  activeBillOccurrencesStorageKey,
   applyManualCardBalanceRevisions,
-  billsStorageKey,
-  cardsStorageKey,
   createPersistentId,
   getPaymentMethodLabel,
   getPaymentSourceLabel,
-  lastSavedStorageKey,
-  legacyLastPaidActionStorageKey,
+  migrateBillOccurrenceState,
   normalizeManualBills,
   normalizeManualCards,
-  migrateBillOccurrenceState,
-  paidBillsStorageKey,
   parseMoney,
-  readJsonStorage,
-  recentPaidActionsStorageKey,
   resolveBillPaymentSource,
-  summaryStorageKey,
   type ManualBill,
   type ManualCreditCard,
-  type PaidBillAction,
   type PaymentSource,
 } from "../../lib/financeData";
 import {
+  loadBillOccurrenceStorageState,
+  loadFinanceStorageState,
+  saveBillOccurrenceStorageState,
+  saveFinanceBills,
+  saveFinanceCards,
+  saveFinanceSummary,
+  saveLastSavedTime,
+} from "../../lib/financeStorage";
+import {
   getBillIdentity,
   sortIndexedBillsByDueDay,
-  type PaidBillOccurrences,
 } from "../../lib/billStatus";
 
 type EditorTab = "overview" | "bills" | "cards";
@@ -53,8 +51,6 @@ type EditableManualBillField = Exclude<
   keyof ManualBill,
   "paymentMethod" | "paymentSource"
 >;
-
-type ActiveBillOccurrenceDates = Record<string, string>;
 
 const defaultManualData: ManualFinanceData = {
   checkingBalance: String(financeSummary.checkingBalance),
@@ -89,21 +85,14 @@ function reconcileBillOccurrenceStorage(
   removedBills: ManualBill[],
   nextBills: ManualBill[],
 ) {
+  const storedOccurrenceState =
+    loadBillOccurrenceStorageState();
   const savedActiveOccurrences =
-    readJsonStorage<ActiveBillOccurrenceDates>(
-      activeBillOccurrencesStorageKey,
-      {},
-    );
+    storedOccurrenceState.activeOccurrenceDates;
   const savedPaidOccurrences =
-    readJsonStorage<PaidBillOccurrences>(
-      paidBillsStorageKey,
-      {},
-    );
+    storedOccurrenceState.paidOccurrences;
   const savedRecentPaidActions =
-    readJsonStorage<PaidBillAction[]>(
-      recentPaidActionsStorageKey,
-      [],
-    );
+    storedOccurrenceState.paidActions;
 
   const migratedState = migrateBillOccurrenceState(
     nextBills,
@@ -233,21 +222,11 @@ function reconcileBillOccurrenceStorage(
     )
     .slice(0, 8);
 
-  window.localStorage.setItem(
-    activeBillOccurrencesStorageKey,
-    JSON.stringify(nextActiveOccurrences),
-  );
-  window.localStorage.setItem(
-    paidBillsStorageKey,
-    JSON.stringify(nextPaidOccurrences),
-  );
-  window.localStorage.setItem(
-    recentPaidActionsStorageKey,
-    JSON.stringify(nextRecentPaidActions),
-  );
-  window.localStorage.removeItem(
-    legacyLastPaidActionStorageKey,
-  );
+  saveBillOccurrenceStorageState({
+    activeOccurrenceDates: nextActiveOccurrences,
+    paidOccurrences: nextPaidOccurrences,
+    paidActions: nextRecentPaidActions,
+  });
 }
 
 function formatSavedTime(value: string) {
@@ -351,63 +330,42 @@ export default function ManualPage() {
   const removedBillsRef = useRef<ManualBill[]>([]);
 
   useEffect(() => {
-    const savedCards = normalizeManualCards(
-      readJsonStorage(cardsStorageKey, defaultManualCards),
+    const storedState = loadFinanceStorageState(
+      {
+        summary: defaultManualData,
+        bills: defaultManualBills,
+        cards: defaultManualCards,
+      },
+      {
+        syncLegacyPaymentMethod: true,
+      },
     );
-    const savedBills = normalizeManualBills(
-      readJsonStorage(billsStorageKey, defaultManualBills),
-      savedCards,
-      true,
-    );
+    const savedCards = storedState.cards;
+    const savedBills = storedState.bills;
 
-    setManualData(readJsonStorage(summaryStorageKey, defaultManualData));
+    setManualData(storedState.summary);
     setManualBills(savedBills);
     setManualCards(savedCards);
 
-    window.localStorage.setItem(
-      cardsStorageKey,
-      JSON.stringify(savedCards),
-    );
-    window.localStorage.setItem(
-      billsStorageKey,
-      JSON.stringify(savedBills),
-    );
+    saveFinanceCards(savedCards);
+    saveFinanceBills(savedBills);
 
     const migratedOccurrenceState =
       migrateBillOccurrenceState(
         savedBills,
-        readJsonStorage<ActiveBillOccurrenceDates>(
-          activeBillOccurrencesStorageKey,
-          {},
-        ),
-        readJsonStorage<PaidBillOccurrences>(
-          paidBillsStorageKey,
-          {},
-        ),
-        readJsonStorage<PaidBillAction[]>(
-          recentPaidActionsStorageKey,
-          [],
-        ),
+        storedState.activeOccurrenceDates,
+        storedState.paidOccurrences,
+        storedState.paidActions,
       );
 
-    window.localStorage.setItem(
-      activeBillOccurrencesStorageKey,
-      JSON.stringify(
+    saveBillOccurrenceStorageState({
+      activeOccurrenceDates:
         migratedOccurrenceState.activeOccurrenceDates,
-      ),
-    );
-    window.localStorage.setItem(
-      paidBillsStorageKey,
-      JSON.stringify(
+      paidOccurrences:
         migratedOccurrenceState.paidOccurrences,
-      ),
-    );
-    window.localStorage.setItem(
-      recentPaidActionsStorageKey,
-      JSON.stringify(
+      paidActions:
         migratedOccurrenceState.paidActions,
-      ),
-    );
+    });
 
     originalBillsRef.current = savedBills.map((bill) =>
       cloneBill(bill),
@@ -417,10 +375,8 @@ export default function ManualPage() {
     }));
     removedBillsRef.current = [];
 
-    const savedTime = window.localStorage.getItem(lastSavedStorageKey);
-
-    if (savedTime) {
-      setLastSaved(savedTime);
+    if (storedState.lastSaved) {
+      setLastSaved(storedState.lastSaved);
     }
 
     const tab = new URLSearchParams(window.location.search).get("tab");
@@ -760,10 +716,10 @@ export default function ManualPage() {
       normalizedBills,
     );
 
-    window.localStorage.setItem(summaryStorageKey, JSON.stringify(manualData));
-    window.localStorage.setItem(billsStorageKey, JSON.stringify(normalizedBills));
-    window.localStorage.setItem(cardsStorageKey, JSON.stringify(revisedCards));
-    window.localStorage.setItem(lastSavedStorageKey, savedTime);
+    saveFinanceSummary(manualData);
+    saveFinanceBills(normalizedBills);
+    saveFinanceCards(revisedCards);
+    saveLastSavedTime(savedTime);
 
     setManualBills(normalizedBills);
     setManualCards(revisedCards);
