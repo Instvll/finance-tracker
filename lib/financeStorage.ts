@@ -112,6 +112,17 @@ export function loadFinanceStorageState<TSummary>(
   };
 }
 
+export function loadFinanceCards(
+  defaultCards: ManualCreditCard[],
+) {
+  return normalizeManualCards(
+    readJsonStorage(
+      cardsStorageKey,
+      defaultCards,
+    ),
+  );
+}
+
 export function loadBillOccurrenceStorageState():
   BillOccurrenceStorageState {
   return {

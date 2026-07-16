@@ -5,17 +5,14 @@ import Link from "next/link";
 import TopNav from "../../components/TopNav";
 import { PageShell, Pill } from "../../components/Layout";
 import { creditCards } from "../../data/bandData";
-
-type ManualCreditCard = {
-  name: string;
-  balance: string;
-  limit: string;
-  minimumPayment: string;
-  dueDate: string;
-  status: "Good" | "Watch" | "Pay Down";
-};
-
-const cardsStorageKey = "finance-tracker-manual-cards";
+import {
+  parseMoney,
+  type ManualCreditCard,
+} from "../../lib/financeData";
+import {
+  loadFinanceCards,
+  saveFinanceCards,
+} from "../../lib/financeStorage";
 
 const defaultManualCards: ManualCreditCard[] = creditCards.map((card) => ({
   name: card.name,
@@ -26,35 +23,11 @@ const defaultManualCards: ManualCreditCard[] = creditCards.map((card) => ({
   status: card.status,
 }));
 
-function parseMoney(value: string) {
-  const numberValue = Number(value);
-
-  if (Number.isNaN(numberValue)) {
-    return 0;
-  }
-
-  return numberValue;
-}
-
 function formatMoney(amount: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
   }).format(amount);
-}
-
-function readCardsStorage() {
-  const savedCards = window.localStorage.getItem(cardsStorageKey);
-
-  if (!savedCards) {
-    return defaultManualCards;
-  }
-
-  try {
-    return JSON.parse(savedCards) as ManualCreditCard[];
-  } catch {
-    return defaultManualCards;
-  }
 }
 
 function scrollExpandedSectionIntoView(sectionId: string) {
@@ -83,12 +56,16 @@ export default function CardsPage() {
   const [manualCards, setManualCards] =
     useState<ManualCreditCard[]>(defaultManualCards);
   const [barsReady, setBarsReady] = useState(false);
-  const [expandedCardIndex, setExpandedCardIndex] = useState<number | null>(
-    null
-  );
+  const [expandedCardId, setExpandedCardId] =
+    useState<string | null>(null);
 
   useEffect(() => {
-    setManualCards(readCardsStorage());
+    const savedCards = loadFinanceCards(
+      defaultManualCards,
+    );
+
+    setManualCards(savedCards);
+    saveFinanceCards(savedCards);
 
     const animationDelay = window.setTimeout(() => {
       setBarsReady(true);
@@ -97,13 +74,15 @@ export default function CardsPage() {
     return () => window.clearTimeout(animationDelay);
   }, []);
 
-  function toggleCard(index: number) {
-    const isOpening = expandedCardIndex !== index;
+  function toggleCard(cardId: string) {
+    const isOpening = expandedCardId !== cardId;
 
-    setExpandedCardIndex(isOpening ? index : null);
+    setExpandedCardId(isOpening ? cardId : null);
 
     if (isOpening) {
-      scrollExpandedSectionIntoView(`credit-card-${index}`);
+      scrollExpandedSectionIntoView(
+        `credit-card-${cardId}`,
+      );
     }
   }
 
@@ -236,17 +215,26 @@ export default function CardsPage() {
 
             {hasCards ? (
               <div className="grid gap-1">
-                {sortedManualCards.map((card, index) => (
-                  <CreditCardRow
-                    key={`card-${index}`}
-                    card={card}
-                    barsReady={barsReady}
-                    isExpanded={expandedCardIndex === index}
-                    cardId={`credit-card-${index}`}
-                    detailsId={`card-details-${index}`}
-                    onToggle={() => toggleCard(index)}
-                  />
-                ))}
+                {sortedManualCards.map((card) => {
+                  const cardId =
+                    card.id ?? card.name;
+
+                  return (
+                    <CreditCardRow
+                      key={cardId}
+                      card={card}
+                      barsReady={barsReady}
+                      isExpanded={
+                        expandedCardId === cardId
+                      }
+                      cardId={`credit-card-${cardId}`}
+                      detailsId={`card-details-${cardId}`}
+                      onToggle={() =>
+                        toggleCard(cardId)
+                      }
+                    />
+                  );
+                })}
               </div>
             ) : (
               <EmptyState
