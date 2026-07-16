@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import TopNav from "../components/TopNav";
 import { PageShell, Pill } from "../components/Layout";
@@ -950,6 +950,9 @@ export default function DashboardPage() {
   const payPeriodProgress = hasCurrentPayday
     ? getPayPeriodProgress(preferences, today)
     : null;
+  const heroPlanningWindow = hasCurrentPayday
+    ? `Through ${formatPayday(preferences.nextPayday)}`
+    : `Next ${payPeriodDays} days`;
 
   return (
     <PageShell>
@@ -967,8 +970,8 @@ export default function DashboardPage() {
         </p>
       </header>
 
-      <section className="liquid-glass-accent hero-glass-card dashboard-hero motion-card motion-card-delay-1 mb-2 rounded-[2rem]">
-        <div className="liquid-content dashboard-hero-content relative p-3 sm:p-3.5">
+      <section className="liquid-glass-accent hero-glass-card dashboard-hero dashboard-hero-focused motion-card motion-card-delay-1 mb-2 rounded-[2rem]">
+        <div className="liquid-content dashboard-hero-content relative p-3.5 sm:p-4">
           <div
             className="dashboard-hero-glow dashboard-hero-glow-accent"
             aria-hidden="true"
@@ -1003,54 +1006,44 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="relative mt-2.5">
-            <p className="dashboard-hero-balance break-words text-[3rem] font-bold leading-none tracking-[-0.045em] text-[#f5f0e8] sm:text-6xl">
-              {formatMoney(moneyLeftAfterBills)}
-            </p>
+          <div className="dashboard-hero-main relative mt-1.5">
+            <div className="min-w-0">
+              <p className="dashboard-hero-balance break-words font-bold leading-none tracking-[-0.05em] text-[#f5f0e8]">
+                {formatMoney(moneyLeftAfterBills)}
+              </p>
+
+              <div className="dashboard-hero-context mt-2">
+                <span>Planned bills</span>
+                <strong>{formatMoney(plannedBeforePaydayTotal)}</strong>
+                <span className="dashboard-hero-context-divider" aria-hidden="true">
+                  •
+                </span>
+                <span>{heroPlanningWindow}</span>
+              </div>
+            </div>
+
+            <HeroPaydayVisual
+              progress={payPeriodProgress}
+              payday={preferences.nextPayday}
+            />
           </div>
 
-          <div className="relative mt-2.5 overflow-hidden rounded-[1.3rem] border border-[#f5f0e8]/10 bg-[#11100d]/18 shadow-[inset_0_1px_0_rgba(245,240,232,0.045)]">
-            <HeroMetricRow
+          <div className="dashboard-hero-stats relative mt-3">
+            <HeroMetricCard
               label="Checking"
               value={formatMoney(checkingBalance)}
+              icon={<CheckingHeroIcon />}
             />
 
-            <HeroMetricRow
+            <HeroMetricCard
               label="Savings"
               value={formatMoney(savingsBalance)}
-              last
+              icon={<SavingsHeroIcon />}
             />
+
           </div>
         </div>
       </section>
-
-      {payPeriodProgress ? (
-        <section className="dashboard-pay-period-strip motion-card motion-card-delay-2 mb-2 rounded-[1.45rem] px-3 py-2.5">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#c7ad75]/75">
-              Pay Period Progress
-            </p>
-
-            <p className="text-xs font-semibold text-stone-400">
-              {payPeriodProgress.percentage}%
-            </p>
-          </div>
-
-          <div className="dashboard-pay-period-track mt-2">
-            <div
-              className="dashboard-pay-period-fill"
-              style={{
-                width: `${payPeriodProgress.percentage}%`,
-              }}
-            />
-          </div>
-
-          <div className="mt-1.5 flex items-center justify-between text-[11px] text-stone-500">
-            <span>{formatBillDate(payPeriodProgress.startDate)}</span>
-            <span>{formatBillDate(payPeriodProgress.endDate)}</span>
-          </div>
-        </section>
-      ) : null}
 
       <section className="grid gap-2">
         <section className="dashboard-surface dashboard-bills-surface motion-card motion-card-delay-2 rounded-[1.7rem] p-2.5">
@@ -1411,39 +1404,143 @@ function SectionTitle({ title }: { title: string }) {
   );
 }
 
-function HeroMetricRow({
+function HeroPaydayVisual({
+  progress,
+  payday,
+}: {
+  progress: {
+    percentage: number;
+    startDate: Date;
+    endDate: Date;
+  } | null;
+  payday: string;
+}) {
+  if (!progress) {
+    return (
+      <Link
+        href="/account/preferences"
+        className="dashboard-hero-payday-compact dashboard-hero-payday-compact-link pressable"
+        aria-label="Set your next payday"
+      >
+        <span className="dashboard-hero-payday-compact-label">
+          Pay period
+        </span>
+
+        <span className="dashboard-hero-payday-compact-action">
+          Set payday
+        </span>
+
+        <span
+          className="dashboard-hero-payday-compact-line"
+          aria-hidden="true"
+        >
+          <span />
+        </span>
+      </Link>
+    );
+  }
+
+  return (
+    <div
+      className="dashboard-hero-payday-compact"
+      aria-label={`${progress.percentage}% through the current pay period. Next payday ${formatPayday(
+        payday,
+      )}.`}
+    >
+      <div className="dashboard-hero-payday-compact-heading">
+        <span>Pay period</span>
+        <strong>{progress.percentage}%</strong>
+      </div>
+
+      <span
+        className="dashboard-hero-payday-compact-line"
+        aria-hidden="true"
+      >
+        <span
+          style={{
+            width: `${progress.percentage}%`,
+          }}
+        />
+      </span>
+
+      <p>Payday {formatPayday(payday)}</p>
+    </div>
+  );
+}
+
+function HeroMetricCard({
   label,
   value,
-  subtext,
-  last = false,
+  detail,
+  icon,
 }: {
   label: string;
   value: string;
-  subtext?: string;
-  last?: boolean;
+  detail?: string;
+  icon?: ReactNode;
 }) {
   return (
-    <div
-      className={`flex items-center justify-between gap-4 px-3.5 py-2.5 ${
-        last ? "" : "border-b border-[#f5f0e8]/8"
-      }`}
-    >
-      <p className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
-        {label}
-      </p>
-
-      <div className="shrink-0 text-right">
-        <p className="text-base font-bold tracking-tight text-[#f5f0e8]">
-          {value}
-        </p>
-
-        {subtext ? (
-          <p className="mt-0.5 text-xs text-stone-400">
-            {subtext}
-          </p>
+    <div className="dashboard-hero-stat">
+      <div className="dashboard-hero-stat-layout">
+        {icon ? (
+          <span className="dashboard-hero-stat-icon" aria-hidden="true">
+            {icon}
+          </span>
         ) : null}
+
+        <div className="min-w-0">
+          <p className="dashboard-hero-stat-label">{label}</p>
+
+          <p className="dashboard-hero-stat-value">{value}</p>
+
+          {detail ? (
+            <p className="dashboard-hero-stat-detail">{detail}</p>
+          ) : null}
+        </div>
       </div>
     </div>
+  );
+}
+
+function CheckingHeroIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none">
+      <rect
+        x="3.5"
+        y="6"
+        width="17"
+        height="12"
+        rx="2.4"
+        stroke="currentColor"
+        strokeWidth="1.7"
+      />
+      <path
+        d="M3.5 10h17M7 14.2h3.8"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function SavingsHeroIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none">
+      <path
+        d="M5 11.2c0-3.1 2.8-5.5 6.3-5.5h1.8c3.8 0 6.9 2.7 6.9 6.1v2.8c0 1.7-1.1 3.2-2.7 3.9V21h-3v-2h-4.5v2h-3v-2.4A5.1 5.1 0 0 1 5 14.6v-3.4Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10 8.5h4.2M20 11.5h1.2"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+      <circle cx="8.5" cy="11.5" r=".8" fill="currentColor" />
+    </svg>
   );
 }
 

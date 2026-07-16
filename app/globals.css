@@ -2612,3 +2612,973 @@ html[data-theme] svg [fill="var(--theme-accent)"] {
     padding-right: 0.12rem;
   }
 }
+
+/* v1.4 Dashboard: theme-safe focused hero */
+.dashboard-hero-focused {
+  background:
+    radial-gradient(
+      circle at 88% 4%,
+      color-mix(in srgb, var(--theme-accent) 24%, transparent),
+      transparent 35%
+    ),
+    radial-gradient(
+      circle at 8% 100%,
+      color-mix(in srgb, var(--theme-text) 8%, transparent),
+      transparent 40%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-text) 10%, transparent),
+      transparent 40%,
+      color-mix(in srgb, var(--theme-accent) 6%, transparent) 100%
+    ),
+    color-mix(
+      in srgb,
+      var(--theme-hero-surface) 84%,
+      var(--theme-card-soft) 16%
+    );
+  border-color: color-mix(
+    in srgb,
+    var(--theme-accent) 38%,
+    var(--theme-text) 11%
+  );
+  box-shadow:
+    0 32px 88px color-mix(in srgb, var(--theme-shadow) 92%, transparent),
+    0 9px 28px color-mix(in srgb, var(--theme-shadow) 44%, transparent),
+    0 0 48px color-mix(in srgb, var(--theme-accent) 8%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--theme-text) 19%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--theme-bg) 50%, transparent);
+}
+
+.dashboard-hero-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+}
+
+.dashboard-hero-balance {
+  font-size: clamp(2.55rem, 11.8vw, 3.75rem);
+}
+
+.dashboard-hero-context {
+  max-width: 22rem;
+  color: color-mix(in srgb, var(--theme-muted) 88%, transparent);
+  font-size: 0.76rem;
+  font-weight: 520;
+  line-height: 1.45;
+}
+
+.dashboard-hero-progress {
+  display: grid;
+  width: 5.75rem;
+  flex-shrink: 0;
+  justify-items: center;
+  gap: 0.38rem;
+}
+
+.dashboard-hero-progress-ring {
+  position: relative;
+  height: 5rem;
+  width: 5rem;
+}
+
+.dashboard-hero-progress-svg {
+  display: block;
+  height: 100%;
+  width: 100%;
+  overflow: visible;
+  transform: rotate(-90deg);
+  filter: drop-shadow(
+    0 8px 15px color-mix(in srgb, var(--theme-shadow) 28%, transparent)
+  );
+}
+
+.dashboard-hero-progress-track-ring,
+.dashboard-hero-progress-fill-ring {
+  fill: none;
+  stroke-width: 8;
+}
+
+.dashboard-hero-progress-track-ring {
+  stroke: color-mix(in srgb, var(--theme-text) 10%, transparent);
+}
+
+.dashboard-hero-progress-fill-ring {
+  stroke: var(--theme-accent);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 720ms var(--motion-apple);
+  filter: drop-shadow(
+    0 0 5px color-mix(in srgb, var(--theme-accent) 26%, transparent)
+  );
+}
+
+.dashboard-hero-progress-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  text-align: center;
+}
+
+.dashboard-hero-progress-center strong {
+  color: var(--theme-text);
+  font-size: 1rem;
+  font-weight: 760;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+.dashboard-hero-progress-center span {
+  margin-top: 0.24rem;
+  color: color-mix(in srgb, var(--theme-muted) 78%, transparent);
+  font-size: 0.53rem;
+  font-weight: 680;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.dashboard-hero-progress-payday {
+  color: color-mix(in srgb, var(--theme-muted) 84%, transparent);
+  font-size: 0.63rem;
+  font-weight: 620;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.dashboard-hero-payday-setup {
+  display: grid;
+  width: 5.75rem;
+  flex-shrink: 0;
+  justify-items: center;
+  gap: 0.48rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.dashboard-hero-payday-setup-icon {
+  display: grid;
+  height: 4.75rem;
+  width: 4.75rem;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 26%, transparent);
+  border-radius: 999px;
+  background:
+    radial-gradient(
+      circle at 35% 22%,
+      color-mix(in srgb, var(--theme-text) 13%, transparent),
+      transparent 38%
+    ),
+    color-mix(in srgb, var(--theme-accent) 8%, var(--theme-inset-surface));
+  color: color-mix(in srgb, var(--theme-accent) 88%, var(--theme-text));
+  box-shadow:
+    0 10px 24px color-mix(in srgb, var(--theme-shadow) 24%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--theme-text) 12%, transparent);
+}
+
+.dashboard-hero-payday-setup-icon svg {
+  height: 1.55rem;
+  width: 1.55rem;
+}
+
+.dashboard-hero-payday-setup:hover .dashboard-hero-payday-setup-icon {
+  border-color: color-mix(in srgb, var(--theme-accent) 42%, transparent);
+  background:
+    radial-gradient(
+      circle at 35% 22%,
+      color-mix(in srgb, var(--theme-text) 15%, transparent),
+      transparent 38%
+    ),
+    color-mix(in srgb, var(--theme-accent) 12%, var(--theme-inset-surface));
+}
+
+.dashboard-hero-payday-setup-label {
+  color: color-mix(in srgb, var(--theme-accent) 82%, var(--theme-text));
+  font-size: 0.65rem;
+  font-weight: 680;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.dashboard-hero-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--theme-text) 13%, transparent);
+  border-radius: 1.35rem;
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-text) 7%, transparent),
+      transparent 48%
+    ),
+    color-mix(in srgb, var(--theme-inset-surface) 88%, transparent);
+  box-shadow:
+    0 10px 28px color-mix(in srgb, var(--theme-shadow) 26%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--theme-text) 10%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--theme-bg) 32%, transparent);
+  backdrop-filter: blur(18px) saturate(125%);
+  -webkit-backdrop-filter: blur(18px) saturate(125%);
+}
+
+.dashboard-hero-stat {
+  min-width: 0;
+  padding: 0.72rem 0.8rem;
+}
+
+.dashboard-hero-stat + .dashboard-hero-stat::before {
+  display: none !important;
+}
+
+.dashboard-hero-stat:nth-child(2) {
+  border-left: 1px solid
+    color-mix(in srgb, var(--theme-text) 10%, transparent);
+}
+
+.dashboard-hero-stat:nth-child(3) {
+  grid-column: 1 / -1;
+  border-top: 1px solid
+    color-mix(in srgb, var(--theme-text) 10%, transparent);
+}
+
+.dashboard-hero-stat-label {
+  overflow: hidden;
+  color: color-mix(in srgb, var(--theme-accent) 76%, var(--theme-text));
+  font-size: 0.58rem;
+  font-weight: 720;
+  letter-spacing: 0.16em;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.dashboard-hero-stat-value {
+  margin-top: 0.38rem;
+  overflow: hidden;
+  color: var(--theme-text);
+  font-size: clamp(0.98rem, 4.1vw, 1.16rem);
+  font-weight: 740;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-hero-stat-detail {
+  margin-top: 0.28rem;
+  color: color-mix(in srgb, var(--theme-muted) 76%, transparent);
+  font-size: 0.62rem;
+  font-weight: 540;
+  line-height: 1.15;
+}
+
+@media (min-width: 640px) {
+  .dashboard-hero-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .dashboard-hero-stat:nth-child(3) {
+    grid-column: auto;
+    border-top: 0;
+    border-left: 1px solid
+      color-mix(in srgb, var(--theme-text) 10%, transparent);
+  }
+}
+
+@media (max-width: 370px) {
+  .dashboard-hero-main {
+    gap: 0.65rem;
+  }
+
+  .dashboard-hero-balance {
+    font-size: clamp(2.25rem, 11vw, 2.8rem);
+  }
+
+  .dashboard-hero-context {
+    font-size: 0.7rem;
+  }
+
+  .dashboard-hero-progress,
+  .dashboard-hero-payday-setup {
+    width: 4.95rem;
+  }
+
+  .dashboard-hero-progress-ring {
+    height: 4.35rem;
+    width: 4.35rem;
+  }
+
+  .dashboard-hero-payday-setup-icon {
+    height: 4.2rem;
+    width: 4.2rem;
+  }
+
+  .dashboard-hero-stat {
+    padding-inline: 0.66rem;
+  }
+
+  .dashboard-hero-stat-label {
+    font-size: 0.54rem;
+    letter-spacing: 0.13em;
+  }
+
+  .dashboard-hero-stat-value {
+    font-size: 0.96rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-hero-progress-fill-ring {
+    transition: none;
+  }
+}
+
+/* v1.4 Dashboard: hero composition polish */
+.dashboard-hero-focused {
+  background:
+    radial-gradient(
+      circle at 19% 28%,
+      color-mix(in srgb, var(--theme-text) 9%, transparent),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 88% 10%,
+      color-mix(in srgb, var(--theme-accent) 20%, transparent),
+      transparent 32%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-text) 8%, transparent),
+      transparent 42%,
+      color-mix(in srgb, var(--theme-accent) 5%, transparent)
+    ),
+    color-mix(
+      in srgb,
+      var(--theme-hero-surface) 88%,
+      var(--theme-card-soft) 12%
+    );
+}
+
+.dashboard-hero-main {
+  align-items: end;
+  gap: 0.85rem;
+}
+
+.dashboard-hero-balance {
+  text-wrap: balance;
+}
+
+.dashboard-hero-context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.32rem 0.48rem;
+  max-width: 100%;
+  font-size: 0.74rem;
+  line-height: 1.3;
+}
+
+.dashboard-hero-progress,
+.dashboard-hero-payday-setup {
+  width: 5.15rem;
+}
+
+.dashboard-hero-progress-ring {
+  height: 4.45rem;
+  width: 4.45rem;
+}
+
+.dashboard-hero-progress-track-ring,
+.dashboard-hero-progress-fill-ring {
+  stroke-width: 7;
+}
+
+.dashboard-hero-progress-center strong {
+  font-size: 0.95rem;
+}
+
+.dashboard-hero-progress-payday {
+  font-size: 0.6rem;
+}
+
+.dashboard-hero-payday-setup-icon {
+  height: 4.2rem;
+  width: 4.2rem;
+}
+
+.dashboard-hero-stats {
+  border-color: color-mix(
+    in srgb,
+    var(--theme-text) 10%,
+    transparent
+  );
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-text) 4%, transparent),
+      transparent 52%
+    ),
+    color-mix(
+      in srgb,
+      var(--theme-inset-surface) 72%,
+      var(--theme-hero-surface) 28%
+    );
+  box-shadow:
+    inset 0 1px 0
+      color-mix(in srgb, var(--theme-text) 8%, transparent),
+    0 7px 18px
+      color-mix(in srgb, var(--theme-shadow) 18%, transparent);
+}
+
+.dashboard-hero-stat {
+  padding: 0.66rem 0.72rem;
+}
+
+.dashboard-hero-stat-layout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.62rem;
+}
+
+.dashboard-hero-stat-icon {
+  display: grid;
+  height: 2rem;
+  width: 2rem;
+  place-items: center;
+  border: 1px solid
+    color-mix(in srgb, var(--theme-accent) 18%, transparent);
+  border-radius: 0.7rem;
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-text) 6%, transparent),
+      transparent 58%
+    ),
+    color-mix(in srgb, var(--theme-accent) 8%, transparent);
+  color: color-mix(
+    in srgb,
+    var(--theme-accent) 88%,
+    var(--theme-text)
+  );
+  box-shadow:
+    inset 0 1px 0
+      color-mix(in srgb, var(--theme-text) 8%, transparent);
+}
+
+.dashboard-hero-stat-icon svg {
+  height: 1.08rem;
+  width: 1.08rem;
+}
+
+.dashboard-hero-stat-label {
+  font-size: 0.55rem;
+  letter-spacing: 0.15em;
+}
+
+.dashboard-hero-stat-value {
+  margin-top: 0.28rem;
+  font-size: clamp(0.96rem, 4vw, 1.12rem);
+}
+
+.dashboard-bills-surface .dashboard-bill-list-primary {
+  margin-top: 0.35rem;
+}
+
+.dashboard-bill-list-primary .dashboard-bill-icon {
+  height: 2.15rem;
+  width: 2.15rem;
+  flex-basis: 2.15rem;
+}
+
+.dashboard-bill-list-primary .dashboard-bill-icon svg {
+  height: 1.55rem;
+  width: 1.55rem;
+}
+
+.dashboard-bill-list-primary .dashboard-bill-icon-spotify {
+  height: 2.04rem;
+  width: 2.04rem;
+  flex-basis: 2.04rem;
+}
+
+@media (max-width: 370px) {
+  .dashboard-hero-main {
+    gap: 0.55rem;
+  }
+
+  .dashboard-hero-progress,
+  .dashboard-hero-payday-setup {
+    width: 4.55rem;
+  }
+
+  .dashboard-hero-progress-ring {
+    height: 3.95rem;
+    width: 3.95rem;
+  }
+
+  .dashboard-hero-payday-setup-icon {
+    height: 3.8rem;
+    width: 3.8rem;
+  }
+
+  .dashboard-hero-stat {
+    padding-inline: 0.58rem;
+  }
+
+  .dashboard-hero-stat-layout {
+    gap: 0.5rem;
+  }
+
+  .dashboard-hero-stat-icon {
+    height: 1.8rem;
+    width: 1.8rem;
+  }
+
+  .dashboard-bill-list-primary .dashboard-bill-icon {
+    height: 2rem;
+    width: 2rem;
+    flex-basis: 2rem;
+  }
+}
+
+
+/* v1.4 Dashboard: two-metric hero correction */
+.dashboard-hero-context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.22rem 0.45rem;
+  color: color-mix(in srgb, var(--theme-muted) 88%, transparent);
+  font-size: 0.74rem;
+  font-weight: 540;
+  line-height: 1.3;
+}
+
+.dashboard-hero-context strong {
+  color: color-mix(in srgb, var(--theme-text) 88%, transparent);
+  font-size: inherit;
+  font-weight: 720;
+}
+
+.dashboard-hero-context-divider {
+  color: color-mix(in srgb, var(--theme-muted) 58%, transparent);
+}
+
+.dashboard-hero-stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dashboard-hero-stat:nth-child(2) {
+  border-left: 1px solid
+    color-mix(in srgb, var(--theme-text) 9%, transparent);
+}
+
+.dashboard-hero-stat:nth-child(3) {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .dashboard-hero-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-hero-stat:nth-child(3) {
+    display: none;
+  }
+}
+
+
+/* v1.4 Dashboard: quieter pay-period visual */
+.dashboard-hero-main {
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.dashboard-hero-payday-compact {
+  display: grid;
+  width: 5.4rem;
+  flex-shrink: 0;
+  gap: 0.34rem;
+  align-self: center;
+  color: inherit;
+  text-decoration: none;
+}
+
+.dashboard-hero-payday-compact-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.dashboard-hero-payday-compact-heading span,
+.dashboard-hero-payday-compact-label {
+  color: color-mix(
+    in srgb,
+    var(--theme-muted) 76%,
+    transparent
+  );
+  font-size: 0.5rem;
+  font-weight: 720;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.dashboard-hero-payday-compact-heading strong {
+  color: var(--theme-text);
+  font-size: 0.92rem;
+  font-weight: 760;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+.dashboard-hero-payday-compact-line {
+  display: block;
+  height: 0.28rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(
+    in srgb,
+    var(--theme-text) 9%,
+    transparent
+  );
+  box-shadow: inset 0 1px 2px
+    color-mix(in srgb, var(--theme-shadow) 20%, transparent);
+}
+
+.dashboard-hero-payday-compact-line > span {
+  display: block;
+  height: 100%;
+  min-width: 0.24rem;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--theme-accent) 70%, var(--theme-text) 4%),
+    var(--theme-accent)
+  );
+  box-shadow: 0 0 8px
+    color-mix(in srgb, var(--theme-accent) 16%, transparent);
+  transition: width 720ms var(--motion-apple);
+}
+
+.dashboard-hero-payday-compact p {
+  margin: 0;
+  color: color-mix(
+    in srgb,
+    var(--theme-muted) 80%,
+    transparent
+  );
+  font-size: 0.58rem;
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.dashboard-hero-payday-compact-link {
+  justify-items: stretch;
+}
+
+.dashboard-hero-payday-compact-action {
+  color: color-mix(
+    in srgb,
+    var(--theme-accent) 84%,
+    var(--theme-text)
+  );
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: right;
+}
+
+.dashboard-hero-payday-compact-link
+  .dashboard-hero-payday-compact-line
+  > span {
+  width: 28%;
+  opacity: 0.7;
+}
+
+@media (max-width: 370px) {
+  .dashboard-hero-main {
+    gap: 0.5rem;
+  }
+
+  .dashboard-hero-payday-compact {
+    width: 4.75rem;
+  }
+
+  .dashboard-hero-payday-compact-heading strong {
+    font-size: 0.84rem;
+  }
+
+  .dashboard-hero-payday-compact p {
+    font-size: 0.54rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-hero-payday-compact-line > span {
+    transition: none;
+  }
+}
+
+
+/* v1.4 Dashboard: dark-theme hero correction
+   Light themes intentionally remain unchanged. */
+:root:not([data-theme="classic-light"]):not([data-theme="mocha-light"]):not(
+    [data-theme="forest-light"]
+  ):not([data-theme="slate-light"]):not([data-theme="rose-gold-light"])
+  .dashboard-hero-focused {
+  background:
+    radial-gradient(
+      circle at 18% 26%,
+      color-mix(in srgb, var(--theme-text) 8%, transparent),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 90% 8%,
+      color-mix(in srgb, var(--theme-accent) 22%, transparent),
+      transparent 34%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-text) 8%, transparent),
+      transparent 38%,
+      color-mix(in srgb, var(--theme-accent) 7%, transparent)
+    ),
+    color-mix(
+      in srgb,
+      var(--theme-card-soft) 46%,
+      var(--theme-panel) 54%
+    );
+  border-color: color-mix(
+    in srgb,
+    var(--theme-accent) 40%,
+    var(--theme-text) 12%
+  );
+  box-shadow:
+    0 30px 82px color-mix(in srgb, var(--theme-shadow) 88%, transparent),
+    0 8px 25px color-mix(in srgb, var(--theme-shadow) 44%, transparent),
+    0 0 42px color-mix(in srgb, var(--theme-accent) 8%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--theme-text) 18%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--theme-bg) 34%, transparent);
+}
+
+:root:not([data-theme="classic-light"]):not([data-theme="mocha-light"]):not(
+    [data-theme="forest-light"]
+  ):not([data-theme="slate-light"]):not([data-theme="rose-gold-light"])
+  .dashboard-hero-focused::before {
+  background:
+    linear-gradient(
+      118deg,
+      color-mix(in srgb, var(--theme-text) 12%, transparent),
+      transparent 25%,
+      transparent 70%,
+      color-mix(in srgb, var(--theme-accent) 8%, transparent)
+    );
+  opacity: 0.58;
+}
+
+:root:not([data-theme="classic-light"]):not([data-theme="mocha-light"]):not(
+    [data-theme="forest-light"]
+  ):not([data-theme="slate-light"]):not([data-theme="rose-gold-light"])
+  .dashboard-hero-glow-accent {
+  background: color-mix(
+    in srgb,
+    var(--theme-accent) 19%,
+    transparent
+  );
+  opacity: 0.78;
+}
+
+:root:not([data-theme="classic-light"]):not([data-theme="mocha-light"]):not(
+    [data-theme="forest-light"]
+  ):not([data-theme="slate-light"]):not([data-theme="rose-gold-light"])
+  .dashboard-hero-balance {
+  text-shadow:
+    0 1px 0 color-mix(in srgb, var(--theme-text) 7%, transparent),
+    0 12px 28px color-mix(in srgb, var(--theme-shadow) 24%, transparent);
+}
+
+:root:not([data-theme="classic-light"]):not([data-theme="mocha-light"]):not(
+    [data-theme="forest-light"]
+  ):not([data-theme="slate-light"]):not([data-theme="rose-gold-light"])
+  .dashboard-hero-context {
+  color: color-mix(
+    in srgb,
+    var(--theme-muted) 92%,
+    var(--theme-text) 8%
+  );
+}
+
+:root:not([data-theme="classic-light"]):not([data-theme="mocha-light"]):not(
+    [data-theme="forest-light"]
+  ):not([data-theme="slate-light"]):not([data-theme="rose-gold-light"])
+  .dashboard-hero-context strong {
+  color: color-mix(
+    in srgb,
+    var(--theme-text) 94%,
+    transparent
+  );
+}
+
+:root:not([data-theme="classic-light"]):not([data-theme="mocha-light"]):not(
+    [data-theme="forest-light"]
+  ):not([data-theme="slate-light"]):not([data-theme="rose-gold-light"])
+  .dashboard-hero-stats {
+  border-color: color-mix(
+    in srgb,
+    var(--theme-text) 13%,
+    var(--theme-accent) 4%
+  );
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-text) 6%, transparent),
+      transparent 50%
+    ),
+    color-mix(
+      in srgb,
+      var(--theme-card) 62%,
+      var(--theme-card-soft) 38%
+    );
+  box-shadow:
+    0 8px 22px color-mix(in srgb, var(--theme-shadow) 24%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--theme-text) 10%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--theme-bg) 24%, transparent);
+}
+
+:root:not([data-theme="classic-light"]):not([data-theme="mocha-light"]):not(
+    [data-theme="forest-light"]
+  ):not([data-theme="slate-light"]):not([data-theme="rose-gold-light"])
+  .dashboard-hero-stat:nth-child(2) {
+  border-left-color: color-mix(
+    in srgb,
+    var(--theme-text) 11%,
+    transparent
+  );
+}
+
+:root:not([data-theme="classic-light"]):not([data-theme="mocha-light"]):not(
+    [data-theme="forest-light"]
+  ):not([data-theme="slate-light"]):not([data-theme="rose-gold-light"])
+  .dashboard-hero-stat-icon {
+  border-color: color-mix(
+    in srgb,
+    var(--theme-accent) 24%,
+    var(--theme-text) 5%
+  );
+  background:
+    radial-gradient(
+      circle at 32% 20%,
+      color-mix(in srgb, var(--theme-text) 10%, transparent),
+      transparent 42%
+    ),
+    color-mix(
+      in srgb,
+      var(--theme-accent) 10%,
+      var(--theme-card-soft)
+    );
+  color: color-mix(
+    in srgb,
+    var(--theme-accent) 92%,
+    var(--theme-text)
+  );
+  box-shadow:
+    0 5px 14px color-mix(in srgb, var(--theme-shadow) 18%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--theme-text) 10%, transparent);
+}
+
+:root:not([data-theme="classic-light"]):not([data-theme="mocha-light"]):not(
+    [data-theme="forest-light"]
+  ):not([data-theme="slate-light"]):not([data-theme="rose-gold-light"])
+  .dashboard-hero-payday-compact {
+  width: 5.7rem;
+  gap: 0.4rem;
+  border: 1px solid color-mix(
+    in srgb,
+    var(--theme-text) 11%,
+    var(--theme-accent) 5%
+  );
+  border-radius: 0.9rem;
+  padding: 0.52rem 0.56rem;
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-text) 6%, transparent),
+      transparent 54%
+    ),
+    color-mix(
+      in srgb,
+      var(--theme-card) 68%,
+      var(--theme-card-soft) 32%
+    );
+  box-shadow:
+    0 7px 18px color-mix(in srgb, var(--theme-shadow) 22%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--theme-text) 9%, transparent);
+}
+
+:root:not([data-theme="classic-light"]):not([data-theme="mocha-light"]):not(
+    [data-theme="forest-light"]
+  ):not([data-theme="slate-light"]):not([data-theme="rose-gold-light"])
+  .dashboard-hero-payday-compact-heading span,
+:root:not([data-theme="classic-light"]):not([data-theme="mocha-light"]):not(
+    [data-theme="forest-light"]
+  ):not([data-theme="slate-light"]):not([data-theme="rose-gold-light"])
+  .dashboard-hero-payday-compact-label {
+  color: color-mix(
+    in srgb,
+    var(--theme-muted) 90%,
+    var(--theme-text) 10%
+  );
+}
+
+:root:not([data-theme="classic-light"]):not([data-theme="mocha-light"]):not(
+    [data-theme="forest-light"]
+  ):not([data-theme="slate-light"]):not([data-theme="rose-gold-light"])
+  .dashboard-hero-payday-compact-line {
+  height: 0.32rem;
+  background: color-mix(
+    in srgb,
+    var(--theme-text) 12%,
+    transparent
+  );
+}
+
+:root:not([data-theme="classic-light"]):not([data-theme="mocha-light"]):not(
+    [data-theme="forest-light"]
+  ):not([data-theme="slate-light"]):not([data-theme="rose-gold-light"])
+  .dashboard-hero-payday-compact-line > span {
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--theme-accent) 24%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--theme-text) 16%, transparent);
+}
+
+:root:not([data-theme="classic-light"]):not([data-theme="mocha-light"]):not(
+    [data-theme="forest-light"]
+  ):not([data-theme="slate-light"]):not([data-theme="rose-gold-light"])
+  .dashboard-hero-payday-compact p {
+  color: color-mix(
+    in srgb,
+    var(--theme-muted) 88%,
+    var(--theme-text) 12%
+  );
+  text-align: left;
+}
+
+@media (max-width: 370px) {
+  :root:not([data-theme="classic-light"]):not([data-theme="mocha-light"]):not(
+      [data-theme="forest-light"]
+    ):not([data-theme="slate-light"]):not([data-theme="rose-gold-light"])
+    .dashboard-hero-payday-compact {
+    width: 5rem;
+    padding-inline: 0.48rem;
+  }
+}
