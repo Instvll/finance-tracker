@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import TopNav from "../../components/TopNav";
 import { PageShell, Pill } from "../../components/Layout";
@@ -39,6 +45,12 @@ type NewlyAddedItem = {
   type: "bill" | "card";
   index: number;
 };
+
+type PersistEditorChangesOptions = {
+  updateUi?: boolean;
+};
+
+const editorAutosaveDelay = 900;
 
 type ManualFinanceData = {
   checkingBalance: string;
@@ -85,14 +97,10 @@ function reconcileBillOccurrenceStorage(
   removedBills: ManualBill[],
   nextBills: ManualBill[],
 ) {
-  const storedOccurrenceState =
-    loadBillOccurrenceStorageState();
-  const savedActiveOccurrences =
-    storedOccurrenceState.activeOccurrenceDates;
-  const savedPaidOccurrences =
-    storedOccurrenceState.paidOccurrences;
-  const savedRecentPaidActions =
-    storedOccurrenceState.paidActions;
+  const storedOccurrenceState = loadBillOccurrenceStorageState();
+  const savedActiveOccurrences = storedOccurrenceState.activeOccurrenceDates;
+  const savedPaidOccurrences = storedOccurrenceState.paidOccurrences;
+  const savedRecentPaidActions = storedOccurrenceState.paidActions;
 
   const migratedState = migrateBillOccurrenceState(
     nextBills,
@@ -106,9 +114,7 @@ function reconcileBillOccurrenceStorage(
   const nextPaidOccurrences = {
     ...migratedState.paidOccurrences,
   };
-  let nextRecentPaidActions = [
-    ...migratedState.paidActions,
-  ];
+  let nextRecentPaidActions = [...migratedState.paidActions];
 
   nextBills.forEach((nextBill, index) => {
     const originalBill = originalBills[index];
@@ -125,17 +131,16 @@ function reconcileBillOccurrenceStorage(
       delete nextActiveOccurrences[nextBill.id];
     }
 
-    nextRecentPaidActions =
-      nextRecentPaidActions.map((action) =>
-        action.billId === nextBill.id
-          ? {
-              ...action,
-              billIdentity: nextBill.id as string,
-              billId: nextBill.id,
-              billName: nextBill.name || "Bill",
-            }
-          : action,
-      );
+    nextRecentPaidActions = nextRecentPaidActions.map((action) =>
+      action.billId === nextBill.id
+        ? {
+            ...action,
+            billIdentity: nextBill.id as string,
+            billId: nextBill.id,
+            billName: nextBill.name || "Bill",
+          }
+        : action,
+    );
   });
 
   const removedBillIds = new Set(
@@ -147,48 +152,30 @@ function reconcileBillOccurrenceStorage(
   for (const removedBillId of removedBillIds) {
     delete nextActiveOccurrences[removedBillId];
 
-    for (const occurrenceKey of Object.keys(
-      nextPaidOccurrences,
-    )) {
-      if (
-        occurrenceKey.startsWith(
-          `${removedBillId}|`,
-        )
-      ) {
+    for (const occurrenceKey of Object.keys(nextPaidOccurrences)) {
+      if (occurrenceKey.startsWith(`${removedBillId}|`)) {
         delete nextPaidOccurrences[occurrenceKey];
       }
     }
   }
 
-  nextRecentPaidActions =
-    nextRecentPaidActions.filter(
-      (action) =>
-        !(
-          action.billId &&
-          removedBillIds.has(action.billId)
-        ),
-    );
-
-  const validBillIds = new Set(
-    nextBills
-      .map((bill) => bill.id)
-      .filter((id): id is string => Boolean(id)),
+  nextRecentPaidActions = nextRecentPaidActions.filter(
+    (action) => !(action.billId && removedBillIds.has(action.billId)),
   );
 
-  for (const identity of Object.keys(
-    nextActiveOccurrences,
-  )) {
+  const validBillIds = new Set(
+    nextBills.map((bill) => bill.id).filter((id): id is string => Boolean(id)),
+  );
+
+  for (const identity of Object.keys(nextActiveOccurrences)) {
     if (!validBillIds.has(identity)) {
       delete nextActiveOccurrences[identity];
     }
   }
 
-  for (const occurrenceKey of Object.keys(
-    nextPaidOccurrences,
-  )) {
-    const belongsToCurrentBill = [...validBillIds].some(
-      (billId) =>
-        occurrenceKey.startsWith(`${billId}|`),
+  for (const occurrenceKey of Object.keys(nextPaidOccurrences)) {
+    const belongsToCurrentBill = [...validBillIds].some((billId) =>
+      occurrenceKey.startsWith(`${billId}|`),
     );
 
     if (!belongsToCurrentBill) {
@@ -201,8 +188,7 @@ function reconcileBillOccurrenceStorage(
   nextRecentPaidActions = nextRecentPaidActions
     .filter((action) => {
       const hasValidBill =
-        Boolean(action.billId) &&
-        validBillIds.has(action.billId as string);
+        Boolean(action.billId) && validBillIds.has(action.billId as string);
 
       if (
         !hasValidBill ||
@@ -255,21 +241,18 @@ function formatMoney(value: string) {
 
 function clearZeroOnFocus(
   value: string,
-  updateValue: (nextValue: string) => void
+  updateValue: (nextValue: string) => void,
 ) {
   if (value === "0") {
     updateValue("");
   }
 }
 
-function scrollEditorItemIntoView(
-  type: "bill" | "card",
-  index: number
-) {
+function scrollEditorItemIntoView(type: "bill" | "card", index: number) {
   window.requestAnimationFrame(() => {
     window.requestAnimationFrame(() => {
       const item = document.querySelector<HTMLElement>(
-        `[data-editor-item="${type}-${index}"]`
+        `[data-editor-item="${type}-${index}"]`,
       );
 
       if (!item) {
@@ -288,7 +271,7 @@ function scrollEditorItemIntoView(
       }
 
       const prefersReducedMotion = window.matchMedia(
-        "(prefers-reduced-motion: reduce)"
+        "(prefers-reduced-motion: reduce)",
       ).matches;
 
       item.scrollIntoView({
@@ -309,23 +292,34 @@ export default function ManualPage() {
     useState<ManualCreditCard[]>(defaultManualCards);
   const [lastSaved, setLastSaved] = useState("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [showSavedConfirmation, setShowSavedConfirmation] = useState(false);
   const [editingBills, setEditingBills] = useState<number[]>([]);
   const [editingCards, setEditingCards] = useState<number[]>([]);
-  const [newlyAddedItem, setNewlyAddedItem] =
-    useState<NewlyAddedItem | null>(null);
+  const [newlyAddedItem, setNewlyAddedItem] = useState<NewlyAddedItem | null>(
+    null,
+  );
 
   const savedConfirmationTimeout = useRef<ReturnType<typeof setTimeout> | null>(
-    null
+    null,
   );
+  const autosaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savingIndicatorTimeout = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const hasLoadedStoredStateRef = useRef(false);
+  const hasUnsavedChangesRef = useRef(false);
+  const isPersistingChangesRef = useRef(false);
+  const manualDataRef = useRef<ManualFinanceData>(defaultManualData);
+  const manualBillsRef = useRef<ManualBill[]>(defaultManualBills);
+  const manualCardsRef = useRef<ManualCreditCard[]>(defaultManualCards);
   const newItemFocusTimeout = useRef<ReturnType<typeof setTimeout> | null>(
-    null
+    null,
   );
   const newItemHighlightTimeout = useRef<ReturnType<typeof setTimeout> | null>(
-    null
+    null,
   );
-  const originalBillsRef =
-    useRef<Array<ManualBill | null>>([]);
+  const originalBillsRef = useRef<Array<ManualBill | null>>([]);
   const originalCardsRef = useRef<ManualCreditCard[]>([]);
   const removedBillsRef = useRef<ManualBill[]>([]);
 
@@ -347,29 +341,27 @@ export default function ManualPage() {
     setManualBills(savedBills);
     setManualCards(savedCards);
 
+    manualDataRef.current = storedState.summary;
+    manualBillsRef.current = savedBills;
+    manualCardsRef.current = savedCards;
+
     saveFinanceCards(savedCards);
     saveFinanceBills(savedBills);
 
-    const migratedOccurrenceState =
-      migrateBillOccurrenceState(
-        savedBills,
-        storedState.activeOccurrenceDates,
-        storedState.paidOccurrences,
-        storedState.paidActions,
-      );
+    const migratedOccurrenceState = migrateBillOccurrenceState(
+      savedBills,
+      storedState.activeOccurrenceDates,
+      storedState.paidOccurrences,
+      storedState.paidActions,
+    );
 
     saveBillOccurrenceStorageState({
-      activeOccurrenceDates:
-        migratedOccurrenceState.activeOccurrenceDates,
-      paidOccurrences:
-        migratedOccurrenceState.paidOccurrences,
-      paidActions:
-        migratedOccurrenceState.paidActions,
+      activeOccurrenceDates: migratedOccurrenceState.activeOccurrenceDates,
+      paidOccurrences: migratedOccurrenceState.paidOccurrences,
+      paidActions: migratedOccurrenceState.paidActions,
     });
 
-    originalBillsRef.current = savedBills.map((bill) =>
-      cloneBill(bill),
-    );
+    originalBillsRef.current = savedBills.map((bill) => cloneBill(bill));
     originalCardsRef.current = savedCards.map((card) => ({
       ...card,
     }));
@@ -384,22 +376,8 @@ export default function ManualPage() {
     if (tab === "bills" || tab === "cards" || tab === "overview") {
       setActiveTab(tab);
     }
-  }, []);
 
-  useEffect(() => {
-    return () => {
-      if (savedConfirmationTimeout.current) {
-        clearTimeout(savedConfirmationTimeout.current);
-      }
-
-      if (newItemFocusTimeout.current) {
-        clearTimeout(newItemFocusTimeout.current);
-      }
-
-      if (newItemHighlightTimeout.current) {
-        clearTimeout(newItemHighlightTimeout.current);
-      }
-    };
+    hasLoadedStoredStateRef.current = true;
   }, []);
 
   useEffect(() => {
@@ -418,7 +396,7 @@ export default function ManualPage() {
     const firstAnimationFrame = window.requestAnimationFrame(() => {
       secondAnimationFrame = window.requestAnimationFrame(() => {
         const item = document.querySelector<HTMLElement>(
-          `[data-editor-item="${newlyAddedItem.type}-${newlyAddedItem.index}"]`
+          `[data-editor-item="${newlyAddedItem.type}-${newlyAddedItem.index}"]`,
         );
 
         if (!item) {
@@ -426,7 +404,7 @@ export default function ManualPage() {
         }
 
         const prefersReducedMotion = window.matchMedia(
-          "(prefers-reduced-motion: reduce)"
+          "(prefers-reduced-motion: reduce)",
         ).matches;
 
         item.scrollIntoView({
@@ -446,7 +424,7 @@ export default function ManualPage() {
 
             firstField?.focus({ preventScroll: true });
           },
-          prefersReducedMotion ? 0 : 450
+          prefersReducedMotion ? 0 : 450,
         );
 
         if (newItemHighlightTimeout.current) {
@@ -466,14 +444,191 @@ export default function ManualPage() {
         window.cancelAnimationFrame(secondAnimationFrame);
       }
     };
-  }, [
-    activeTab,
-    manualBills.length,
-    manualCards.length,
-    newlyAddedItem,
-  ]);
+  }, [activeTab, manualBills.length, manualCards.length, newlyAddedItem]);
+
+  const persistChanges = useCallback(
+    (options: PersistEditorChangesOptions = {}) => {
+      const updateUi = options.updateUi ?? true;
+
+      if (
+        !hasLoadedStoredStateRef.current ||
+        !hasUnsavedChangesRef.current ||
+        isPersistingChangesRef.current
+      ) {
+        return false;
+      }
+
+      if (autosaveTimeout.current) {
+        clearTimeout(autosaveTimeout.current);
+        autosaveTimeout.current = null;
+      }
+
+      isPersistingChangesRef.current = true;
+
+      if (updateUi) {
+        setIsAutoSaving(true);
+      }
+
+      try {
+        const savedTime = new Date().toISOString();
+        const normalizedCards = normalizeManualCards(manualCardsRef.current);
+        const revisedCards = applyManualCardBalanceRevisions(
+          normalizedCards,
+          originalCardsRef.current,
+        );
+        const normalizedBills = normalizeManualBills(
+          manualBillsRef.current,
+          revisedCards,
+          true,
+        );
+
+        reconcileBillOccurrenceStorage(
+          originalBillsRef.current,
+          removedBillsRef.current,
+          normalizedBills,
+        );
+
+        saveFinanceSummary(manualDataRef.current);
+        saveFinanceBills(normalizedBills);
+        saveFinanceCards(revisedCards);
+        saveLastSavedTime(savedTime);
+
+        manualBillsRef.current = normalizedBills;
+        manualCardsRef.current = revisedCards;
+        originalBillsRef.current = normalizedBills.map((bill) =>
+          cloneBill(bill),
+        );
+        originalCardsRef.current = revisedCards.map((card) => ({
+          ...card,
+        }));
+        removedBillsRef.current = [];
+        hasUnsavedChangesRef.current = false;
+
+        if (updateUi) {
+          setManualBills(normalizedBills);
+          setManualCards(revisedCards);
+          setLastSaved(savedTime);
+          setHasUnsavedChanges(false);
+
+          if (savingIndicatorTimeout.current) {
+            clearTimeout(savingIndicatorTimeout.current);
+          }
+
+          savingIndicatorTimeout.current = setTimeout(() => {
+            setIsAutoSaving(false);
+            setShowSavedConfirmation(true);
+
+            if (savedConfirmationTimeout.current) {
+              clearTimeout(savedConfirmationTimeout.current);
+            }
+
+            savedConfirmationTimeout.current = setTimeout(() => {
+              setShowSavedConfirmation(false);
+            }, 1800);
+          }, 180);
+        }
+
+        return true;
+      } finally {
+        isPersistingChangesRef.current = false;
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    manualDataRef.current = manualData;
+  }, [manualData]);
+
+  useEffect(() => {
+    manualBillsRef.current = manualBills;
+  }, [manualBills]);
+
+  useEffect(() => {
+    manualCardsRef.current = manualCards;
+  }, [manualCards]);
+
+  useEffect(() => {
+    if (!hasLoadedStoredStateRef.current || !hasUnsavedChanges) {
+      return;
+    }
+
+    if (autosaveTimeout.current) {
+      clearTimeout(autosaveTimeout.current);
+    }
+
+    autosaveTimeout.current = setTimeout(() => {
+      autosaveTimeout.current = null;
+      persistChanges();
+    }, editorAutosaveDelay);
+
+    return () => {
+      if (autosaveTimeout.current) {
+        clearTimeout(autosaveTimeout.current);
+        autosaveTimeout.current = null;
+      }
+    };
+  }, [hasUnsavedChanges, manualData, manualBills, manualCards, persistChanges]);
+
+  useEffect(() => {
+    const savePendingChanges = () => {
+      persistChanges();
+    };
+
+    const savePendingChangesBeforeExit = () => {
+      persistChanges({ updateUi: false });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        savePendingChanges();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", savePendingChangesBeforeExit);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", savePendingChangesBeforeExit);
+
+      savePendingChangesBeforeExit();
+
+      if (autosaveTimeout.current) {
+        clearTimeout(autosaveTimeout.current);
+      }
+
+      if (savingIndicatorTimeout.current) {
+        clearTimeout(savingIndicatorTimeout.current);
+      }
+
+      if (savedConfirmationTimeout.current) {
+        clearTimeout(savedConfirmationTimeout.current);
+      }
+
+      if (newItemFocusTimeout.current) {
+        clearTimeout(newItemFocusTimeout.current);
+      }
+
+      if (newItemHighlightTimeout.current) {
+        clearTimeout(newItemHighlightTimeout.current);
+      }
+    };
+  }, [persistChanges]);
 
   function markUnsaved() {
+    if (savingIndicatorTimeout.current) {
+      clearTimeout(savingIndicatorTimeout.current);
+      savingIndicatorTimeout.current = null;
+    }
+
+    if (savedConfirmationTimeout.current) {
+      clearTimeout(savedConfirmationTimeout.current);
+      savedConfirmationTimeout.current = null;
+    }
+
+    hasUnsavedChangesRef.current = true;
+    setIsAutoSaving(false);
     setShowSavedConfirmation(false);
     setHasUnsavedChanges(true);
   }
@@ -486,11 +641,13 @@ export default function ManualPage() {
   }
 
   function updateManualData(field: keyof ManualFinanceData, value: string) {
-    setManualData((current) => ({
-      ...current,
+    const nextData = {
+      ...manualDataRef.current,
       [field]: value,
-    }));
+    };
 
+    manualDataRef.current = nextData;
+    setManualData(nextData);
     markUnsaved();
   }
 
@@ -499,17 +656,17 @@ export default function ManualPage() {
     field: EditableManualBillField,
     value: string,
   ) {
-    setManualBills((currentBills) =>
-      currentBills.map((bill, billIndex) =>
-        billIndex === index
-          ? {
-              ...bill,
-              [field]: value,
-            }
-          : bill,
-      ),
+    const nextBills = manualBillsRef.current.map((bill, billIndex) =>
+      billIndex === index
+        ? {
+            ...bill,
+            [field]: value,
+          }
+        : bill,
     );
 
+    manualBillsRef.current = nextBills;
+    setManualBills(nextBills);
     markUnsaved();
   }
 
@@ -517,58 +674,57 @@ export default function ManualPage() {
     index: number,
     paymentSource: PaymentSource,
   ) {
-    setManualBills((currentBills) =>
-      currentBills.map((bill, billIndex) =>
-        billIndex === index
-          ? {
-              ...bill,
-              paymentMethod: getPaymentMethodLabel(
-                paymentSource,
-                manualCards,
-              ),
+    const nextBills = manualBillsRef.current.map((bill, billIndex) =>
+      billIndex === index
+        ? {
+            ...bill,
+            paymentMethod: getPaymentMethodLabel(
               paymentSource,
-            }
-          : bill,
-      ),
+              manualCardsRef.current,
+            ),
+            paymentSource,
+          }
+        : bill,
     );
 
+    manualBillsRef.current = nextBills;
+    setManualBills(nextBills);
     markUnsaved();
   }
 
   function updateCard(
     index: number,
     field: keyof ManualCreditCard,
-    value: string
+    value: string,
   ) {
-    setManualCards((currentCards) =>
-      currentCards.map((card, cardIndex) =>
-        cardIndex === index ? { ...card, [field]: value } : card
-      )
+    const nextCards = manualCardsRef.current.map((card, cardIndex) =>
+      cardIndex === index ? { ...card, [field]: value } : card,
     );
 
+    manualCardsRef.current = nextCards;
+    setManualCards(nextCards);
     markUnsaved();
   }
 
   function addBill() {
-    const nextIndex = manualBills.length;
-
-    setManualBills((currentBills) => [
-      ...currentBills,
+    const nextIndex = manualBillsRef.current.length;
+    const nextBills = [
+      ...manualBillsRef.current,
       {
         id: createPersistentId("bill"),
         name: "",
         amount: "",
         dueDate: "",
-        status: "Paid",
+        status: "Paid" as const,
         paymentMethod: "Checking",
-        paymentSource: { type: "checking" },
+        paymentSource: { type: "checking" as const },
       },
-    ]);
-
-    originalBillsRef.current = [
-      ...originalBillsRef.current,
-      null,
     ];
+
+    manualBillsRef.current = nextBills;
+    setManualBills(nextBills);
+
+    originalBillsRef.current = [...originalBillsRef.current, null];
 
     setEditingBills((current) => [...current, nextIndex]);
     setNewlyAddedItem({ type: "bill", index: nextIndex });
@@ -586,19 +742,21 @@ export default function ManualPage() {
       ];
     }
 
-    originalBillsRef.current =
-      originalBillsRef.current.filter(
-        (_, billIndex) => billIndex !== index,
-      );
-
-    setManualBills((currentBills) =>
-      currentBills.filter((_, billIndex) => billIndex !== index)
+    originalBillsRef.current = originalBillsRef.current.filter(
+      (_, billIndex) => billIndex !== index,
     );
+
+    const nextBills = manualBillsRef.current.filter(
+      (_, billIndex) => billIndex !== index,
+    );
+
+    manualBillsRef.current = nextBills;
+    setManualBills(nextBills);
 
     setEditingBills((current) =>
       current
         .filter((billIndex) => billIndex !== index)
-        .map((billIndex) => (billIndex > index ? billIndex - 1 : billIndex))
+        .map((billIndex) => (billIndex > index ? billIndex - 1 : billIndex)),
     );
 
     setNewlyAddedItem((current) => {
@@ -624,7 +782,7 @@ export default function ManualPage() {
     setEditingBills((current) =>
       current.includes(index)
         ? current.filter((billIndex) => billIndex !== index)
-        : [...current, index]
+        : [...current, index],
     );
 
     if (isOpening) {
@@ -633,10 +791,9 @@ export default function ManualPage() {
   }
 
   function addCard() {
-    const nextIndex = manualCards.length;
-
-    setManualCards((currentCards) => [
-      ...currentCards,
+    const nextIndex = manualCardsRef.current.length;
+    const nextCards = [
+      ...manualCardsRef.current,
       {
         id: createPersistentId("card"),
         name: "",
@@ -645,9 +802,12 @@ export default function ManualPage() {
         limit: "",
         minimumPayment: "0",
         dueDate: "TBD",
-        status: "Good",
+        status: "Good" as const,
       },
-    ]);
+    ];
+
+    manualCardsRef.current = nextCards;
+    setManualCards(nextCards);
 
     setEditingCards((current) => [...current, nextIndex]);
     setNewlyAddedItem({ type: "card", index: nextIndex });
@@ -656,14 +816,17 @@ export default function ManualPage() {
   }
 
   function removeCard(index: number) {
-    setManualCards((currentCards) =>
-      currentCards.filter((_, cardIndex) => cardIndex !== index)
+    const nextCards = manualCardsRef.current.filter(
+      (_, cardIndex) => cardIndex !== index,
     );
+
+    manualCardsRef.current = nextCards;
+    setManualCards(nextCards);
 
     setEditingCards((current) =>
       current
         .filter((cardIndex) => cardIndex !== index)
-        .map((cardIndex) => (cardIndex > index ? cardIndex - 1 : cardIndex))
+        .map((cardIndex) => (cardIndex > index ? cardIndex - 1 : cardIndex)),
     );
 
     setNewlyAddedItem((current) => {
@@ -689,7 +852,7 @@ export default function ManualPage() {
     setEditingCards((current) =>
       current.includes(index)
         ? current.filter((cardIndex) => cardIndex !== index)
-        : [...current, index]
+        : [...current, index],
     );
 
     if (isOpening) {
@@ -697,89 +860,31 @@ export default function ManualPage() {
     }
   }
 
-  function saveChanges() {
-    const savedTime = new Date().toISOString();
-    const normalizedCards = normalizeManualCards(manualCards);
-    const revisedCards = applyManualCardBalanceRevisions(
-      normalizedCards,
-      originalCardsRef.current,
-    );
-    const normalizedBills = normalizeManualBills(
-      manualBills,
-      revisedCards,
-      true,
-    );
-
-    reconcileBillOccurrenceStorage(
-      originalBillsRef.current,
-      removedBillsRef.current,
-      normalizedBills,
-    );
-
-    saveFinanceSummary(manualData);
-    saveFinanceBills(normalizedBills);
-    saveFinanceCards(revisedCards);
-    saveLastSavedTime(savedTime);
-
-    setManualBills(normalizedBills);
-    setManualCards(revisedCards);
-
-    originalBillsRef.current = normalizedBills.map((bill) =>
-      cloneBill(bill),
-    );
-    originalCardsRef.current = revisedCards.map((card) => ({
-      ...card,
-    }));
-    removedBillsRef.current = [];
-
-    setLastSaved(savedTime);
-    setHasUnsavedChanges(false);
-    setShowSavedConfirmation(true);
-    setEditingBills([]);
-    setEditingCards([]);
-    setNewlyAddedItem(null);
-
-    if (newItemFocusTimeout.current) {
-      clearTimeout(newItemFocusTimeout.current);
-    }
-
-    if (newItemHighlightTimeout.current) {
-      clearTimeout(newItemHighlightTimeout.current);
-    }
-
-    if (savedConfirmationTimeout.current) {
-      clearTimeout(savedConfirmationTimeout.current);
-    }
-
-    savedConfirmationTimeout.current = setTimeout(() => {
-      setShowSavedConfirmation(false);
-    }, 2400);
-  }
-
   const sortedManualBills = sortIndexedBillsByDueDay(
-    manualBills.map((bill, index) => ({ bill, index }))
+    manualBills.map((bill, index) => ({ bill, index })),
   );
 
   const sortedManualCards = manualCards
     .map((card, index) => ({ card, index }))
     .sort(
       (firstCard, secondCard) =>
-        parseMoney(secondCard.card.balance) - parseMoney(firstCard.card.balance)
+        parseMoney(secondCard.card.balance) -
+        parseMoney(firstCard.card.balance),
     );
 
   const billsTotal = manualBills.reduce(
     (total, bill) => total + parseMoney(bill.amount),
-    0
+    0,
   );
 
   const cardBalanceTotal = manualCards.reduce(
     (total, card) => total + parseMoney(card.balance),
-    0
+    0,
   );
 
   const cardLimitTotal = manualCards.reduce(
     (total, card) => total + parseMoney(card.limit),
-    0
+    0,
   );
 
   const cardUtilization =
@@ -787,12 +892,26 @@ export default function ManualPage() {
       ? Math.round((cardBalanceTotal / cardLimitTotal) * 100)
       : 0;
 
-  const saveStatusDetail = hasUnsavedChanges
-    ? lastSaved
-      ? `Last saved ${formatSavedTime(lastSaved)}`
-      : "Save when ready."
-    : showSavedConfirmation
-      ? "Everything is current."
+  const saveStatusLabel = isAutoSaving
+    ? "Saving"
+    : hasUnsavedChanges
+      ? "Auto Save"
+      : "Saved";
+
+  const saveStatusTitle = isAutoSaving
+    ? "Saving changes"
+    : hasUnsavedChanges
+      ? "Saving automatically"
+      : showSavedConfirmation
+        ? "Saved automatically"
+        : "Everything is current";
+
+  const saveStatusDetail = isAutoSaving
+    ? "Keeping this device current."
+    : hasUnsavedChanges
+      ? lastSaved
+        ? `Changes save after a brief pause • Last saved ${formatSavedTime(lastSaved)}`
+        : "Changes save after a brief pause."
       : lastSaved
         ? `Last saved ${formatSavedTime(lastSaved)}`
         : "Everything is current.";
@@ -808,7 +927,7 @@ export default function ManualPage() {
               Financial Setup
             </p>
 
-            <Pill>{hasUnsavedChanges ? "Ready" : "Saved"}</Pill>
+            <Pill>{saveStatusLabel}</Pill>
           </div>
 
           <h1 className="text-[2.15rem] font-bold leading-tight tracking-tight text-[#f5f0e8] sm:text-4xl">
@@ -816,15 +935,17 @@ export default function ManualPage() {
           </h1>
         </header>
 
-        <section className="motion-card motion-card-delay-1 mb-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+        <section className="motion-card motion-card-delay-1 mb-2">
           <div
             aria-live="polite"
             className={`dashboard-surface relative overflow-hidden rounded-[1.35rem] p-2 transition-all duration-300 ${
-              hasUnsavedChanges
-                ? "shadow-[inset_0_0_0_1px_rgba(199,173,117,0.18),0_12px_28px_rgba(0,0,0,0.1)]"
-                : showSavedConfirmation
-                  ? "shadow-[inset_0_0_0_1px_rgba(245,240,232,0.1),0_12px_28px_rgba(0,0,0,0.08)]"
-                  : "shadow-[inset_0_0_0_1px_rgba(245,240,232,0.04)]"
+              isAutoSaving
+                ? "shadow-[inset_0_0_0_1px_rgba(157,189,180,0.18),0_12px_28px_rgba(0,0,0,0.1)]"
+                : hasUnsavedChanges
+                  ? "shadow-[inset_0_0_0_1px_rgba(199,173,117,0.18),0_12px_28px_rgba(0,0,0,0.1)]"
+                  : showSavedConfirmation
+                    ? "shadow-[inset_0_0_0_1px_rgba(245,240,232,0.1),0_12px_28px_rgba(0,0,0,0.08)]"
+                    : "shadow-[inset_0_0_0_1px_rgba(245,240,232,0.04)]"
             }`}
           >
             <div className="dashboard-surface-glow" aria-hidden="true" />
@@ -833,17 +954,19 @@ export default function ManualPage() {
               <div className="flex min-w-0 items-center gap-3">
                 <span
                   className={`h-2.5 w-2.5 shrink-0 rounded-full transition-all duration-300 ${
-                    hasUnsavedChanges
-                      ? "scale-100 bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.34)]"
-                      : showSavedConfirmation
-                        ? "scale-110 bg-[#f5f0e8]/85 shadow-[0_0_18px_rgba(245,240,232,0.22)]"
-                        : "scale-90 bg-[#f5f0e8]/24"
+                    isAutoSaving
+                      ? "scale-100 animate-pulse bg-[#9dbdb4] shadow-[0_0_16px_rgba(157,189,180,0.28)]"
+                      : hasUnsavedChanges
+                        ? "scale-100 bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.34)]"
+                        : showSavedConfirmation
+                          ? "scale-110 bg-[#f5f0e8]/85 shadow-[0_0_18px_rgba(245,240,232,0.22)]"
+                          : "scale-90 bg-[#f5f0e8]/24"
                   }`}
                 />
 
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-[#f5f0e8] transition-colors duration-300">
-                    {hasUnsavedChanges ? "Changes ready to save" : "Everything is current"}
+                    {saveStatusTitle}
                   </p>
 
                   <p className="mt-0.5 text-xs text-stone-500 transition-colors duration-300">
@@ -851,23 +974,12 @@ export default function ManualPage() {
                   </p>
                 </div>
               </div>
+
+              <span className="hidden shrink-0 text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-600 sm:block">
+                Auto Save On
+              </span>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={saveChanges}
-            disabled={!hasUnsavedChanges}
-            className={`pressable rounded-full border px-5 py-2 text-sm font-semibold transition-all duration-300 sm:min-w-36 ${
-              hasUnsavedChanges
-                ? "border-[#c7ad75]/42 bg-[#c7ad75]/18 text-[#f5f0e8] shadow-[inset_0_1px_0_rgba(245,240,232,0.1),0_14px_28px_rgba(0,0,0,0.16)] hover:bg-[#c7ad75]/24"
-                : showSavedConfirmation
-                  ? "border-[#f5f0e8]/12 bg-[#f5f0e8]/8 text-[#f5f0e8]/75 shadow-[inset_0_1px_0_rgba(245,240,232,0.08)]"
-                  : "border-[#f5f0e8]/10 bg-[#f5f0e8]/5 text-stone-500"
-            }`}
-          >
-            {hasUnsavedChanges ? "Save" : "Saved"}
-          </button>
         </section>
 
         <section className="motion-card motion-card-delay-2 mb-2">
@@ -968,9 +1080,7 @@ export default function ManualPage() {
                   detail="Expected income each month"
                   value={manualData.monthlyIncome}
                   icon={<IncomeIcon />}
-                  onChange={(value) =>
-                    updateManualData("monthlyIncome", value)
-                  }
+                  onChange={(value) => updateManualData("monthlyIncome", value)}
                   wide
                 />
               </div>
@@ -1015,7 +1125,9 @@ export default function ManualPage() {
                   <SectionHeading title="Bills" />
 
                   <p className="mt-1 text-xs leading-5 text-stone-500">
-                    {manualBills.length} recurring bill{manualBills.length === 1 ? "" : "s"} • Organized by due date
+                    {manualBills.length} recurring bill
+                    {manualBills.length === 1 ? "" : "s"} • Organized by due
+                    date
                   </p>
                 </div>
 
@@ -1038,8 +1150,7 @@ export default function ManualPage() {
                       cards={manualCards}
                       isEditing={editingBills.includes(index)}
                       isDimmed={
-                        editingBills.length > 0 &&
-                        !editingBills.includes(index)
+                        editingBills.length > 0 && !editingBills.includes(index)
                       }
                       isNewlyAdded={
                         newlyAddedItem?.type === "bill" &&
@@ -1076,7 +1187,9 @@ export default function ManualPage() {
                   <SectionHeading title="Credit Cards" />
 
                   <p className="mt-1 text-xs leading-5 text-stone-500">
-                    {manualCards.length} card{manualCards.length === 1 ? "" : "s"} • {cardUtilization}% overall utilization
+                    {manualCards.length} card
+                    {manualCards.length === 1 ? "" : "s"} • {cardUtilization}%
+                    overall utilization
                   </p>
                 </div>
 
@@ -1098,8 +1211,7 @@ export default function ManualPage() {
                       card={card}
                       isEditing={editingCards.includes(index)}
                       isDimmed={
-                        editingCards.length > 0 &&
-                        !editingCards.includes(index)
+                        editingCards.length > 0 && !editingCards.includes(index)
                       }
                       isNewlyAdded={
                         newlyAddedItem?.type === "card" &&
@@ -1123,30 +1235,6 @@ export default function ManualPage() {
           </section>
         )}
       </div>
-
-      {showSavedConfirmation && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-5 z-50 flex justify-center px-4 pb-[env(safe-area-inset-bottom)]">
-          <div
-            role="status"
-            aria-live="polite"
-            className="dashboard-surface relative w-full max-w-[22rem] overflow-hidden rounded-[1.35rem] border border-[#f5f0e8]/10 p-2.5 shadow-[0_18px_42px_rgba(0,0,0,0.28)]"
-          >
-            <div className="dashboard-surface-glow" aria-hidden="true" />
-
-            <div className="liquid-content flex items-center gap-3">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#f5f0e8]/85 shadow-[0_0_18px_rgba(245,240,232,0.22)]" />
-
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-[#f5f0e8]">Saved</p>
-
-                <p className="mt-0.5 text-xs text-stone-500">
-                  Everything is current.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </PageShell>
   );
 }
@@ -1396,7 +1484,7 @@ function BillEditorRow({
               </p>
 
               <p className="mt-1 text-xs leading-5 text-stone-500">
-                This change will be saved when you tap Save.
+                This change saves automatically.
               </p>
 
               <div className="mt-2 grid grid-cols-2 gap-2">
@@ -1528,9 +1616,7 @@ function CardEditorRow({
                 {card.name || "Untitled Card"}
               </p>
 
-              <p className="mt-0.5 text-xs text-stone-500">
-                Revolving account
-              </p>
+              <p className="mt-0.5 text-xs text-stone-500">Revolving account</p>
 
               <p className="mt-1 text-sm font-medium text-stone-300">
                 {formatMoney(card.balance)}
@@ -1554,10 +1640,10 @@ function CardEditorRow({
 
       {!isEditing ? (
         <div className="mx-3 mb-2.5 dashboard-progress-track h-1.5 overflow-hidden rounded-full bg-black/30">
-        <div
-          className="liquid-progress dashboard-progress-fill h-full rounded-full bg-[#c7ad75]"
-          style={{ width: `${Math.min(utilization, 100)}%` }}
-        />
+          <div
+            className="liquid-progress dashboard-progress-fill h-full rounded-full bg-[#c7ad75]"
+            style={{ width: `${Math.min(utilization, 100)}%` }}
+          />
         </div>
       ) : null}
 
@@ -1595,7 +1681,6 @@ function CardEditorRow({
               placeholder="Example: 2nd"
               onChange={(value) => onChange("dueDate", value)}
             />
-
           </div>
 
           {showRemoveConfirm ? (
@@ -1605,7 +1690,7 @@ function CardEditorRow({
               </p>
 
               <p className="mt-1 text-xs leading-5 text-stone-500">
-                This change will be saved when you tap Save.
+                This change saves automatically.
               </p>
 
               <div className="mt-2 grid grid-cols-2 gap-2">
@@ -1671,9 +1756,7 @@ function BalanceEditorCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-[#f5f0e8]">
-                {label}
-              </p>
+              <p className="text-sm font-semibold text-[#f5f0e8]">{label}</p>
 
               <p className="mt-0.5 text-xs leading-5 text-stone-500">
                 {detail}
@@ -1826,10 +1909,7 @@ function PaymentSourceSelect({
 
           {cards.map((card, index) =>
             card.id ? (
-              <option
-                key={card.id}
-                value={`credit-card:${card.id}`}
-              >
+              <option key={card.id} value={`credit-card:${card.id}`}>
                 {card.name.trim() || `Credit Card ${index + 1}`}
               </option>
             ) : null,
@@ -1877,7 +1957,9 @@ function MoneyInput({
 }) {
   return (
     <label className="flex items-center justify-between gap-4 border-b border-[#f5f0e8]/8 px-3.5 py-2 transition-colors last:border-b-0 focus-within:bg-[#c7ad75]/[0.035]">
-      <span className="shrink-0 text-sm font-medium text-stone-400">{label}</span>
+      <span className="shrink-0 text-sm font-medium text-stone-400">
+        {label}
+      </span>
 
       <input
         type="number"
@@ -1904,7 +1986,9 @@ function TextInput({
 }) {
   return (
     <label className="flex items-center justify-between gap-4 border-b border-[#f5f0e8]/8 px-3.5 py-2 transition-colors last:border-b-0 focus-within:bg-[#c7ad75]/[0.035]">
-      <span className="shrink-0 text-sm font-medium text-stone-400">{label}</span>
+      <span className="shrink-0 text-sm font-medium text-stone-400">
+        {label}
+      </span>
 
       <input
         type="text"
@@ -1920,8 +2004,20 @@ function TextInput({
 function BalanceIcon() {
   return (
     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M4 17 9 12l3 3 7-8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M15 7h4v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M4 17 9 12l3 3 7-8"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M15 7h4v4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -1929,8 +2025,18 @@ function BalanceIcon() {
 function BillsEditorIcon() {
   return (
     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M7 3h10a1 1 0 0 1 1 1v17l-3-1.8-3 1.8-3-1.8L6 21V4a1 1 0 0 1 1-1Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M9 8h6M9 12h6M9 16h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path
+        d="M7 3h10a1 1 0 0 1 1 1v17l-3-1.8-3 1.8-3-1.8L6 21V4a1 1 0 0 1 1-1Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9 8h6M9 12h6M9 16h4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -1938,8 +2044,18 @@ function BillsEditorIcon() {
 function CardsEditorIcon() {
   return (
     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M4 9h16M8 15h3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path
+        d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4 9h16M8 15h3"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
