@@ -1,6 +1,10 @@
 import type { Metadata, Viewport } from "next";
+import type { ReactNode } from "react";
 import "./globals.css";
+import "./themes.css";
 import AuthGate from "@/components/AuthGate";
+import BottomTabBar from "@/components/BottomTabBar";
+import FinanceUpdateChecker from "@/components/FinanceUpdateChecker";
 import UpdateAnnouncements from "@/components/UpdateAnnouncements";
 import WelcomeScreen from "@/components/WelcomeScreen";
 
@@ -9,7 +13,11 @@ export const metadata: Metadata = {
   description: "A simple personal finance tracker.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/icon-512.png",
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
     apple: "/apple-touch-icon.png",
   },
 };
@@ -43,6 +51,7 @@ const themeScript = `
 
     if (!savedTheme || allowedThemes.indexOf(savedTheme) === -1) {
       savedTheme = "classic";
+      window.localStorage.setItem(themeStorageKey, savedTheme);
     }
 
     document.documentElement.setAttribute("data-theme", savedTheme);
@@ -55,7 +64,7 @@ const themeScript = `
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: ReactNode;
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
@@ -65,7 +74,9 @@ export default function RootLayout({
 
       <body>
         <AuthGate>
+          <FinanceUpdateChecker />
           {children}
+          <BottomTabBar />
           <WelcomeScreen />
           <UpdateAnnouncements />
         </AuthGate>

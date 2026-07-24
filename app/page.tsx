@@ -1,22 +1,46 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import TopNav from "../components/TopNav";
 import { PageShell, Pill } from "../components/Layout";
 import { financeSummary, bills, creditCards } from "../data/bandData";
+import {
+  findBillForPaidAction,
+  migrateBillOccurrenceState,
+  parseMoney,
+  resolveBillPaymentSource,
+  type ManualBill,
+  type ManualCreditCard,
+  type PaidBillAction,
+  type PaymentSource,
+} from "../lib/financeData";
+import {
+  clearLegacyPaidAction,
+  loadFinanceStorageState,
+  saveActiveBillOccurrenceDates,
+  saveBillPaymentStorageState,
+  saveFinanceBills,
+  saveFinanceCards,
+  saveFinancePreferences,
+  savePaidBillOccurrences,
+  saveRecentPaidActions,
+} from "../lib/financeStorage";
+import {
+  markBillOccurrencePaid,
+  normalizeRecentPaidActions,
+  undoBillPayment,
+} from "../lib/financePayments";
+
 import {
   defaultPayPeriodPreferences,
   getActiveBillOccurrence,
   getBillIdentity,
   getBillOccurrencePayPeriod,
   getDaysUntilDate,
-  getFollowingBillDueDate,
   getPayPeriodLength,
   getPlanningAmount,
-  isDateInCurrentPayPeriod,
   parseLocalDate,
-  readPayPeriodPreferences,
   type ActiveBillOccurrence,
   type PaidBillOccurrences,
   type PayPeriodPreferences,
@@ -24,26 +48,7 @@ import {
 
 type ManualFinanceData = {
   checkingBalance: string;
-  monthlyIncome: string;
   savingsBalance: string;
-  nextPayday: string;
-};
-
-type ManualBill = {
-  name: string;
-  amount: string;
-  dueDate: string;
-  status: "Paid" | "Upcoming" | "Due Soon" | "Overdue";
-  paymentMethod: string;
-};
-
-type ManualCreditCard = {
-  name: string;
-  balance: string;
-  limit: string;
-  minimumPayment: string;
-  dueDate: string;
-  status: "Good" | "Watch" | "Pay Down";
 };
 
 type ActiveBillOccurrenceDates = Record<string, string>;
@@ -53,33 +58,9 @@ type BillOccurrenceItem = {
   occurrence: ActiveBillOccurrence;
 };
 
-type PaidBillAction = {
-  occurrenceKey: string;
-  occurrenceDateKey: string;
-  billIdentity: string;
-  billName: string;
-  nextOccurrenceDateKey: string | null;
-  paidAt: string;
-};
-
-const summaryStorageKey = "finance-tracker-manual-data";
-const billsStorageKey = "finance-tracker-manual-bills";
-const cardsStorageKey = "finance-tracker-manual-cards";
-const lastSavedStorageKey = "finance-tracker-last-saved";
-const paidBillsStorageKey = "leftovr-paid-bill-occurrences";
-const activeBillOccurrencesStorageKey =
-  "leftovr-active-bill-occurrences";
-const recentPaidActionsStorageKey =
-  "leftovr-recent-paid-bill-actions";
-const legacyLastPaidActionStorageKey =
-  "leftovr-last-paid-bill-action";
-const preferencesStorageKey = "leftovr-preferences";
-
 const defaultManualData: ManualFinanceData = {
   checkingBalance: String(financeSummary.checkingBalance),
-  monthlyIncome: String(financeSummary.monthlyIncome),
   savingsBalance: String(financeSummary.savingsBalance),
-  nextPayday: financeSummary.nextPayday,
 };
 
 const defaultManualBills: ManualBill[] = bills.map((bill) => ({
@@ -99,49 +80,163 @@ const defaultManualCards: ManualCreditCard[] = creditCards.map((card) => ({
   status: card.status,
 }));
 
-function parseMoney(value: string) {
-  const numberValue = Number(value);
-  return Number.isNaN(numberValue) ? 0 : numberValue;
+function getPaidActionPaymentSource(
+  action: PaidBillAction,
+  currentBills: ManualBill[],
+  cards: ManualCreditCard[],
+): PaymentSource {
+  const savedPaymentSource = action.paymentSource;
+
+  if (savedPaymentSource?.type === "checking") {
+    return savedPaymentSource;
+  }
+
+  if (
+    savedPaymentSource?.type === "credit-card" &&
+    cards.some(
+      (card) => card.id === savedPaymentSource.creditCardId,
+    )
+  ) {
+    return savedPaymentSource;
+  }
+
+  const matchingBill = findBillForPaidAction(
+    action,
+    currentBills,
+  );
+
+  return matchingBill
+    ? resolveBillPaymentSource(matchingBill, cards)
+    : { type: "checking" };
 }
 
+function getPaymentSourceLabel(
+  paymentSource: PaymentSource,
+  cards: ManualCreditCard[],
+) {
+  if (paymentSource.type === "checking") {
+    return "Checking";
+  }
+
+  const linkedCard = cards.find(
+    (card) => card.id === paymentSource.creditCardId,
+  );
+
+  return linkedCard?.name.trim() || "Credit card";
+}
+
+function getBillPaymentSourceLabel(
+  bill: ManualBill,
+  cards: ManualCreditCard[],
+) {
+  return getPaymentSourceLabel(
+    resolveBillPaymentSource(bill, cards),
+    cards,
+  );
+}
+
+function getPaidActionPaymentSourceLabel(
+  action: PaidBillAction,
+  currentBills: ManualBill[],
+  cards: ManualCreditCard[],
+) {
+  return getPaymentSourceLabel(
+    getPaidActionPaymentSource(action, currentBills, cards),
+    cards,
+  );
+}
+
+const currencyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+});
+
+const savedTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+const shortDateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+});
+
 function formatMoney(amount: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(amount);
+  return currencyFormatter.format(amount);
 }
 
 function formatSavedTime(value: string) {
-  if (!value) {
-    return "Not saved yet";
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
+  return value
+    ? savedTimeFormatter.format(new Date(value))
+    : "Not saved yet";
 }
 
 function formatPayday(value: string) {
   const payday = parseLocalDate(value);
-
-  if (!payday) {
-    return "Not set";
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-  }).format(payday);
+  return payday ? shortDateFormatter.format(payday) : "Not set";
 }
 
 function formatBillDate(value: Date) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-  }).format(value);
+  return shortDateFormatter.format(value);
+}
+
+function getTimeGreeting(referenceDate = new Date()) {
+  const hour = referenceDate.getHours();
+
+  if (hour < 12) {
+    return "Good morning";
+  }
+
+  if (hour < 17) {
+    return "Good afternoon";
+  }
+
+  return "Good evening";
+}
+
+function getPayPeriodProgress(
+  currentPreferences: PayPeriodPreferences,
+  referenceDate = new Date(),
+) {
+  const nextPayday = parseLocalDate(currentPreferences.nextPayday);
+
+  if (!nextPayday) {
+    return null;
+  }
+
+  const intervalDays = getPayPeriodLength(
+    currentPreferences.payFrequency,
+  );
+  const periodEnd = new Date(
+    nextPayday.getFullYear(),
+    nextPayday.getMonth(),
+    nextPayday.getDate(),
+    12,
+  );
+  const periodStart = new Date(periodEnd);
+  periodStart.setDate(periodStart.getDate() - intervalDays);
+
+  const today = new Date(
+    referenceDate.getFullYear(),
+    referenceDate.getMonth(),
+    referenceDate.getDate(),
+    12,
+  );
+  const totalDuration = periodEnd.getTime() - periodStart.getTime();
+  const elapsedDuration = today.getTime() - periodStart.getTime();
+  const rawProgress =
+    totalDuration > 0 ? elapsedDuration / totalDuration : 0;
+  const percentage = Math.round(
+    Math.min(Math.max(rawProgress, 0), 1) * 100,
+  );
+
+  return {
+    percentage,
+    startDate: periodStart,
+    endDate: periodEnd,
+  };
 }
 
 function formatLocalDateKey(value: Date) {
@@ -231,6 +326,48 @@ function getBillOccurrenceItemsTotal(
   );
 }
 
+function getCheckingBillOccurrenceItemsTotal(
+  items: BillOccurrenceItem[],
+  preferences: PayPeriodPreferences,
+  cards: ManualCreditCard[],
+) {
+  return items.reduce((total, item) => {
+    const paymentSource = resolveBillPaymentSource(item.bill, cards);
+
+    if (paymentSource.type !== "checking") {
+      return total;
+    }
+
+    return (
+      total +
+      getPlanningAmount(
+        item.bill.amount,
+        preferences.roundBillsForPlanning,
+      )
+    );
+  }, 0);
+}
+
+function getPaidActionPlanningAmount(
+  action: PaidBillAction,
+  currentBills: ManualBill[],
+  preferences: PayPeriodPreferences,
+) {
+  const matchingBill = findBillForPaidAction(
+    action,
+    currentBills,
+  );
+
+  const amount = action.billAmount ?? matchingBill?.amount;
+
+  return amount
+    ? getPlanningAmount(
+        amount,
+        preferences.roundBillsForPlanning,
+      )
+    : 0;
+}
+
 function normalizeActiveBillOccurrenceDates(
   currentBills: ManualBill[],
   savedOccurrenceDates: ActiveBillOccurrenceDates,
@@ -256,98 +393,6 @@ function normalizeActiveBillOccurrenceDates(
   return normalizedDates;
 }
 
-function normalizeRecentPaidActions(
-  actions: PaidBillAction[],
-  paidOccurrences: PaidBillOccurrences,
-  preferences: PayPeriodPreferences,
-  referenceDate = new Date(),
-) {
-  const seenOccurrenceKeys = new Set<string>();
-
-  return actions
-    .filter((action) => {
-      const paidAt =
-        action?.paidAt ||
-        paidOccurrences[action?.occurrenceKey ?? ""];
-
-      if (
-        !action?.occurrenceKey ||
-        !paidOccurrences[action.occurrenceKey] ||
-        seenOccurrenceKeys.has(action.occurrenceKey) ||
-        !paidAt ||
-        !isDateInCurrentPayPeriod(
-          paidAt,
-          preferences,
-          referenceDate,
-        )
-      ) {
-        return false;
-      }
-
-      seenOccurrenceKeys.add(action.occurrenceKey);
-      return true;
-    })
-    .map((action) => ({
-      ...action,
-      paidAt:
-        action.paidAt ||
-        paidOccurrences[action.occurrenceKey] ||
-        new Date(0).toISOString(),
-    }))
-    .sort(
-      (firstAction, secondAction) =>
-        new Date(secondAction.paidAt).getTime() -
-        new Date(firstAction.paidAt).getTime(),
-    )
-    .slice(0, 8);
-}
-
-function readJsonStorage<T>(key: string, fallback: T) {
-  const savedValue = window.localStorage.getItem(key);
-
-  if (!savedValue) {
-    return fallback;
-  }
-
-  try {
-    return JSON.parse(savedValue) as T;
-  } catch {
-    return fallback;
-  }
-}
-
-function scrollExpandedSectionIntoView(sectionId: string) {
-  window.requestAnimationFrame(() => {
-    window.requestAnimationFrame(() => {
-      const section = document.getElementById(sectionId);
-
-      if (!section) {
-        return;
-      }
-
-      const rect = section.getBoundingClientRect();
-      const topClearance = 112;
-      const bottomClearance = 24;
-      const isComfortablyVisible =
-        rect.top >= topClearance &&
-        rect.bottom <= window.innerHeight - bottomClearance;
-
-      if (isComfortablyVisible) {
-        return;
-      }
-
-      const prefersReducedMotion = window.matchMedia(
-        "(prefers-reduced-motion: reduce)",
-      ).matches;
-
-      section.scrollIntoView({
-        behavior: prefersReducedMotion ? "auto" : "smooth",
-        block: "start",
-      });
-    });
-  });
-}
-
 export default function DashboardPage() {
   const [manualData, setManualData] =
     useState<ManualFinanceData>(defaultManualData);
@@ -368,83 +413,71 @@ export default function DashboardPage() {
   const [paidConfirmationAction, setPaidConfirmationAction] =
     useState<PaidBillAction | null>(null);
   const [showPaidConfirmation, setShowPaidConfirmation] = useState(false);
-  const [showCards, setShowCards] = useState(false);
-  const [showNextPayPeriod, setShowNextPayPeriod] = useState(false);
-  const [showRecentPayments, setShowRecentPayments] = useState(false);
+  const [undoBlockedMessage, setUndoBlockedMessage] = useState("");
 
   const paidConfirmationTimeout =
     useRef<ReturnType<typeof setTimeout> | null>(null);
+  const undoBlockedTimeout =
+    useRef<ReturnType<typeof setTimeout> | null>(null);
+  const processingPaymentKeys = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     function loadDashboardData() {
-      const savedBills = readJsonStorage(
-        billsStorageKey,
-        defaultManualBills,
-      );
+      const storedState = loadFinanceStorageState({
+        summary: defaultManualData,
+        bills: defaultManualBills,
+        cards: defaultManualCards,
+      });
+      const savedCards = storedState.cards;
+      const savedBills = storedState.bills;
       const savedPaidOccurrences =
-        readJsonStorage<PaidBillOccurrences>(paidBillsStorageKey, {});
+        storedState.paidOccurrences;
       const savedActiveOccurrenceDates =
-        readJsonStorage<ActiveBillOccurrenceDates>(
-          activeBillOccurrencesStorageKey,
-          {},
+        storedState.activeOccurrenceDates;
+
+      setManualData(storedState.summary);
+      setManualBills(savedBills);
+      setManualCards(savedCards);
+
+      saveFinanceCards(savedCards);
+      saveFinanceBills(savedBills);
+
+      const rolloverResult =
+        getCurrentPayPeriodPreferences(
+          storedState.preferences,
         );
 
-      setManualData(readJsonStorage(summaryStorageKey, defaultManualData));
-      setManualBills(savedBills);
-      setManualCards(readJsonStorage(cardsStorageKey, defaultManualCards));
-
-      const savedPreferences = readPayPeriodPreferences();
-      const rolloverResult =
-        getCurrentPayPeriodPreferences(savedPreferences);
-
       if (rolloverResult.didAdvance) {
-        window.localStorage.setItem(
-          preferencesStorageKey,
-          JSON.stringify(rolloverResult.preferences),
+        saveFinancePreferences(
+          rolloverResult.preferences,
         );
       }
 
-      const normalizedOccurrenceDates =
-        normalizeActiveBillOccurrenceDates(
-          savedBills,
-          savedActiveOccurrenceDates,
-          savedPaidOccurrences,
-        );
-
-      setPreferences(rolloverResult.preferences);
-      setPaidBillOccurrences(savedPaidOccurrences);
-      setActiveBillOccurrenceDates(normalizedOccurrenceDates);
-
-      window.localStorage.setItem(
-        activeBillOccurrencesStorageKey,
-        JSON.stringify(normalizedOccurrenceDates),
-      );
-
       const savedRecentPaidActions =
-        readJsonStorage<PaidBillAction[]>(
-          recentPaidActionsStorageKey,
-          [],
-        );
+        storedState.paidActions;
       const legacyLastPaidAction =
-        readJsonStorage<Partial<PaidBillAction> | null>(
-          legacyLastPaidActionStorageKey,
-          null,
-        );
+        storedState.legacyPaidAction;
 
       const migratedLegacyAction =
         legacyLastPaidAction?.occurrenceKey &&
         legacyLastPaidAction.occurrenceDateKey &&
         legacyLastPaidAction.billIdentity &&
         legacyLastPaidAction.billName &&
-        savedPaidOccurrences[legacyLastPaidAction.occurrenceKey]
+        savedPaidOccurrences[
+          legacyLastPaidAction.occurrenceKey
+        ]
           ? ({
-              occurrenceKey: legacyLastPaidAction.occurrenceKey,
+              occurrenceKey:
+                legacyLastPaidAction.occurrenceKey,
               occurrenceDateKey:
                 legacyLastPaidAction.occurrenceDateKey,
-              billIdentity: legacyLastPaidAction.billIdentity,
-              billName: legacyLastPaidAction.billName,
+              billIdentity:
+                legacyLastPaidAction.billIdentity,
+              billName:
+                legacyLastPaidAction.billName,
               nextOccurrenceDateKey:
-                legacyLastPaidAction.nextOccurrenceDateKey ?? null,
+                legacyLastPaidAction
+                  .nextOccurrenceDateKey ?? null,
               paidAt:
                 legacyLastPaidAction.paidAt ||
                 savedPaidOccurrences[
@@ -453,28 +486,56 @@ export default function DashboardPage() {
             } satisfies PaidBillAction)
           : null;
 
+      const migratedOccurrenceState =
+        migrateBillOccurrenceState(
+          savedBills,
+          savedActiveOccurrenceDates,
+          savedPaidOccurrences,
+          migratedLegacyAction
+            ? [
+                migratedLegacyAction,
+                ...savedRecentPaidActions,
+              ]
+            : savedRecentPaidActions,
+        );
+
+      const normalizedOccurrenceDates =
+        normalizeActiveBillOccurrenceDates(
+          savedBills,
+          migratedOccurrenceState.activeOccurrenceDates,
+          migratedOccurrenceState.paidOccurrences,
+        );
+
       const normalizedRecentPaidActions =
         normalizeRecentPaidActions(
-          migratedLegacyAction
-            ? [migratedLegacyAction, ...savedRecentPaidActions]
-            : savedRecentPaidActions,
-          savedPaidOccurrences,
+          migratedOccurrenceState.paidActions,
+          migratedOccurrenceState.paidOccurrences,
           rolloverResult.preferences,
         );
 
-      setRecentPaidActions(normalizedRecentPaidActions);
-      setShowRecentPayments(false);
-
-      window.localStorage.setItem(
-        recentPaidActionsStorageKey,
-        JSON.stringify(normalizedRecentPaidActions),
+      setPreferences(rolloverResult.preferences);
+      setPaidBillOccurrences(
+        migratedOccurrenceState.paidOccurrences,
       );
-      window.localStorage.removeItem(
-        legacyLastPaidActionStorageKey,
+      setActiveBillOccurrenceDates(
+        normalizedOccurrenceDates,
+      );
+      setRecentPaidActions(
+        normalizedRecentPaidActions,
       );
 
-      const savedTime = window.localStorage.getItem(lastSavedStorageKey);
-      setLastSaved(savedTime ?? "");
+      saveActiveBillOccurrenceDates(
+        normalizedOccurrenceDates,
+      );
+      savePaidBillOccurrences(
+        migratedOccurrenceState.paidOccurrences,
+      );
+      saveRecentPaidActions(
+        normalizedRecentPaidActions,
+      );
+      clearLegacyPaidAction();
+
+      setLastSaved(storedState.lastSaved);
     }
 
     loadDashboardData();
@@ -497,6 +558,10 @@ export default function DashboardPage() {
       if (paidConfirmationTimeout.current) {
         clearTimeout(paidConfirmationTimeout.current);
       }
+
+      if (undoBlockedTimeout.current) {
+        clearTimeout(undoBlockedTimeout.current);
+      }
     };
   }, []);
 
@@ -516,104 +581,70 @@ export default function DashboardPage() {
 
   const payPeriodDays = getPayPeriodLength(preferences.payFrequency);
 
-  function updateActiveOccurrenceDate(
-    billIdentity: string,
-    occurrenceDateKey: string,
-  ) {
-    setActiveBillOccurrenceDates((current) => {
-      const nextDates = {
-        ...current,
-        [billIdentity]: occurrenceDateKey,
-      };
-
-      window.localStorage.setItem(
-        activeBillOccurrencesStorageKey,
-        JSON.stringify(nextDates),
-      );
-
-      return nextDates;
-    });
-  }
 
   function markBillPaid(item: BillOccurrenceItem) {
-    const { bill, occurrence } = item;
-    const paidAt = new Date().toISOString();
-    const followingOccurrence = getFollowingBillDueDate(
-      bill.dueDate,
-      occurrence.dueDate,
-    );
-    const nextOccurrenceDateKey = followingOccurrence
-      ? formatLocalDateKey(followingOccurrence)
-      : null;
+    const occurrenceKey =
+      item.occurrence.occurrenceKey;
 
-    setPaidBillOccurrences((current) => {
-      const nextOccurrences = {
-        ...current,
-        [occurrence.occurrenceKey]: paidAt,
-      };
-
-      window.localStorage.setItem(
-        paidBillsStorageKey,
-        JSON.stringify(nextOccurrences),
-      );
-
-      return nextOccurrences;
-    });
-
-    if (nextOccurrenceDateKey) {
-      setActiveBillOccurrenceDates((current) => {
-        const nextDates = {
-          ...current,
-          [occurrence.billIdentity]: nextOccurrenceDateKey,
-        };
-
-        window.localStorage.setItem(
-          activeBillOccurrencesStorageKey,
-          JSON.stringify(nextDates),
-        );
-
-        return nextDates;
-      });
+    if (
+      paidBillOccurrences[occurrenceKey] ||
+      processingPaymentKeys.current.has(
+        occurrenceKey,
+      )
+    ) {
+      return;
     }
 
-    const nextPaidAction: PaidBillAction = {
-      occurrenceKey: occurrence.occurrenceKey,
-      occurrenceDateKey: occurrence.dueDateKey,
-      billIdentity: occurrence.billIdentity,
-      billName: bill.name || "Bill",
-      nextOccurrenceDateKey,
-      paidAt,
-    };
+    processingPaymentKeys.current.add(
+      occurrenceKey,
+    );
 
-    setRecentPaidActions((current) => {
-      const nextActions = normalizeRecentPaidActions(
-        [
-          nextPaidAction,
-          ...current.filter(
-            (action) =>
-              action.occurrenceKey !== nextPaidAction.occurrenceKey,
-          ),
-        ],
-        {
-          ...paidBillOccurrences,
-          [occurrence.occurrenceKey]: paidAt,
-        },
-        preferences,
-      );
-
-      window.localStorage.setItem(
-        recentPaidActionsStorageKey,
-        JSON.stringify(nextActions),
-      );
-
-      return nextActions;
+    const result = markBillOccurrencePaid({
+      item,
+      summary: manualData,
+      cards: manualCards,
+      activeOccurrenceDates:
+        activeBillOccurrenceDates,
+      paidOccurrences: paidBillOccurrences,
+      paidActions: recentPaidActions,
+      preferences,
     });
 
-    setPaidConfirmationAction(nextPaidAction);
+    if (!result.didApply || !result.paidAction) {
+      processingPaymentKeys.current.delete(
+        occurrenceKey,
+      );
+      return;
+    }
+
+    setManualData(result.summary);
+    setManualCards(result.cards);
+    setPaidBillOccurrences(
+      result.paidOccurrences,
+    );
+    setActiveBillOccurrenceDates(
+      result.activeOccurrenceDates,
+    );
+    setRecentPaidActions(result.paidActions);
+
+    saveBillPaymentStorageState({
+      summary: result.summary,
+      cards: result.cards,
+      activeOccurrenceDates:
+        result.activeOccurrenceDates,
+      paidOccurrences: result.paidOccurrences,
+      paidActions: result.paidActions,
+    });
+
+    setPaidConfirmationAction(
+      result.paidAction,
+    );
     setShowPaidConfirmation(true);
 
     if (paidConfirmationTimeout.current) {
-      clearTimeout(paidConfirmationTimeout.current);
+      clearTimeout(
+        paidConfirmationTimeout.current,
+      );
     }
 
     paidConfirmationTimeout.current = setTimeout(() => {
@@ -623,74 +654,89 @@ export default function DashboardPage() {
   }
 
   function undoPaidBill(action: PaidBillAction) {
-    setPaidBillOccurrences((current) => {
-      const nextOccurrences = { ...current };
-      delete nextOccurrences[action.occurrenceKey];
-
-      window.localStorage.setItem(
-        paidBillsStorageKey,
-        JSON.stringify(nextOccurrences),
-      );
-
-      return nextOccurrences;
+    const result = undoBillPayment({
+      action,
+      summary: manualData,
+      cards: manualCards,
+      activeOccurrenceDates:
+        activeBillOccurrenceDates,
+      paidOccurrences: paidBillOccurrences,
+      paidActions: recentPaidActions,
     });
 
-    updateActiveOccurrenceDate(
-      action.billIdentity,
-      action.occurrenceDateKey,
-    );
+    if (!result.didUndo) {
+      const message =
+        result.blockedReason === "card-not-found"
+          ? "The linked credit card is no longer available. Nothing was changed."
+          : result.blockedReason === "card-balance-changed"
+            ? "The linked card balance changed after this payment. Nothing was changed."
+            : result.blockedReason === "checking-balance-changed"
+              ? "The checking balance changed after this payment. Nothing was changed."
+              : "This older payment does not include enough balance history to undo safely.";
 
-    setRecentPaidActions((current) => {
-      const nextActions = current.filter(
-        (recentAction) =>
-          recentAction.occurrenceKey !== action.occurrenceKey,
-      );
-
-      window.localStorage.setItem(
-        recentPaidActionsStorageKey,
-        JSON.stringify(nextActions),
-      );
-
-      return nextActions;
-    });
-
-    if (
-      paidConfirmationAction?.occurrenceKey === action.occurrenceKey
-    ) {
-      setPaidConfirmationAction(null);
+      setUndoBlockedMessage(message);
       setShowPaidConfirmation(false);
 
       if (paidConfirmationTimeout.current) {
         clearTimeout(paidConfirmationTimeout.current);
         paidConfirmationTimeout.current = null;
       }
+
+      if (undoBlockedTimeout.current) {
+        clearTimeout(undoBlockedTimeout.current);
+      }
+
+      undoBlockedTimeout.current = setTimeout(() => {
+        setUndoBlockedMessage("");
+        undoBlockedTimeout.current = null;
+      }, 6000);
+
+      return;
     }
-  }
 
-  function toggleNextPayPeriod() {
-    const isOpening = !showNextPayPeriod;
-    setShowNextPayPeriod(isOpening);
+    setUndoBlockedMessage("");
 
-    if (isOpening) {
-      scrollExpandedSectionIntoView("dashboard-next-pay-period");
+    if (undoBlockedTimeout.current) {
+      clearTimeout(undoBlockedTimeout.current);
+      undoBlockedTimeout.current = null;
     }
-  }
 
-  function toggleRecentPayments() {
-    const isOpening = !showRecentPayments;
-    setShowRecentPayments(isOpening);
+    setManualData(result.summary);
+    setManualCards(result.cards);
+    setPaidBillOccurrences(
+      result.paidOccurrences,
+    );
+    setActiveBillOccurrenceDates(
+      result.activeOccurrenceDates,
+    );
+    setRecentPaidActions(result.paidActions);
 
-    if (isOpening) {
-      scrollExpandedSectionIntoView("dashboard-recent-payments");
-    }
-  }
+    saveBillPaymentStorageState({
+      summary: result.summary,
+      cards: result.cards,
+      activeOccurrenceDates:
+        result.activeOccurrenceDates,
+      paidOccurrences: result.paidOccurrences,
+      paidActions: result.paidActions,
+    });
 
-  function toggleCards() {
-    const isOpening = !showCards;
-    setShowCards(isOpening);
+    processingPaymentKeys.current.delete(
+      action.occurrenceKey,
+    );
 
-    if (isOpening) {
-      scrollExpandedSectionIntoView("dashboard-credit-cards");
+    if (
+      paidConfirmationAction?.occurrenceKey ===
+      action.occurrenceKey
+    ) {
+      setPaidConfirmationAction(null);
+      setShowPaidConfirmation(false);
+
+      if (paidConfirmationTimeout.current) {
+        clearTimeout(
+          paidConfirmationTimeout.current,
+        );
+        paidConfirmationTimeout.current = null;
+      }
     }
   }
 
@@ -742,39 +788,6 @@ export default function DashboardPage() {
         }),
       );
 
-  const nextPayPeriodBillItems = hasCurrentPayday
-    ? sortBillOccurrenceItems(
-        upcomingBillItems.filter(
-          (item) =>
-            getBillOccurrencePayPeriod(
-              item.occurrence.dueDate,
-              preferences,
-              today,
-            ) === "next-pay-period",
-        ),
-      )
-    : [];
-
-  const laterBillItems = hasCurrentPayday
-    ? sortBillOccurrenceItems(
-        upcomingBillItems.filter((item) => {
-          const period = getBillOccurrencePayPeriod(
-            item.occurrence.dueDate,
-            preferences,
-            today,
-          );
-
-          return period === "later" || period === "unscheduled";
-        }),
-      )
-    : sortBillOccurrenceItems(
-        upcomingBillItems.filter(
-          (item) =>
-            getDaysUntilDate(item.occurrence.dueDate, today) >
-            payPeriodDays,
-        ),
-      );
-
   const overdueTotal = getBillOccurrenceItemsTotal(
     overdueBillItems,
     preferences,
@@ -783,75 +796,125 @@ export default function DashboardPage() {
     beforeNextPaydayBillItems,
     preferences,
   );
-  const nextPayPeriodTotal = getBillOccurrenceItemsTotal(
-    nextPayPeriodBillItems,
-    preferences,
-  );
-  const dueBeforePaydayTotal =
-    overdueTotal + beforeNextPaydayTotal;
+  const unpaidCheckingBeforePaydayTotal =
+    getCheckingBillOccurrenceItemsTotal(
+      overdueBillItems,
+      preferences,
+      manualCards,
+    ) +
+    getCheckingBillOccurrenceItemsTotal(
+      beforeNextPaydayBillItems,
+      preferences,
+      manualCards,
+    );
+
+  const plannedBeforePaydayTotal =
+    unpaidCheckingBeforePaydayTotal;
 
   const cardBalanceTotal = manualCards.reduce(
     (total, card) => total + parseMoney(card.balance),
     0,
   );
 
-  const cardLimitTotal = manualCards.reduce(
-    (total, card) => total + parseMoney(card.limit),
-    0,
-  );
-
-  const availableCredit = cardLimitTotal - cardBalanceTotal;
-
-  const cardUtilization =
-    cardLimitTotal > 0
-      ? Math.round((cardBalanceTotal / cardLimitTotal) * 100)
-      : 0;
-
   const sortedManualCards = [...manualCards].sort(
     (firstCard, secondCard) =>
       parseMoney(secondCard.balance) - parseMoney(firstCard.balance),
   );
 
-  const moneyLeftAfterBills = checkingBalance - dueBeforePaydayTotal;
+  const cardsWithBalances = sortedManualCards.filter(
+    (card) => parseMoney(card.balance) > 0,
+  );
+  const dashboardCardPreviews = cardsWithBalances.slice(0, 3);
+
+  const mostRecentPaidAction = recentPaidActions[0] ?? null;
+  const mostRecentPaidAmount = mostRecentPaidAction
+    ? getPaidActionPlanningAmount(
+        mostRecentPaidAction,
+        manualBills,
+        preferences,
+      )
+    : 0;
+
+  const moneyLeftAfterBills =
+    checkingBalance - plannedBeforePaydayTotal;
 
   const primaryBillsTitle = hasCurrentPayday
-    ? "Before Next Payday"
-    : "Next Bills";
+    ? "Before next payday"
+    : "Next bills";
 
   const primaryEmptyTitle = hasCurrentPayday
-    ? "Nothing due before payday"
+    ? "Nothing due"
     : "No bills due soon";
 
   const primaryEmptyText = hasCurrentPayday
-    ? `You have no additional unpaid bills due before ${formatPayday(
+    ? `All caught up through ${formatPayday(
         preferences.nextPayday,
       )}.`
-    : `You have nothing due within the next ${payPeriodDays} days.`;
+    : `You’re all caught up for the next ${payPeriodDays} days.`;
+
+  const primaryBillsSummary =
+    beforeNextPaydayBillItems.length === 0
+      ? hasCurrentPayday
+        ? `All caught up through ${formatPayday(
+            preferences.nextPayday,
+          )}`
+        : `Nothing due in the next ${payPeriodDays} days`
+      : beforeNextPaydayBillItems.length === 1
+        ? hasCurrentPayday
+          ? `One payment left before ${formatPayday(
+              preferences.nextPayday,
+            )}`
+          : `One payment due in the next ${payPeriodDays} days`
+        : hasCurrentPayday
+          ? `${beforeNextPaydayBillItems.length} payments left before ${formatPayday(
+              preferences.nextPayday,
+            )}`
+          : `${beforeNextPaydayBillItems.length} payments due in the next ${payPeriodDays} days`;
 
   const heroLabel = hasCurrentPayday
     ? "Left After Bills"
     : "Left After Upcoming Bills";
+  const greeting = getTimeGreeting(today);
+  const dashboardMessage =
+    moneyLeftAfterBills >= 0
+      ? "You’re in a good spot."
+      : "Let’s get ahead of it.";
+  const payPeriodProgress = hasCurrentPayday
+    ? getPayPeriodProgress(preferences, today)
+    : null;
+  const heroPlanningWindow = hasCurrentPayday
+    ? `through ${formatPayday(preferences.nextPayday)}`
+    : `next ${payPeriodDays} days`;
+  const heroPlanningSummary =
+    plannedBeforePaydayTotal <= 0
+      ? "All caught up"
+      : `${formatMoney(plannedBeforePaydayTotal)} planned`;
 
   return (
     <PageShell>
       <TopNav />
 
-      <header className="-mt-1 mb-1.5 motion-card sm:-mt-2">
-        <div className="mb-1.5 flex items-center justify-between gap-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
-            Finance Tracker
-          </p>
+      <header className="dashboard-intro -mt-1 mb-2 motion-card sm:-mt-2">
+        <p className="text-sm text-stone-400">{greeting}</p>
 
-          <Pill>v1.3 Beta</Pill>
-        </div>
-
-        <h1 className="text-[2.15rem] font-bold leading-tight tracking-tight text-[#f5f0e8] sm:text-4xl">
-          Dashboard
+        <h1 className="dashboard-intro-title mt-1 font-bold leading-[1.05] tracking-[-0.035em] text-[#f5f0e8]">
+          {dashboardMessage}
         </h1>
+
+        <p className="mt-1.5 text-sm text-stone-400">
+          Here’s your money at a glance.
+        </p>
       </header>
 
-      <section className="liquid-glass-accent hero-glass-card dashboard-hero motion-card motion-card-delay-1 mb-2 rounded-[2rem]">
-        <div className="liquid-content dashboard-hero-content relative p-3 sm:p-3.5">
+      <section
+        className="liquid-glass-accent hero-glass-card dashboard-hero dashboard-hero-focused motion-card motion-card-delay-1 mb-2 rounded-[1.55rem]"
+        style={{
+          borderRadius: "1.55rem",
+          clipPath: "inset(0 round 1.55rem)",
+          WebkitClipPath: "inset(0 round 1.55rem)",
+        }}
+      >
+        <div className="liquid-content dashboard-hero-content relative p-3.5 sm:p-4">
           <div
             className="dashboard-hero-glow dashboard-hero-glow-accent"
             aria-hidden="true"
@@ -876,93 +939,130 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <div className="shrink-0">
+            <div
+              className="shrink-0"
+              title={
+                lastSaved
+                  ? `Saved ${formatSavedTime(lastSaved)}`
+                  : "Saved locally"
+              }
+            >
               <Pill>
-                <span className="sm:hidden">Saved</span>
-                <span className="hidden sm:inline">
-                  {formatSavedTime(lastSaved)}
+                <span className="inline-flex items-center gap-1.5">
+                  <span
+                    className="dashboard-hero-saved-check"
+                    aria-hidden="true"
+                  >
+                    ✓
+                  </span>
+
+                  <span>Saved</span>
                 </span>
               </Pill>
             </div>
           </div>
 
-          <div className="relative mt-2.5">
-            <p className="dashboard-hero-balance break-words text-[3rem] font-bold leading-none tracking-[-0.045em] text-[#f5f0e8] sm:text-6xl">
-              {formatMoney(moneyLeftAfterBills)}
-            </p>
+          <div className="dashboard-hero-main relative mt-1">
+            <div className="dashboard-hero-balance-block min-w-0">
+              <p className="dashboard-hero-balance break-words font-bold leading-none tracking-[-0.05em] text-[#f5f0e8]">
+                {formatMoney(moneyLeftAfterBills)}
+              </p>
+
+              <div className="dashboard-hero-context mt-2">
+                <strong>{heroPlanningSummary}</strong>
+
+                <span
+                  className="dashboard-hero-context-divider"
+                  aria-hidden="true"
+                >
+                  ·
+                </span>
+
+                <span>{heroPlanningWindow}</span>
+              </div>
+            </div>
+
+            <HeroPaydayVisual
+              progress={payPeriodProgress}
+              payday={preferences.nextPayday}
+            />
           </div>
 
-          <div className="relative mt-2.5 overflow-hidden rounded-[1.3rem] border border-[#f5f0e8]/10 bg-[#11100d]/18 shadow-[inset_0_1px_0_rgba(245,240,232,0.045)]">
-            <HeroMetricRow
+          <div className="dashboard-hero-stats relative mt-2">
+            <HeroMetricCard
               label="Checking"
               value={formatMoney(checkingBalance)}
+              icon={<CheckingHeroIcon />}
             />
 
-            <HeroMetricRow
+            <HeroMetricCard
               label="Savings"
               value={formatMoney(savingsBalance)}
-            />
-
-            <HeroMetricRow
-              label={
-                hasCurrentPayday
-                  ? "Due Before Payday"
-                  : "Upcoming Bills"
-              }
-              value={formatMoney(dueBeforePaydayTotal)}
-              subtext={
-                hasCurrentPayday
-                  ? `Through ${formatPayday(preferences.nextPayday)}`
-                  : `Next ${payPeriodDays} days`
-              }
-              last
+              icon={<SavingsHeroIcon />}
             />
           </div>
         </div>
       </section>
 
-      <section className="grid gap-2">
-        <section className="dashboard-surface dashboard-bills-surface motion-card motion-card-delay-2 rounded-[1.7rem] p-2.5">
+      <section className="dashboard-section-stack grid gap-2.5">
+        <section
+          className="dashboard-surface dashboard-bills-surface motion-card motion-card-delay-2 rounded-[1.2rem]"
+          style={{
+            borderRadius: "1.2rem",
+            padding: "0.6rem",
+          }}
+        >
           <div
             className="dashboard-surface-glow"
             aria-hidden="true"
           />
 
           <div className="liquid-content">
-            <div className="mb-2">
+            <div className="mb-1.5 flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <SectionTitle title={primaryBillsTitle} />
+                <SectionTitle title={primaryBillsTitle} icon="calendar" />
 
-                <p className="mt-1 text-xs text-stone-500">
-                  {beforeNextPaydayBillItems.length} bill
-                  {beforeNextPaydayBillItems.length === 1 ? "" : "s"} •{" "}
-                  {formatMoney(beforeNextPaydayTotal)} due
-                </p>
+                {beforeNextPaydayBillItems.length > 0 ? (
+                  <p className="dashboard-bills-summary mt-1">
+                    {primaryBillsSummary}
+                  </p>
+                ) : null}
               </div>
+
+              <Link
+                href="/bills"
+                className="dashboard-section-link pressable shrink-0"
+              >
+                View all
+              </Link>
             </div>
 
             {beforeNextPaydayBillItems.length > 0 ? (
-              <div className="grid gap-1">
+              <div className="dashboard-payday-list">
                 {beforeNextPaydayBillItems.map((item) => (
-                  <BillPreviewRow
+                  <PaydayBillRow
                     key={item.occurrence.occurrenceKey}
                     bill={item.bill}
                     occurrenceDate={item.occurrence.dueDate}
+                    paymentSourceLabel={getBillPaymentSourceLabel(
+                      item.bill,
+                      manualCards,
+                    )}
                     onPay={() => markBillPaid(item)}
                   />
                 ))}
               </div>
             ) : (
-              <EmptyPreview
+              <BillsClearState
                 title={primaryEmptyTitle}
                 text={primaryEmptyText}
               />
             )}
 
             {overdueBillItems.length > 0 ? (
-              <div className="mt-2.5 border-t border-[#f5f0e8]/8 pt-2.5">
-                <div className="mb-2">
-                  <SectionTitle title="Needs Attention" />
+              <div className="mt-3 border-t border-[#f5f0e8]/8 pt-3">
+                <div className="mb-2.5">
+                  <SectionTitle title="Needs attention" />
 
                   <p className="mt-1 text-xs text-stone-500">
                     {overdueBillItems.length} overdue •{" "}
@@ -970,12 +1070,16 @@ export default function DashboardPage() {
                   </p>
                 </div>
 
-                <div className="grid gap-1">
+                <div className="dashboard-bill-list dashboard-bill-list-overdue">
                   {overdueBillItems.map((item) => (
                     <BillPreviewRow
                       key={item.occurrence.occurrenceKey}
                       bill={item.bill}
                       occurrenceDate={item.occurrence.dueDate}
+                      paymentSourceLabel={getBillPaymentSourceLabel(
+                        item.bill,
+                        manualCards,
+                      )}
                       overdue
                       onPay={() => markBillPaid(item)}
                     />
@@ -984,147 +1088,54 @@ export default function DashboardPage() {
               </div>
             ) : null}
 
-            {recentPaidActions.length > 0 ? (
-              <div
-                id="dashboard-recent-payments"
-                className="scroll-mt-28 mt-2.5 border-t border-[#f5f0e8]/8 pt-1.5"
-              >
-                <button
-                  type="button"
-                  onClick={toggleRecentPayments}
-                  aria-expanded={showRecentPayments}
-                  aria-controls="dashboard-recent-payments-content"
-                  className="pressable flex w-full items-center justify-between gap-3 rounded-[1.1rem] px-1 py-1.5 text-left"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-[#f5f0e8]">
-                      Recently Paid
-                    </p>
-
-                    <p className="mt-0.5 text-xs text-stone-500">
-                      {recentPaidActions.length} recorded
-                    </p>
-                  </div>
-
-                  <span className="dashboard-pill-button shrink-0 !px-2.5 !py-0.5">
-                    {showRecentPayments ? "Hide" : "View"}
-                  </span>
-                </button>
-
-                {showRecentPayments ? (
-                  <div
-                    id="dashboard-recent-payments-content"
-                    className="mt-1.5 grid gap-1 border-t border-[#f5f0e8]/8 pt-2"
-                  >
-                    {recentPaidActions.map((action) => (
-                      <RecentPaymentRow
-                        key={action.occurrenceKey}
-                        action={action}
-                        onUndo={() => undoPaidBill(action)}
-                      />
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-
-            <div className="mt-3.5 rounded-[1.45rem] border border-[#f5f0e8]/8 bg-[#11100d]/16 p-2 shadow-[inset_0_1px_0_rgba(245,240,232,0.04)]">
-              <div className="mb-1.5 flex items-center justify-between gap-3 px-1">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#c7ad75]/70">
-                  Up Next
-                </p>
-
-                <Link
-                  href="/bills"
-                  className="text-[11px] font-semibold text-stone-500 transition hover:text-[#c7ad75]"
-                >
-                  View all bills
-                </Link>
-              </div>
-
-              <div className="overflow-hidden rounded-[1.2rem] border border-[#f5f0e8]/8 bg-[#f5f0e8]/[0.025]">
-                {hasCurrentPayday ? (
-                  <div
-                    id="dashboard-next-pay-period"
-                    className="scroll-mt-28"
-                  >
-                    <button
-                      type="button"
-                      onClick={toggleNextPayPeriod}
-                      aria-expanded={showNextPayPeriod}
-                      className="pressable flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-[#f5f0e8]">
-                          Next Pay Period
-                        </p>
-
-                        <p className="mt-0.5 text-xs text-stone-400">
-                          {nextPayPeriodBillItems.length} bill
-                          {nextPayPeriodBillItems.length === 1 ? "" : "s"} •{" "}
-                          {formatMoney(nextPayPeriodTotal)}
-                        </p>
-                      </div>
-
-                      <span className="dashboard-pill-button shrink-0 !px-2.5 !py-0.5">
-                        {showNextPayPeriod ? "Hide" : "View"}
-                      </span>
-                    </button>
-
-                    {showNextPayPeriod ? (
-                      <div className="border-t border-[#f5f0e8]/8 px-2.5 py-2">
-                        {nextPayPeriodBillItems.length > 0 ? (
-                          <div className="grid gap-1.5">
-                            {nextPayPeriodBillItems.map((item) => (
-                              <BillPreviewRow
-                                key={item.occurrence.occurrenceKey}
-                                bill={item.bill}
-                                occurrenceDate={item.occurrence.dueDate}
-                                muted
-                                onPay={() => markBillPaid(item)}
-                              />
-                            ))}
-                          </div>
-                        ) : (
-                          <EmptyPreview
-                            title="Nothing due next pay period"
-                            text="No bills are currently scheduled in that window."
-                          />
-                        )}
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                <Link
-                  href="/bills"
-                  className={`pressable flex items-center justify-between gap-3 px-3 py-2.5 ${
-                    hasCurrentPayday ? "border-t border-[#f5f0e8]/8" : ""
-                  }`}
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-[#f5f0e8]">
-                      {hasCurrentPayday ? "Later" : "Other Bills"}
-                    </p>
-
-                    <p className="mt-0.5 text-xs text-stone-400">
-                      {laterBillItems.length} bill
-                      {laterBillItems.length === 1 ? "" : "s"} scheduled
-                    </p>
-                  </div>
-
-                  <span className="text-xs font-semibold text-stone-500">
-                    Open
-                  </span>
-                </Link>
-              </div>
-            </div>
           </div>
         </section>
 
+        {mostRecentPaidAction ? (
+          <section
+            className="dashboard-surface motion-card motion-card-delay-3 rounded-[1.2rem]"
+            style={{
+              borderRadius: "1.2rem",
+              padding: "0.6rem",
+            }}
+          >
+            <div
+              className="dashboard-surface-glow"
+              aria-hidden="true"
+            />
+
+            <div className="liquid-content">
+              <div className="mb-1 flex items-center justify-between gap-3">
+                <SectionTitle title="Recently paid" icon="receipt" />
+
+                <Link
+                  href="/bills"
+                  className="dashboard-section-link pressable shrink-0"
+                >
+                  View all
+                </Link>
+              </div>
+
+              <div key={mostRecentPaidAction.occurrenceKey}>
+                <RecentPaymentRow
+                  action={mostRecentPaidAction}
+                  amount={mostRecentPaidAmount}
+                  paymentSourceLabel={getPaidActionPaymentSourceLabel(
+                    mostRecentPaidAction,
+                    manualBills,
+                    manualCards,
+                  )}
+                  onUndo={() => undoPaidBill(mostRecentPaidAction)}
+                />
+              </div>
+            </div>
+          </section>
+        ) : null}
+
         <section
           id="dashboard-credit-cards"
-          className="dashboard-surface dashboard-cards-surface motion-card motion-card-delay-3 scroll-mt-28 rounded-[1.7rem] p-2.5"
+          className="dashboard-surface dashboard-cards-surface motion-card motion-card-delay-3 scroll-mt-28 rounded-[1.2rem] p-2.5"
+          style={{ borderRadius: "1.2rem" }}
         >
           <div
             className="dashboard-surface-glow"
@@ -1132,44 +1143,39 @@ export default function DashboardPage() {
           />
 
           <div className="liquid-content">
-            <button
-              type="button"
-              onClick={toggleCards}
-              className="flex w-full items-center justify-between gap-4 text-left"
-            >
+            <div className="dashboard-card-section-header">
               <div className="min-w-0">
-                <SectionTitle title="Credit Cards" />
+                <SectionTitle title="Credit cards" icon="card" />
 
-                <p className="mt-1 text-sm text-stone-400">
-                  {manualCards.length} card
-                  {manualCards.length === 1 ? "" : "s"} tracked •{" "}
-                  {cardUtilization}% used
+                <p
+                  className="dashboard-card-section-summary mt-0.5"
+                  style={{ color: "var(--theme-text-tertiary)" }}
+                >
+                  {cardsWithBalances.length > 0
+                    ? `${cardsWithBalances.length} balance${
+                        cardsWithBalances.length === 1 ? "" : "s"
+                      } · ${formatMoney(cardBalanceTotal)} total`
+                    : manualCards.length > 0
+                      ? "All cards paid off"
+                      : "No cards tracked"}
                 </p>
               </div>
 
-              <span className="dashboard-pill-button pressable !px-2.5 !py-0.5">
-                {showCards ? "Hide" : "View"}
-              </span>
-            </button>
-
-            <div className="dashboard-compact-panel mt-2">
-              <div className="grid grid-cols-2 gap-1">
-                <CompactStat
-                  label="Balance"
-                  value={formatMoney(cardBalanceTotal)}
-                />
-
-                <CompactStat
-                  label="Credit Left"
-                  value={formatMoney(availableCredit)}
-                />
-              </div>
+              <Link
+                href="/cards"
+                className="dashboard-section-link pressable shrink-0"
+              >
+                View all
+              </Link>
             </div>
 
-            {showCards && (
-              <div className="mt-2 grid gap-1 pt-0.5">
-                {manualCards.length > 0 ? (
-                  sortedManualCards.map((card, index) => {
+            {cardsWithBalances.length > 0 ? (
+              <div
+                className="dashboard-card-overview"
+                style={{ marginTop: "0.42rem" }}
+              >
+                <div className="dashboard-card-balance-list">
+                  {dashboardCardPreviews.map((card, index) => {
                     const balance = parseMoney(card.balance);
                     const limit = parseMoney(card.limit);
                     const utilization =
@@ -1185,28 +1191,55 @@ export default function DashboardPage() {
                         utilization={utilization}
                       />
                     );
-                  })
-                ) : (
-                  <EmptyPreview
-                    title="No credit cards yet"
-                    text="Add a card in the Editor to track utilization."
-                  />
-                )}
+                  })}
+                </div>
 
-                <Link
-                  href="/cards"
-                  className="dashboard-wide-button pressable mt-1 !py-2.5"
-                >
-                  Open Credit Cards
-                </Link>
+
+              </div>
+            ) : manualCards.length > 0 ? (
+              <div className="mt-2">
+                <EmptyPreview
+                  title="No card balances"
+                  text="Your credit cards are currently paid off."
+                />
+              </div>
+            ) : (
+              <div className="mt-2">
+                <EmptyPreview
+                  title="No credit cards yet"
+                  text="Add a card in the Editor to track utilization."
+                />
               </div>
             )}
           </div>
         </section>
       </section>
 
-      {paidConfirmationAction && showPaidConfirmation ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-5 z-50 flex justify-center px-4 pb-[env(safe-area-inset-bottom)]">
+      {undoBlockedMessage ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(6.75rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-4">
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="dashboard-surface pointer-events-auto relative w-full max-w-[23rem] overflow-hidden rounded-[1.35rem] border border-[#f5f0e8]/10 p-3 shadow-[0_18px_42px_rgba(0,0,0,0.28)]"
+          >
+            <div
+              className="dashboard-surface-glow"
+              aria-hidden="true"
+            />
+
+            <div className="liquid-content">
+              <p className="text-[0.95rem] font-semibold text-[#f5f0e8]">
+                Undo paused
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-stone-400">
+                {undoBlockedMessage}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : paidConfirmationAction && showPaidConfirmation ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(6.75rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-4">
           <div
             role="status"
             aria-live="polite"
@@ -1220,15 +1253,36 @@ export default function DashboardPage() {
             <div className="liquid-content flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-[#f5f0e8]">
-                  Bill marked paid
+                  {paidConfirmationAction.billName} paid
                 </p>
 
                 <p className="mt-0.5 truncate text-xs text-stone-400">
-                  {paidConfirmationAction.nextOccurrenceDateKey
-                    ? `Next due ${formatPayday(
-                        paidConfirmationAction.nextOccurrenceDateKey,
+                  {getPaidActionPaymentSource(
+                    paidConfirmationAction,
+                    manualBills,
+                    manualCards,
+                  ).type === "credit-card"
+                    ? `${formatMoney(
+                        getPaidActionPlanningAmount(
+                          paidConfirmationAction,
+                          manualBills,
+                          preferences,
+                        ),
+                      )} added to ${getPaidActionPaymentSourceLabel(
+                        paidConfirmationAction,
+                        manualBills,
+                        manualCards,
                       )}.`
-                    : `${paidConfirmationAction.billName} payment recorded.`}
+                    : `${formatMoney(
+                        getPaidActionPlanningAmount(
+                          paidConfirmationAction,
+                          manualBills,
+                          {
+                            ...preferences,
+                            roundBillsForPlanning: false,
+                          },
+                        ),
+                      )} paid from Checking.`}
                 </p>
               </div>
 
@@ -1247,49 +1301,301 @@ export default function DashboardPage() {
   );
 }
 
-function SectionTitle({ title }: { title: string }) {
+function SectionTitle({
+  title,
+  icon,
+}: {
+  title: string;
+  icon?: "calendar" | "card" | "receipt";
+}) {
   return (
-    <div className="flex items-center gap-2.5">
-      <span className="dashboard-section-dot h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75]" />
+    <div className="dashboard-section-title">
+      {icon ? (
+        <span
+          className={`dashboard-section-symbol dashboard-section-symbol-${icon}`}
+          aria-hidden="true"
+        >
+          {icon === "calendar" ? (
+            <CalendarSectionIcon />
+          ) : icon === "receipt" ? (
+            <ReceiptSectionIcon />
+          ) : (
+            <CreditCardSectionIcon />
+          )}
+        </span>
+      ) : (
+        <span className="dashboard-section-dot h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75]" />
+      )}
 
-      <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
+      <h2 className="text-[1.02rem] font-semibold tracking-[-0.012em] text-[#f5f0e8]">
         {title}
       </h2>
     </div>
   );
 }
 
-function HeroMetricRow({
+function CalendarSectionIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none">
+      <rect
+        x="4"
+        y="5.5"
+        width="16"
+        height="14"
+        rx="2.5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+      />
+      <path
+        d="M8 3.8v3.4M16 3.8v3.4M4 9.3h16"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+      <path
+        d="M8.2 13h2.2M13.6 13h2.2M8.2 16.2h2.2"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function ReceiptSectionIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none">
+      <path
+        d="M6.5 4.5h11v15l-2.2-1.25-2.2 1.25-2.2-1.25-2.2 1.25-2.2-1.25V4.5Z"
+        stroke="currentColor"
+        strokeWidth="1.65"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.2 8.2h5.6M9.2 11.5h5.6M9.2 14.8h3.7"
+        stroke="currentColor"
+        strokeWidth="1.65"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function CreditCardSectionIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none">
+      <rect
+        x="3.5"
+        y="5.5"
+        width="17"
+        height="13"
+        rx="2.5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+      />
+      <path
+        d="M3.5 9.5h17M7.2 14h4"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function HeroPaydayVisual({
+  progress,
+  payday,
+}: {
+  progress: {
+    percentage: number;
+    startDate: Date;
+    endDate: Date;
+  } | null;
+  payday: string;
+}) {
+  if (!progress) {
+    return (
+      <Link
+        href="/account/preferences"
+        className="dashboard-hero-payday-compact dashboard-hero-payday-compact-link pressable"
+        aria-label="Set your next payday"
+      >
+        <div className="dashboard-hero-payday-compact-heading">
+          <span>Pay period</span>
+          <strong>Set payday</strong>
+        </div>
+
+        <span
+          className="dashboard-hero-payday-compact-line"
+          aria-hidden="true"
+        >
+          <span />
+        </span>
+      </Link>
+    );
+  }
+
+  const daysUntilPayday = Math.max(
+    getDaysUntilDate(progress.endDate),
+    0,
+  );
+
+  const daysUntilPaydayLabel =
+    daysUntilPayday === 0
+      ? "Payday today"
+      : `${daysUntilPayday} day${
+          daysUntilPayday === 1 ? "" : "s"
+        } left`;
+
+  return (
+    <div
+      className="dashboard-hero-payday-compact"
+      aria-label={`${progress.percentage}% through the current pay period. ${daysUntilPaydayLabel}. Next payday ${formatPayday(
+        payday,
+      )}.`}
+    >
+      <div className="dashboard-hero-payday-compact-heading">
+        <span>Pay period</span>
+        <strong>{daysUntilPaydayLabel}</strong>
+      </div>
+
+      <span
+        className="dashboard-hero-payday-compact-line"
+        aria-hidden="true"
+      >
+        <span
+          style={{
+            width: `${progress.percentage}%`,
+          }}
+        />
+      </span>
+    </div>
+  );
+}
+
+function HeroMetricCard({
   label,
   value,
-  subtext,
-  last = false,
+  detail,
+  icon,
 }: {
   label: string;
   value: string;
-  subtext?: string;
-  last?: boolean;
+  detail?: string;
+  icon?: ReactNode;
 }) {
   return (
-    <div
-      className={`flex items-center justify-between gap-4 px-3.5 py-2.5 ${
-        last ? "" : "border-b border-[#f5f0e8]/8"
-      }`}
-    >
-      <p className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
-        {label}
-      </p>
+    <div className="dashboard-hero-stat">
+      <div className="dashboard-hero-stat-layout">
+        {icon ? (
+          <span className="dashboard-hero-stat-icon" aria-hidden="true">
+            {icon}
+          </span>
+        ) : null}
 
-      <div className="shrink-0 text-right">
-        <p className="text-base font-bold tracking-tight text-[#f5f0e8]">
-          {value}
+        <div className="min-w-0">
+          <p className="dashboard-hero-stat-label">{label}</p>
+
+          <p className="dashboard-hero-stat-value">{value}</p>
+
+          {detail ? (
+            <p className="dashboard-hero-stat-detail">{detail}</p>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CheckingHeroIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none">
+      <rect
+        x="3.5"
+        y="6"
+        width="17"
+        height="12"
+        rx="2.4"
+        stroke="currentColor"
+        strokeWidth="1.7"
+      />
+      <path
+        d="M3.5 10h17M7 14.2h3.8"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function SavingsHeroIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none">
+      <path
+        d="M5 11.2c0-3.1 2.8-5.5 6.3-5.5h1.8c3.8 0 6.9 2.7 6.9 6.1v2.8c0 1.7-1.1 3.2-2.7 3.9V21h-3v-2h-4.5v2h-3v-2.4A5.1 5.1 0 0 1 5 14.6v-3.4Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10 8.5h4.2M20 11.5h1.2"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+      <circle cx="8.5" cy="11.5" r=".8" fill="currentColor" />
+    </svg>
+  );
+}
+
+function PaydayBillRow({
+  bill,
+  occurrenceDate,
+  paymentSourceLabel,
+  onPay,
+}: {
+  bill: ManualBill;
+  occurrenceDate: Date;
+  paymentSourceLabel: string;
+  onPay: () => void;
+}) {
+  const month = occurrenceDate
+    .toLocaleDateString("en-US", { month: "short" })
+    .toUpperCase();
+  const day = occurrenceDate.getDate();
+
+  return (
+    <div className="dashboard-payday-row">
+      <div className="dashboard-payday-date" aria-hidden="true">
+        <span>{month}</span>
+        <strong>{day}</strong>
+      </div>
+
+      <div className="dashboard-payday-copy">
+        <p className="dashboard-payday-name">
+          {bill.name || "Untitled Bill"}
         </p>
 
-        {subtext ? (
-          <p className="mt-0.5 text-xs text-stone-400">
-            {subtext}
-          </p>
-        ) : null}
+        <p className="dashboard-payday-source">
+          From {paymentSourceLabel}
+        </p>
+      </div>
+
+      <div className="dashboard-payday-trailing">
+        <p className="dashboard-payday-amount">
+          {formatMoney(parseMoney(bill.amount))}
+        </p>
+
+        <button
+          type="button"
+          onClick={onPay}
+          aria-label={`Mark ${bill.name || "bill"} paid`}
+          className="dashboard-payday-pay pressable"
+        >
+          Pay
+        </button>
       </div>
     </div>
   );
@@ -1298,102 +1604,227 @@ function HeroMetricRow({
 function BillPreviewRow({
   bill,
   occurrenceDate,
+  paymentSourceLabel,
   muted = false,
   overdue = false,
   onPay,
 }: {
   bill: ManualBill;
   occurrenceDate: Date;
+  paymentSourceLabel: string;
   muted?: boolean;
   overdue?: boolean;
   onPay?: () => void;
 }) {
   return (
     <div
-      className={`dashboard-preview-row !px-3 !py-2 ${
-        muted ? "dashboard-preview-row-muted" : ""
-      }`}
+      className={`dashboard-bill-list-row ${
+        muted ? "dashboard-bill-list-row-muted" : ""
+      } ${overdue ? "dashboard-bill-list-row-overdue" : ""}`}
     >
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p
-            className={`truncate text-base font-semibold ${
-              muted ? "text-stone-300" : "text-[#f5f0e8]"
-            }`}
+      <BillIcon name={bill.name} muted={muted} />
+
+      <div className="dashboard-bill-copy">
+        <p
+          className={`dashboard-bill-name ${
+            muted ? "dashboard-bill-name-muted" : ""
+          }`}
+        >
+          {bill.name || "Untitled Bill"}
+        </p>
+
+        <p
+          className={`dashboard-bill-due ${
+            overdue ? "dashboard-bill-due-overdue" : ""
+          }`}
+        >
+          <span className="dashboard-bill-due-date">
+            {overdue
+              ? `Overdue · ${formatBillDate(occurrenceDate)}`
+              : `Due ${formatBillDate(occurrenceDate)}`}
+          </span>
+
+          <span
+            className="dashboard-bill-meta-divider"
+            aria-hidden="true"
           >
-            {bill.name || "Untitled Bill"}
-          </p>
+            ·
+          </span>
 
-          <div className="mt-1 flex flex-wrap items-center gap-1.5">
-            <span
-              className={`dashboard-date-pill ${
-                overdue
-                  ? "!border-[#d79b83]/25 !bg-[#d79b83]/10 !text-[#e2aa93]"
-                  : ""
-              }`}
-            >
-              {overdue
-                ? `Overdue · ${formatBillDate(occurrenceDate)}`
-                : `Due ${formatBillDate(occurrenceDate)}`}
-            </span>
-          </div>
-        </div>
+          <span className="dashboard-bill-payment-source">
+            {paymentSourceLabel}
+          </span>
+        </p>
+      </div>
 
-        <div className="shrink-0 text-right">
-          <p
-            className={`text-lg font-bold tracking-tight ${
-              muted ? "text-stone-300" : "text-[#f5f0e8]"
-            }`}
+      <div className="dashboard-bill-trailing">
+        <p
+          className={`dashboard-bill-amount ${
+            muted ? "dashboard-bill-amount-muted" : ""
+          }`}
+        >
+          {formatMoney(parseMoney(bill.amount))}
+        </p>
+
+        {onPay ? (
+          <button
+            type="button"
+            onClick={onPay}
+            aria-label={`Mark ${bill.name || "bill"} paid`}
+            className="dashboard-pill-button dashboard-pay-button pressable"
           >
-            {formatMoney(parseMoney(bill.amount))}
-          </p>
-
-          {onPay ? (
-            <button
-              type="button"
-              onClick={onPay}
-              aria-label={`Mark ${bill.name || "bill"} paid`}
-              className="dashboard-pill-button pressable mt-1 !px-2.5 !py-1"
-            >
-              <span className="text-xs">Pay</span>
-            </button>
-          ) : (
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/65">
-              Monthly
-            </p>
-          )}
-        </div>
+            <span className="text-xs">Pay</span>
+          </button>
+        ) : (
+          <p className="dashboard-bill-frequency">Monthly</p>
+        )}
       </div>
     </div>
   );
 }
 
+function BillIcon({
+  name,
+  muted = false,
+}: {
+  name: string;
+  muted?: boolean;
+}) {
+  const normalizedName = name.toLowerCase();
+  const iconType = normalizedName.includes("spotify")
+    ? "spotify"
+    : normalizedName.includes("chatgpt") ||
+        normalizedName.includes("openai")
+      ? "ai"
+      : normalizedName.includes("phone")
+        ? "phone"
+        : "bill";
+
+  return (
+    <span
+      className={`dashboard-bill-icon dashboard-bill-icon-${iconType} ${
+        muted ? "dashboard-bill-icon-muted" : ""
+      }`}
+      aria-hidden="true"
+    >
+      {iconType === "spotify" ? (
+        <svg viewBox="0 0 24 24" fill="none">
+          <path
+            d="M5.4 8.8c4.6-1.3 9.1-.9 13.2 1"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+          <path
+            d="M6.2 12c3.8-1 7.7-.7 11.2.8"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+          <path
+            d="M7 15.1c3-.7 6-.5 8.8.6"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+        </svg>
+      ) : iconType === "ai" ? (
+        <svg viewBox="0 0 24 24" fill="none">
+          <path
+            d="M12 4.25 13.35 8l3.75 1.35-3.75 1.35L12 14.45l-1.35-3.75L6.9 9.35 10.65 8 12 4.25Z"
+            stroke="currentColor"
+            strokeWidth="1.55"
+            strokeLinejoin="round"
+          />
+          <path
+            d="m17.4 14.3.7 1.95 1.95.7-1.95.7-.7 1.95-.7-1.95-1.95-.7 1.95-.7.7-1.95Z"
+            fill="currentColor"
+          />
+        </svg>
+      ) : iconType === "phone" ? (
+        <svg viewBox="0 0 24 24" fill="none">
+          <path
+            d="M7.1 4.8 9.4 8a1.3 1.3 0 0 1-.15 1.7l-1.1 1.05a14.4 14.4 0 0 0 5.1 5.1l1.05-1.1a1.3 1.3 0 0 1 1.7-.15l3.2 2.3a1.3 1.3 0 0 1 .45 1.55l-.45 1.15a2.25 2.25 0 0 1-2.3 1.4C9.8 20.25 3.75 14.2 3 7.1a2.25 2.25 0 0 1 1.4-2.3l1.15-.45a1.3 1.3 0 0 1 1.55.45Z"
+            stroke="currentColor"
+            strokeWidth="1.55"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" fill="none">
+          <path
+            d="M7 4.5h10v15l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2V4.5Z"
+            stroke="currentColor"
+            strokeWidth="1.55"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M9.5 8.25h5M9.5 11.5h5M9.5 14.75h3.25"
+            stroke="currentColor"
+            strokeWidth="1.55"
+            strokeLinecap="round"
+          />
+        </svg>
+      )}
+    </span>
+  );
+}
+
 function RecentPaymentRow({
   action,
+  amount,
+  paymentSourceLabel,
   onUndo,
 }: {
   action: PaidBillAction;
+  amount: number;
+  paymentSourceLabel: string;
   onUndo: () => void;
 }) {
   return (
-    <div className="dashboard-preview-row flex items-center justify-between gap-3 !px-3 !py-2">
+    <div
+      className="dashboard-last-payment-row"
+      style={{
+        paddingTop: "0.3rem",
+        paddingBottom: "0.35rem",
+      }}
+    >
+      <span
+        className="dashboard-last-payment-check"
+        style={{
+          width: "2rem",
+          height: "2rem",
+        }}
+        aria-hidden="true"
+      >
+        ✓
+      </span>
+
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-stone-300">
+        <p className="dashboard-last-payment-name">
           {action.billName}
         </p>
 
-        <p className="mt-0.5 text-xs text-stone-500">
-          Paid {formatPayday(action.occurrenceDateKey)}
+        <p className="dashboard-last-payment-date">
+          Paid {formatPayday(action.occurrenceDateKey)} •{" "}
+          {paymentSourceLabel}
         </p>
       </div>
 
-      <button
-        type="button"
-        onClick={onUndo}
-        className="dashboard-pill-button pressable shrink-0 !px-2.5 !py-1"
-      >
-        <span className="text-xs">Undo</span>
-      </button>
+      <div className="dashboard-last-payment-trailing">
+        <p className="dashboard-last-payment-amount">
+          {formatMoney(amount)}
+        </p>
+
+        <button
+          type="button"
+          onClick={onUndo}
+          className="dashboard-last-payment-undo pressable"
+        >
+          Undo
+        </button>
+      </div>
     </div>
   );
 }
@@ -1408,57 +1839,145 @@ function CardPreviewRow({
   utilization: number;
 }) {
   return (
-    <div className="dashboard-preview-row dashboard-card-preview-row !px-3 !py-2">
-      <div className="mb-2 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-base font-semibold text-[#f5f0e8]">
-            {name || "Untitled Card"}
-          </p>
+    <div
+      className="dashboard-card-balance-row"
+      style={{
+        minHeight: "4.05rem",
+        paddingTop: "0.6rem",
+        paddingBottom: "0.58rem",
+        paddingLeft: "0.08rem",
+        paddingRight: "0.08rem",
+      }}
+    >
+      <span
+        className="dashboard-card-balance-icon"
+        style={{
+          width: "2.05rem",
+          height: "2.05rem",
+          borderRadius: "0.68rem",
+        }}
+        aria-hidden="true"
+      >
+        <CreditCardDashboardIcon />
+      </span>
 
-          <p className="mt-0.5 text-sm text-stone-400">
-            {utilization}% of limit used
-          </p>
-        </div>
+      <div className="dashboard-card-balance-copy">
+        <div
+          className="dashboard-card-balance-heading"
+          style={{ alignItems: "center" }}
+        >
+          <div className="min-w-0">
+            <p
+              className="dashboard-card-balance-name"
+              style={{
+                fontSize: "0.94rem",
+                fontWeight: 650,
+                letterSpacing: "-0.012em",
+              }}
+            >
+              {name || "Untitled Card"}
+            </p>
 
-        <div className="shrink-0 text-right">
-          <p className="text-lg font-bold tracking-tight text-[#f5f0e8]">
+            <p
+              className="dashboard-card-balance-utilization"
+              style={{
+                marginTop: "0.2rem",
+                fontSize: "0.69rem",
+                color: "var(--theme-text-tertiary)",
+              }}
+            >
+              {utilization}% used
+            </p>
+          </div>
+
+          <p
+            className="dashboard-card-balance-amount"
+            style={{
+              fontSize: "0.98rem",
+              fontWeight: 700,
+              letterSpacing: "-0.02em",
+            }}
+          >
             {formatMoney(balance)}
           </p>
-
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/65">
-            Balance
-          </p>
         </div>
-      </div>
 
-      <div className="dashboard-progress-track">
         <div
-          className="liquid-progress dashboard-progress-fill"
+          className="dashboard-card-balance-track"
           style={{
-            width: `${Math.min(utilization, 100)}%`,
+            width: "100%",
+            maxWidth: "none",
+            height: "0.22rem",
+            marginTop: "0.48rem",
           }}
-        />
+        >
+          <div
+            className="liquid-progress dashboard-card-balance-fill"
+            style={{
+              width: `${Math.min(utilization, 100)}%`,
+            }}
+          />
+        </div>
       </div>
     </div>
   );
 }
 
-function CompactStat({
-  label,
-  value,
+function CreditCardDashboardIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none">
+      <rect
+        x="3.5"
+        y="5.5"
+        width="17"
+        height="13"
+        rx="2.5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+      />
+      <path
+        d="M3.5 9.5h17M7.2 14h4"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function BillsClearState({
+  title,
+  text,
 }: {
-  label: string;
-  value: string;
+  title: string;
+  text: string;
 }) {
   return (
-    <div className="dashboard-compact-stat !px-2.5 !py-1.5">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/70">
-        {label}
-      </p>
+    <div className="flex items-center gap-2.5 px-1 py-1.5">
+      <span
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#c7ad75]/22 bg-[#c7ad75]/8 text-[#c7ad75]"
+        aria-hidden="true"
+      >
+        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+          <path
+            d="m5.5 12.5 4 4L18.5 7.5"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </span>
 
-      <p className="mt-0.5 truncate text-base font-bold text-[#f5f0e8]">
-        {value}
-      </p>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-[#f5f0e8]">
+          {title}
+        </p>
+
+        <p className="mt-0.5 text-xs leading-5 text-stone-400">
+          {text}
+        </p>
+      </div>
     </div>
   );
 }

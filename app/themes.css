@@ -1,0 +1,1700 @@
+/* -------------------------------------------------------------------------- */
+/* leftovr Theme System                                                       */
+/*                                                                            */
+/* Imported after globals.css. This file owns color, material, and depth only. */
+/* Layout, sizing, behavior, and motion remain in globals.css and page files.  */
+/* -------------------------------------------------------------------------- */
+
+/* Dark — leftovr Classic */
+:root,
+:root[data-theme="classic"] {
+  --background: #11161b;
+  --foreground: #f4f1e8;
+
+  --theme-bg: #11161b;
+  --theme-nav: #151c22;
+  --theme-panel: #1b242b;
+  --theme-card: #222d35;
+  --theme-card-soft: #2b3840;
+  --theme-editing: #1d262d;
+  --theme-text: #f4f1e8;
+  --theme-accent: #a7b89d;
+  --theme-muted: #aab0aa;
+  --theme-shadow: rgba(7, 12, 16, 0.48);
+
+  --theme-text-primary: #f4f1e8;
+  --theme-text-secondary: #c8cbc5;
+  --theme-text-tertiary: #949c98;
+
+  --theme-surface-nav: #151d23;
+  --theme-surface-hero: #29363d;
+  --theme-surface-primary: #1c262d;
+  --theme-surface-secondary: #161f25;
+  --theme-surface-tertiary: #12191e;
+  --theme-surface-row: #222d34;
+  --theme-surface-inset: #141b20;
+  --theme-surface-control: #253038;
+  --theme-surface-sheet: #1b242b;
+
+  --theme-border-subtle: #27333a;
+  --theme-border-default: #35444b;
+  --theme-border-strong: #56656b;
+  --theme-divider: #2b373e;
+  --theme-highlight: rgba(244, 241, 232, 0.08);
+
+  --theme-accent-subtle: rgba(167, 184, 157, 0.04);
+  --theme-accent-soft: rgba(167, 184, 157, 0.09);
+  --theme-accent-medium: rgba(167, 184, 157, 0.18);
+}
+
+/* Dark — Mocha */
+:root[data-theme="mocha"] {
+  --theme-bg: #100e0b;
+  --theme-nav: #18140f;
+  --theme-panel: #211b14;
+  --theme-card: #2a2219;
+  --theme-card-soft: #382d20;
+  --theme-editing: #241d16;
+  --theme-text: #f7f1e7;
+  --theme-accent: #d0b171;
+  --theme-muted: #aaa097;
+  --theme-shadow: rgba(0, 0, 0, 0.34);
+
+  --theme-text-primary: #f7f1e7;
+  --theme-text-secondary: #d1c7bb;
+  --theme-text-tertiary: #a69b90;
+
+  --theme-surface-nav: #1c1711;
+  --theme-surface-hero: #34291d;
+  --theme-surface-primary: #221b14;
+  --theme-surface-secondary: #18130f;
+  --theme-surface-tertiary: #120f0c;
+  --theme-surface-row: #2a2118;
+  --theme-surface-inset: #15110d;
+  --theme-surface-control: #2b231a;
+  --theme-surface-sheet: #201913;
+
+  --theme-border-subtle: #30271d;
+  --theme-border-default: #443728;
+  --theme-border-strong: #68583e;
+  --theme-divider: #33291f;
+  --theme-highlight: rgba(255, 248, 235, 0.075);
+
+  --theme-accent-subtle: rgba(208, 177, 113, 0.04);
+  --theme-accent-soft: rgba(208, 177, 113, 0.08);
+  --theme-accent-medium: rgba(208, 177, 113, 0.17);
+}
+
+/* Dark — Forest */
+:root[data-theme="forest"] {
+  --theme-bg: #0b100a;
+  --theme-nav: #141a11;
+  --theme-panel: #1b2417;
+  --theme-card: #25301e;
+  --theme-card-soft: #344229;
+  --theme-editing: #20291b;
+  --theme-text: #f2f2e7;
+  --theme-accent: #a9bd73;
+  --theme-muted: #a3aa97;
+  --theme-shadow: rgba(0, 0, 0, 0.36);
+
+  --theme-text-primary: #f2f2e7;
+  --theme-text-secondary: #c9ccbd;
+  --theme-text-tertiary: #9ba28f;
+
+  --theme-surface-nav: #171e13;
+  --theme-surface-hero: #2c3b22;
+  --theme-surface-primary: #1d2718;
+  --theme-surface-secondary: #141b11;
+  --theme-surface-tertiary: #0f150d;
+  --theme-surface-row: #26321f;
+  --theme-surface-inset: #11170f;
+  --theme-surface-control: #283421;
+  --theme-surface-sheet: #1a2417;
+
+  --theme-border-subtle: #293521;
+  --theme-border-default: #3b4a2f;
+  --theme-border-strong: #5b6c43;
+  --theme-divider: #2c3825;
+  --theme-highlight: rgba(250, 250, 232, 0.075);
+
+  --theme-accent-subtle: rgba(169, 189, 115, 0.04);
+  --theme-accent-soft: rgba(169, 189, 115, 0.08);
+  --theme-accent-medium: rgba(169, 189, 115, 0.18);
+}
+
+/* Dark — Slate */
+:root[data-theme="slate"] {
+  --theme-bg: #090e16;
+  --theme-nav: #111925;
+  --theme-panel: #182334;
+  --theme-card: #223047;
+  --theme-card-soft: #2e405d;
+  --theme-editing: #1c293c;
+  --theme-text: #f1f5fb;
+  --theme-accent: #9fb8dc;
+  --theme-muted: #9ca9ba;
+  --theme-shadow: rgba(0, 0, 0, 0.38);
+
+  --theme-text-primary: #f1f5fb;
+  --theme-text-secondary: #c5cfdb;
+  --theme-text-tertiary: #98a5b6;
+
+  --theme-surface-nav: #141d2a;
+  --theme-surface-hero: #263a55;
+  --theme-surface-primary: #192638;
+  --theme-surface-secondary: #111a27;
+  --theme-surface-tertiary: #0c131d;
+  --theme-surface-row: #223249;
+  --theme-surface-inset: #0f1722;
+  --theme-surface-control: #25364e;
+  --theme-surface-sheet: #182438;
+
+  --theme-border-subtle: #263449;
+  --theme-border-default: #384b67;
+  --theme-border-strong: #5c7192;
+  --theme-divider: #2a394f;
+  --theme-highlight: rgba(246, 250, 255, 0.08);
+
+  --theme-accent-subtle: rgba(159, 184, 220, 0.04);
+  --theme-accent-soft: rgba(159, 184, 220, 0.08);
+  --theme-accent-medium: rgba(159, 184, 220, 0.18);
+}
+
+/* Dark — Rose Gold */
+:root[data-theme="rose-gold"] {
+  --theme-bg: #100c0e;
+  --theme-nav: #1a1316;
+  --theme-panel: #24191e;
+  --theme-card: #302027;
+  --theme-card-soft: #422c35;
+  --theme-editing: #291b21;
+  --theme-text: #faf1ef;
+  --theme-accent: #d9a5a2;
+  --theme-muted: #b5a2a3;
+  --theme-shadow: rgba(0, 0, 0, 0.37);
+
+  --theme-text-primary: #faf1ef;
+  --theme-text-secondary: #d4c4c3;
+  --theme-text-tertiary: #aa9698;
+
+  --theme-surface-nav: #1d1619;
+  --theme-surface-hero: #442e37;
+  --theme-surface-primary: #281b20;
+  --theme-surface-secondary: #1a1216;
+  --theme-surface-tertiary: #130e11;
+  --theme-surface-row: #312128;
+  --theme-surface-inset: #160f13;
+  --theme-surface-control: #35232b;
+  --theme-surface-sheet: #24181d;
+
+  --theme-border-subtle: #34242a;
+  --theme-border-default: #4a333b;
+  --theme-border-strong: #73515a;
+  --theme-divider: #39272e;
+  --theme-highlight: rgba(255, 246, 244, 0.075);
+
+  --theme-accent-subtle: rgba(217, 165, 162, 0.04);
+  --theme-accent-soft: rgba(217, 165, 162, 0.08);
+  --theme-accent-medium: rgba(217, 165, 162, 0.18);
+}
+
+/* Light — leftovr Light */
+:root[data-theme="classic-light"] {
+  --background: #f4f1e8;
+  --foreground: #313a43;
+
+  --theme-bg: #f4f1e8;
+  --theme-nav: #fbf9f3;
+  --theme-panel: #f8f6ef;
+  --theme-card: #ecebe2;
+  --theme-card-soft: #e2e3da;
+  --theme-editing: #faf8f2;
+  --theme-text: #313a43;
+  --theme-accent: #7e9275;
+  --theme-muted: #717873;
+  --theme-shadow: rgba(62, 70, 82, 0.14);
+
+  --theme-text-primary: #313a43;
+  --theme-text-secondary: #5f686c;
+  --theme-text-tertiary: #858c89;
+
+  --theme-surface-nav: #fbf9f3;
+  --theme-surface-hero: #ecebde;
+  --theme-surface-primary: #f7f5ee;
+  --theme-surface-secondary: #f1efe8;
+  --theme-surface-tertiary: #eceae2;
+  --theme-surface-row: #f8f6f0;
+  --theme-surface-inset: #eeede5;
+  --theme-surface-control: #f0f0e8;
+  --theme-surface-sheet: #fcfaf5;
+
+  --theme-border-subtle: #e1ded3;
+  --theme-border-default: #d4d2c7;
+  --theme-border-strong: #bfc5b7;
+  --theme-divider: #dddad0;
+  --theme-highlight: rgba(255, 255, 255, 0.72);
+
+  --theme-accent-subtle: rgba(126, 146, 117, 0.035);
+  --theme-accent-soft: rgba(126, 146, 117, 0.075);
+  --theme-accent-medium: rgba(126, 146, 117, 0.14);
+}
+
+/* Light — Mocha */
+:root[data-theme="mocha-light"] {
+  --theme-bg: #f4eee4;
+  --theme-nav: #fbf7ef;
+  --theme-panel: #f8f3ea;
+  --theme-card: #eee3d2;
+  --theme-card-soft: #e4d5bd;
+  --theme-editing: #f7f1e8;
+  --theme-text: #2b2218;
+  --theme-accent: #966f2f;
+  --theme-muted: #71665a;
+  --theme-shadow: rgba(89, 64, 31, 0.14);
+
+  --theme-text-primary: #2b2218;
+  --theme-text-secondary: #62584d;
+  --theme-text-tertiary: #887d70;
+
+  --theme-surface-nav: #fbf7ef;
+  --theme-surface-hero: #f0e6d6;
+  --theme-surface-primary: #f5ede2;
+  --theme-surface-secondary: #f1e9de;
+  --theme-surface-tertiary: #ece3d6;
+  --theme-surface-row: #f5eee4;
+  --theme-surface-inset: #eee6da;
+  --theme-surface-control: #f3ece2;
+  --theme-surface-sheet: #faf6ef;
+
+  --theme-border-subtle: #e2d8ca;
+  --theme-border-default: #d8cab6;
+  --theme-border-strong: #c5b28f;
+  --theme-divider: #dfd5c7;
+  --theme-highlight: rgba(255, 255, 255, 0.64);
+
+  --theme-accent-subtle: rgba(150, 111, 47, 0.035);
+  --theme-accent-soft: rgba(150, 111, 47, 0.07);
+  --theme-accent-medium: rgba(150, 111, 47, 0.115);
+}
+
+/* Light — Forest */
+:root[data-theme="forest-light"] {
+  --theme-bg: #eff0e7;
+  --theme-nav: #f8f9f1;
+  --theme-panel: #f5f6ee;
+  --theme-card: #e5e8d8;
+  --theme-card-soft: #d7ddc1;
+  --theme-editing: #f2f4eb;
+  --theme-text: #21291c;
+  --theme-accent: #6c7d42;
+  --theme-muted: #6b7262;
+  --theme-shadow: rgba(68, 79, 41, 0.14);
+
+  --theme-text-primary: #21291c;
+  --theme-text-secondary: #596251;
+  --theme-text-tertiary: #7b8373;
+
+  --theme-surface-nav: #f8f9f1;
+  --theme-surface-hero: #e9ecdf;
+  --theme-surface-primary: #f1f3ea;
+  --theme-surface-secondary: #edf0e6;
+  --theme-surface-tertiary: #e8ecdf;
+  --theme-surface-row: #f1f3ea;
+  --theme-surface-inset: #eaeee2;
+  --theme-surface-control: #eff2e8;
+  --theme-surface-sheet: #f7f8f2;
+
+  --theme-border-subtle: #dde1d4;
+  --theme-border-default: #d0d6c4;
+  --theme-border-strong: #b7c19a;
+  --theme-divider: #d9ded0;
+  --theme-highlight: rgba(255, 255, 255, 0.64);
+
+  --theme-accent-subtle: rgba(108, 125, 66, 0.035);
+  --theme-accent-soft: rgba(108, 125, 66, 0.07);
+  --theme-accent-medium: rgba(108, 125, 66, 0.115);
+}
+
+/* Light — Slate */
+:root[data-theme="slate-light"] {
+  --theme-bg: #eef2f6;
+  --theme-nav: #f9fbfd;
+  --theme-panel: #f5f8fb;
+  --theme-card: #e4eaf1;
+  --theme-card-soft: #d5deea;
+  --theme-editing: #f2f5f9;
+  --theme-text: #17202b;
+  --theme-accent: #587094;
+  --theme-muted: #687482;
+  --theme-shadow: rgba(43, 58, 79, 0.14);
+
+  --theme-text-primary: #17202b;
+  --theme-text-secondary: #56626f;
+  --theme-text-tertiary: #7a8591;
+
+  --theme-surface-nav: #f9fbfd;
+  --theme-surface-hero: #e8edf3;
+  --theme-surface-primary: #f1f4f8;
+  --theme-surface-secondary: #edf1f5;
+  --theme-surface-tertiary: #e7edf3;
+  --theme-surface-row: #f1f5f8;
+  --theme-surface-inset: #e9eff5;
+  --theme-surface-control: #eef3f7;
+  --theme-surface-sheet: #f8fafc;
+
+  --theme-border-subtle: #dce3ea;
+  --theme-border-default: #ced8e2;
+  --theme-border-strong: #b5c3d4;
+  --theme-divider: #d9e0e8;
+  --theme-highlight: rgba(255, 255, 255, 0.68);
+
+  --theme-accent-subtle: rgba(88, 112, 148, 0.035);
+  --theme-accent-soft: rgba(88, 112, 148, 0.07);
+  --theme-accent-medium: rgba(88, 112, 148, 0.115);
+}
+
+/* Light — Rose Gold */
+:root[data-theme="rose-gold-light"] {
+  --theme-bg: #f3edeb;
+  --theme-nav: #faf6f4;
+  --theme-panel: #f7f1ef;
+  --theme-card: #eadeda;
+  --theme-card-soft: #dfcbc6;
+  --theme-editing: #f6f0ee;
+  --theme-text: #2e2122;
+  --theme-accent: #a46763;
+  --theme-muted: #786a68;
+  --theme-shadow: rgba(100, 68, 67, 0.14);
+
+  --theme-text-primary: #2e2122;
+  --theme-text-secondary: #655755;
+  --theme-text-tertiary: #8a7b78;
+
+  --theme-surface-nav: #faf6f4;
+  --theme-surface-hero: #efe4e1;
+  --theme-surface-primary: #f4ebe8;
+  --theme-surface-secondary: #f0e7e4;
+  --theme-surface-tertiary: #ebe1de;
+  --theme-surface-row: #f4ebe8;
+  --theme-surface-inset: #ede3e0;
+  --theme-surface-control: #f2e9e6;
+  --theme-surface-sheet: #faf5f3;
+
+  --theme-border-subtle: #e3d8d5;
+  --theme-border-default: #d8c9c5;
+  --theme-border-strong: #c9aaa5;
+  --theme-divider: #e0d5d2;
+  --theme-highlight: rgba(255, 255, 255, 0.64);
+
+  --theme-accent-subtle: rgba(164, 103, 99, 0.035);
+  --theme-accent-soft: rgba(164, 103, 99, 0.07);
+  --theme-accent-medium: rgba(164, 103, 99, 0.115);
+}
+
+/* Special — Fourth of July */
+:root[data-theme="july-fourth"] {
+  --background: #061226;
+  --foreground: #f8f5ef;
+  --theme-bg: #061226;
+  --theme-nav: #0d2243;
+  --theme-panel: #102a50;
+  --theme-card: #153660;
+  --theme-card-soft: #1b4778;
+  --theme-editing: #102b53;
+  --theme-text: #f8f5ef;
+  --theme-accent: #ef6670;
+  --theme-muted: #bdc8d8;
+  --theme-shadow: rgba(0, 0, 0, 0.4);
+
+  --theme-text-primary: #f8f5ef;
+  --theme-text-secondary: #d1d8e3;
+  --theme-text-tertiary: #abb7c8;
+
+  --theme-surface-nav: #102849;
+  --theme-surface-hero: #173a65;
+  --theme-surface-primary: #0e294f;
+  --theme-surface-secondary: #0a1c38;
+  --theme-surface-tertiary: #07162d;
+  --theme-surface-row: #13335b;
+  --theme-surface-inset: #081a34;
+  --theme-surface-control: #16375f;
+  --theme-surface-sheet: #0e284d;
+
+  --theme-border-subtle: #1c3658;
+  --theme-border-default: #2b4b73;
+  --theme-border-strong: #6a6074;
+  --theme-divider: #213d61;
+  --theme-highlight: rgba(255, 255, 255, 0.08);
+
+  --theme-accent-subtle: rgba(239, 102, 112, 0.04);
+  --theme-accent-soft: rgba(239, 102, 112, 0.08);
+  --theme-accent-medium: rgba(239, 102, 112, 0.18);
+}
+
+/* Compatibility and shared depth roles. */
+:root[data-theme] {
+  --theme-hero-surface: var(--theme-surface-hero);
+  --theme-section-surface: var(--theme-surface-primary);
+  --theme-row-surface: var(--theme-surface-row);
+  --theme-row-surface-strong: color-mix(
+    in srgb,
+    var(--theme-surface-row) 82%,
+    var(--theme-surface-control) 18%
+  );
+  --theme-row-surface-muted: var(--theme-surface-secondary);
+  --theme-inset-surface: var(--theme-surface-inset);
+  --theme-overlay-soft: color-mix(in srgb, var(--theme-text) 5%, transparent);
+  --theme-border-soft: var(--theme-border-default);
+
+  --dashboard-hero-surface: var(--theme-surface-hero);
+  --dashboard-primary-surface: var(--theme-surface-primary);
+  --dashboard-secondary-surface: var(--theme-surface-secondary);
+  --dashboard-hero-border: var(--theme-border-strong);
+  --dashboard-primary-border: var(--theme-border-default);
+  --dashboard-secondary-border: var(--theme-border-subtle);
+  --dashboard-hero-highlight: var(--theme-highlight);
+  --dashboard-primary-highlight: var(--theme-highlight);
+  --dashboard-secondary-highlight: color-mix(
+    in srgb,
+    var(--theme-highlight) 58%,
+    transparent
+  );
+  --dashboard-hero-accent-wash: var(--theme-accent-medium);
+  --dashboard-primary-accent-wash: var(--theme-accent-soft);
+  --dashboard-secondary-accent-wash: var(--theme-accent-subtle);
+
+  --theme-elevation-low:
+    0 4px 14px color-mix(in srgb, var(--theme-shadow) 18%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--theme-highlight) 72%, transparent);
+  --theme-elevation-medium:
+    0 11px 30px color-mix(in srgb, var(--theme-shadow) 30%, transparent),
+    0 2px 8px color-mix(in srgb, var(--theme-shadow) 11%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--theme-highlight) 82%, transparent);
+  --theme-elevation-high:
+    0 22px 58px color-mix(in srgb, var(--theme-shadow) 52%, transparent),
+    0 5px 16px color-mix(in srgb, var(--theme-shadow) 20%, transparent),
+    inset 0 1px 0 var(--theme-highlight);
+}
+
+:root[data-theme$="-light"] {
+  --theme-elevation-low:
+    0 3px 12px color-mix(in srgb, var(--theme-shadow) 22%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.62);
+  --theme-elevation-medium:
+    0 8px 22px color-mix(in srgb, var(--theme-shadow) 27%, transparent),
+    0 1px 5px color-mix(in srgb, var(--theme-shadow) 11%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --theme-elevation-high:
+    0 14px 36px color-mix(in srgb, var(--theme-shadow) 32%, transparent),
+    0 3px 10px color-mix(in srgb, var(--theme-shadow) 15%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.76);
+}
+
+html[data-theme],
+html[data-theme] body {
+  background: var(--theme-bg) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+/* Navigation: softly themed glass, never disconnected from the page. */
+html[data-theme] .top-app-bar {
+  border-color: color-mix(
+    in srgb,
+    var(--theme-border-strong) 72%,
+    var(--theme-border-default)
+  );
+  background:
+    radial-gradient(
+      circle at 12% 0%,
+      color-mix(in srgb, var(--theme-highlight) 54%, transparent),
+      transparent 38%
+    ),
+    radial-gradient(
+      circle at 90% 10%,
+      var(--theme-accent-subtle),
+      transparent 44%
+    ),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--theme-highlight) 28%, transparent),
+      transparent 52%
+    ),
+    color-mix(
+      in srgb,
+      var(--theme-surface-nav) 96%,
+      var(--theme-surface-primary) 4%
+    );
+  box-shadow: var(--theme-elevation-high);
+}
+
+/* Hero: clearly important, but part of the same material family. */
+html[data-theme] .liquid-glass-accent,
+html[data-theme] .dashboard-hero-focused {
+  border-color: color-mix(
+    in srgb,
+    var(--theme-accent) 18%,
+    var(--theme-border-strong)
+  );
+  background:
+    radial-gradient(
+      circle at 88% 3%,
+      var(--theme-accent-soft),
+      transparent 46%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-highlight) 34%, transparent),
+      transparent 50%
+    ),
+    color-mix(
+      in srgb,
+      var(--theme-surface-hero) 90%,
+      var(--theme-surface-primary) 10%
+    );
+  box-shadow: var(--theme-elevation-high);
+}
+
+/* General glass carries a restrained amount of the active theme. */
+html[data-theme] .liquid-glass,
+html[data-theme] .liquid-glass-soft {
+  border-color: var(--theme-border-default);
+  background:
+    radial-gradient(
+      circle at 96% 0%,
+      var(--theme-accent-subtle),
+      transparent 42%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-highlight) 24%, transparent),
+      transparent 54%
+    ),
+    var(--theme-surface-primary);
+  box-shadow: var(--theme-elevation-medium);
+}
+
+/* Supporting sections: visibly themed, quieter than the hero. */
+html[data-theme] .dashboard-surface {
+  border-color: var(--theme-border-subtle);
+  background:
+    radial-gradient(
+      circle at 96% 0%,
+      var(--theme-accent-subtle),
+      transparent 44%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-highlight) 18%, transparent),
+      transparent 58%
+    ),
+    var(--theme-surface-secondary);
+  box-shadow: var(--theme-elevation-low);
+}
+
+html[data-theme] .dashboard-bills-surface,
+html[data-theme] .cards-page-list-section,
+html[data-theme] .editor-browse-section {
+  border-color: var(--theme-border-default);
+  background:
+    radial-gradient(
+      circle at 96% 0%,
+      var(--theme-accent-subtle),
+      transparent 42%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-highlight) 24%, transparent),
+      transparent 56%
+    ),
+    var(--theme-surface-primary);
+  box-shadow: var(--theme-elevation-medium);
+}
+
+html[data-theme] .dashboard-cards-surface,
+html[data-theme] .dashboard-up-next-surface,
+html[data-theme] .bills-next-section {
+  border-color: var(--theme-border-subtle);
+  background:
+    radial-gradient(
+      circle at 96% 0%,
+      var(--theme-accent-subtle),
+      transparent 46%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-highlight) 14%, transparent),
+      transparent 60%
+    ),
+    var(--theme-surface-secondary);
+  box-shadow: var(--theme-elevation-low);
+}
+
+html[data-theme] .bills-later-section {
+  border-color: color-mix(in srgb, var(--theme-border-subtle) 82%, transparent);
+  background: var(--theme-surface-tertiary);
+  box-shadow: 0 3px 10px
+    color-mix(in srgb, var(--theme-shadow) 12%, transparent);
+}
+
+/* Rows and inset areas are deliberately quieter than their parent sections. */
+html[data-theme] .dashboard-preview-row,
+html[data-theme] .dashboard-bill-list,
+html[data-theme] .dashboard-compact-panel,
+html[data-theme] .cards-page-row,
+html[data-theme] .editor-sheet-form {
+  border-color: var(--theme-border-default);
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-highlight) 24%, transparent),
+      transparent 58%
+    ),
+    var(--theme-surface-row);
+  box-shadow: var(--theme-elevation-low);
+}
+
+html[data-theme] .dashboard-bill-list-primary,
+html[data-theme] .dashboard-bill-list-up-next,
+html[data-theme] .dashboard-card-overview,
+html[data-theme] .cards-page-list,
+html[data-theme] .editor-bills-list,
+html[data-theme] .editor-cards-list,
+html[data-theme] .editor-balances-list {
+  border-color: var(--theme-divider);
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Editor surfaces use the same hierarchy as the rest of the app. */
+html[data-theme] .editor-tab-shell {
+  border-color: var(--theme-border-default);
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-highlight) 26%, transparent),
+      transparent 56%
+    ),
+    var(--theme-surface-inset);
+  box-shadow: var(--theme-elevation-low);
+}
+
+html[data-theme] .editor-tab-button-active {
+  border-color: color-mix(
+    in srgb,
+    var(--theme-accent) 24%,
+    var(--theme-border-default)
+  );
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-highlight) 38%, transparent),
+      transparent 58%
+    ),
+    color-mix(in srgb, var(--theme-accent) 7%, var(--theme-surface-control));
+  box-shadow:
+    0 5px 15px color-mix(in srgb, var(--theme-shadow) 17%, transparent),
+    inset 0 1px 0 var(--theme-highlight);
+}
+
+html[data-theme] .editor-sheet-panel {
+  border-color: var(--theme-border-strong);
+  background:
+    radial-gradient(
+      circle at 16% 0%,
+      var(--theme-accent-soft),
+      transparent 32%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-highlight) 42%, transparent),
+      transparent 50%
+    ),
+    var(--theme-surface-sheet);
+  box-shadow: var(--theme-elevation-high);
+}
+
+html[data-theme] .editor-sheet-field + .editor-sheet-field::before,
+html[data-theme] .editor-bill-card + .editor-bill-card::before,
+html[data-theme] .editor-card-row + .editor-card-row::before,
+html[data-theme] .editor-balance-row + .editor-balance-row::before,
+html[data-theme] .editor-pay-schedule-row::before {
+  background: var(--theme-divider);
+}
+
+/* Controls and progress remain clearly themed without flooding the surfaces. */
+html[data-theme] .dashboard-pill-button,
+html[data-theme] .dashboard-date-pill,
+html[data-theme] .dashboard-secondary-pill,
+html[data-theme] .cards-page-row-chevron,
+html[data-theme] .editor-add-button,
+html[data-theme] .editor-save-status,
+html[data-theme] .editor-sheet-done-button {
+  border-color: var(--theme-border-default);
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-highlight) 28%, transparent),
+      transparent 58%
+    ),
+    var(--theme-surface-control);
+  box-shadow: var(--theme-elevation-low);
+}
+
+html[data-theme] .dashboard-progress-track,
+html[data-theme] .dashboard-card-balance-track,
+html[data-theme] .cards-page-row-track,
+html[data-theme] .editor-card-progress {
+  background: color-mix(in srgb, var(--theme-text) 8%, transparent);
+}
+
+html[data-theme] .dashboard-progress-fill,
+html[data-theme] .liquid-progress {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--theme-accent) 82%, white 4%),
+    var(--theme-accent)
+  );
+}
+
+/* Text hierarchy. */
+html[data-theme] .editor-page-subtitle,
+html[data-theme] .editor-browse-summary,
+html[data-theme] .dashboard-bills-summary,
+html[data-theme] .dashboard-card-section-summary,
+html[data-theme] .cards-page-section-summary,
+html[data-theme] .bills-current-summary,
+html[data-theme] .bills-next-summary,
+html[data-theme] .bills-later-summary,
+html[data-theme] .editor-sheet-context {
+  color: var(--theme-text-secondary);
+}
+
+html[data-theme] .editor-bill-meta,
+html[data-theme] .editor-card-meta,
+html[data-theme] .editor-balance-detail,
+html[data-theme] .editor-pay-schedule-copy small,
+html[data-theme] .dashboard-payday-source,
+html[data-theme] .dashboard-card-balance-utilization,
+html[data-theme] .cards-page-row-meta,
+html[data-theme] .bills-next-meta,
+html[data-theme] .bills-later-meta,
+html[data-theme] .editor-sheet-save-note {
+  color: var(--theme-text-tertiary);
+}
+
+/* Light themes: remove the all-over tint and keep color concentrated in hero/actions. */
+:root[data-theme$="-light"] {
+  color-scheme: light;
+}
+
+:root[data-theme$="-light"] .dashboard-surface::before,
+:root[data-theme$="-light"] .liquid-glass::before,
+:root[data-theme$="-light"] .liquid-glass-soft::before {
+  opacity: 0.22;
+}
+
+:root[data-theme$="-light"] .dashboard-hero-focused::before,
+:root[data-theme$="-light"] .liquid-glass-accent::before {
+  opacity: 0.24;
+}
+
+:root[data-theme$="-light"] .dashboard-surface-glow,
+:root[data-theme$="-light"] .dashboard-bills-surface .dashboard-surface-glow,
+:root[data-theme$="-light"] .dashboard-cards-surface .dashboard-surface-glow,
+:root[data-theme$="-light"] .editor-browse-section .dashboard-surface-glow {
+  opacity: 0.08;
+}
+
+:root[data-theme$="-light"] .dashboard-hero-glow-accent {
+  opacity: 0.24;
+}
+
+:root[data-theme$="-light"] .dashboard-hero-glow-soft {
+  opacity: 0.22;
+}
+
+:root[data-theme$="-light"] .dashboard-section-symbol,
+:root[data-theme$="-light"] .dashboard-bill-icon,
+:root[data-theme$="-light"] .dashboard-card-balance-icon,
+:root[data-theme$="-light"] .cards-page-row-icon,
+:root[data-theme$="-light"] .editor-balance-icon,
+:root[data-theme$="-light"] .editor-bill-icon,
+:root[data-theme$="-light"] .editor-card-icon {
+  background: color-mix(in srgb, var(--theme-accent) 5%, white);
+  border-color: color-mix(
+    in srgb,
+    var(--theme-accent) 16%,
+    var(--theme-border-default)
+  );
+}
+
+/* Light themes need a continuous family of tinted materials, not white cards below a colored hero. */
+:root[data-theme$="-light"] .dashboard-bills-surface,
+:root[data-theme$="-light"] .cards-page-list-section,
+:root[data-theme$="-light"] .editor-browse-section {
+  background:
+    radial-gradient(
+      circle at 96% 0%,
+      var(--theme-accent-subtle),
+      transparent 44%
+    ),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.28), transparent 58%),
+    var(--theme-surface-primary);
+}
+
+:root[data-theme$="-light"] .dashboard-cards-surface,
+:root[data-theme$="-light"] .dashboard-up-next-surface,
+:root[data-theme$="-light"] .bills-next-section,
+:root[data-theme$="-light"] .dashboard-surface {
+  background:
+    radial-gradient(
+      circle at 96% 0%,
+      var(--theme-accent-subtle),
+      transparent 48%
+    ),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.18), transparent 62%),
+    var(--theme-surface-secondary);
+}
+
+:root[data-theme$="-light"] .dashboard-preview-row,
+:root[data-theme$="-light"] .dashboard-bill-list,
+:root[data-theme$="-light"] .dashboard-compact-panel,
+:root[data-theme$="-light"] .cards-page-row,
+:root[data-theme$="-light"] .editor-sheet-form {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.2), transparent 64%),
+    var(--theme-surface-row);
+}
+
+:root[data-theme$="-light"] .editor-sheet-backdrop {
+  background: rgba(36, 31, 30, 0.34);
+  backdrop-filter: blur(5px) saturate(88%);
+  -webkit-backdrop-filter: blur(5px) saturate(88%);
+}
+
+/* July Fourth is dark despite not using the dark naming suffix. */
+:root[data-theme="july-fourth"] {
+  color-scheme: dark;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Light themes — cohesive surface family correction                          */
+/* Hero leads through scale/elevation, not a dramatically darker fill.        */
+/* -------------------------------------------------------------------------- */
+
+:root[data-theme$="-light"] .liquid-glass-accent,
+:root[data-theme$="-light"] .dashboard-hero-focused {
+  border-color: color-mix(
+    in srgb,
+    var(--theme-border-default) 72%,
+    var(--theme-accent) 28%
+  );
+  background:
+    radial-gradient(
+      circle at 88% 3%,
+      color-mix(in srgb, var(--theme-accent) 5.5%, transparent),
+      transparent 48%
+    ),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.34), transparent 54%),
+    color-mix(
+      in srgb,
+      var(--theme-surface-hero) 68%,
+      var(--theme-surface-primary) 32%
+    );
+  box-shadow:
+    0 13px 32px color-mix(in srgb, var(--theme-shadow) 25%, transparent),
+    0 3px 9px color-mix(in srgb, var(--theme-shadow) 9%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.68);
+}
+
+:root[data-theme$="-light"] .dashboard-bills-surface,
+:root[data-theme$="-light"] .cards-page-list-section,
+:root[data-theme$="-light"] .editor-browse-section {
+  border-color: var(--theme-border-default);
+  background:
+    radial-gradient(
+      circle at 96% 0%,
+      color-mix(in srgb, var(--theme-accent) 3.25%, transparent),
+      transparent 48%
+    ),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.26), transparent 60%),
+    color-mix(
+      in srgb,
+      var(--theme-surface-primary) 86%,
+      var(--theme-surface-hero) 14%
+    );
+  box-shadow:
+    0 7px 19px color-mix(in srgb, var(--theme-shadow) 14%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.48);
+}
+
+:root[data-theme$="-light"] .dashboard-cards-surface,
+:root[data-theme$="-light"] .dashboard-up-next-surface,
+:root[data-theme$="-light"] .bills-next-section,
+:root[data-theme$="-light"] .dashboard-surface {
+  border-color: var(--theme-border-subtle);
+  background:
+    radial-gradient(
+      circle at 96% 0%,
+      color-mix(in srgb, var(--theme-accent) 2.25%, transparent),
+      transparent 52%
+    ),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.18), transparent 64%),
+    color-mix(
+      in srgb,
+      var(--theme-surface-secondary) 88%,
+      var(--theme-surface-primary) 12%
+    );
+  box-shadow:
+    0 4px 13px color-mix(in srgb, var(--theme-shadow) 10%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34);
+}
+
+:root[data-theme$="-light"] .dashboard-hero-glow-accent {
+  opacity: 0.12;
+}
+
+:root[data-theme$="-light"] .dashboard-hero-glow-soft {
+  opacity: 0.14;
+}
+
+:root[data-theme$="-light"] .dashboard-hero-focused::before,
+:root[data-theme$="-light"] .liquid-glass-accent::before {
+  opacity: 0.15;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Top navigation — theme-aware premium material                              */
+/* -------------------------------------------------------------------------- */
+
+html[data-theme] .top-app-bar-refined {
+  border-color: color-mix(
+    in srgb,
+    var(--theme-border-strong) 64%,
+    var(--theme-border-default)
+  );
+  background:
+    radial-gradient(
+      circle at 12% 0%,
+      color-mix(in srgb, var(--theme-highlight) 62%, transparent),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 91% 10%,
+      color-mix(in srgb, var(--theme-accent) 6%, transparent),
+      transparent 36%
+    ),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--theme-highlight) 28%, transparent),
+      transparent 48%
+    ),
+    color-mix(
+      in srgb,
+      var(--theme-surface-nav) 92%,
+      var(--theme-surface-primary) 8%
+    );
+  box-shadow:
+    0 16px 38px color-mix(in srgb, var(--theme-shadow) 34%, transparent),
+    0 3px 10px color-mix(in srgb, var(--theme-shadow) 13%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--theme-highlight) 92%, transparent);
+}
+
+html[data-theme] .top-app-menu-button {
+  border-color: color-mix(
+    in srgb,
+    var(--theme-border-default) 78%,
+    var(--theme-accent) 22%
+  );
+  background:
+    radial-gradient(
+      circle at 30% 16%,
+      color-mix(in srgb, var(--theme-highlight) 72%, transparent),
+      transparent 34%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-highlight) 24%, transparent),
+      transparent 56%
+    ),
+    color-mix(
+      in srgb,
+      var(--theme-surface-control) 76%,
+      var(--theme-surface-nav) 24%
+    );
+  color: var(--theme-text-primary);
+  box-shadow:
+    0 8px 19px color-mix(in srgb, var(--theme-shadow) 24%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--theme-highlight) 88%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--theme-bg) 18%, transparent);
+}
+
+html[data-theme] .top-app-menu-button::before {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--theme-accent) 25%, transparent),
+    transparent 68%
+  );
+}
+
+html[data-theme] .top-app-menu-button:hover {
+  border-color: color-mix(
+    in srgb,
+    var(--theme-accent) 36%,
+    var(--theme-border-default)
+  );
+  background:
+    radial-gradient(
+      circle at 30% 16%,
+      color-mix(in srgb, var(--theme-highlight) 82%, transparent),
+      transparent 34%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-highlight) 30%, transparent),
+      transparent 56%
+    ),
+    color-mix(in srgb, var(--theme-accent) 7%, var(--theme-surface-control));
+  box-shadow:
+    0 10px 24px color-mix(in srgb, var(--theme-shadow) 28%, transparent),
+    0 0 20px color-mix(in srgb, var(--theme-accent) 5%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--theme-highlight) 94%, transparent);
+}
+
+:root[data-theme$="-light"] .top-app-bar-refined {
+  border-color: color-mix(
+    in srgb,
+    var(--theme-border-default) 80%,
+    var(--theme-accent) 20%
+  );
+  background:
+    radial-gradient(
+      circle at 12% 0%,
+      rgba(255, 255, 255, 0.72),
+      transparent 36%
+    ),
+    radial-gradient(
+      circle at 91% 10%,
+      color-mix(in srgb, var(--theme-accent) 4%, transparent),
+      transparent 40%
+    ),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.34), transparent 52%),
+    color-mix(
+      in srgb,
+      var(--theme-surface-nav) 88%,
+      var(--theme-surface-primary) 12%
+    );
+  box-shadow:
+    0 13px 31px color-mix(in srgb, var(--theme-shadow) 25%, transparent),
+    0 2px 7px color-mix(in srgb, var(--theme-shadow) 10%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+:root[data-theme$="-light"] .top-app-menu-button {
+  border-color: color-mix(
+    in srgb,
+    var(--theme-border-default) 84%,
+    var(--theme-accent) 16%
+  );
+  background:
+    radial-gradient(
+      circle at 30% 16%,
+      rgba(255, 255, 255, 0.74),
+      transparent 34%
+    ),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.3), transparent 58%),
+    color-mix(
+      in srgb,
+      var(--theme-surface-control) 84%,
+      var(--theme-surface-nav) 16%
+    );
+  box-shadow:
+    0 7px 16px color-mix(in srgb, var(--theme-shadow) 18%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.84);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Navigation v2 — theme material roles                                       */
+/* -------------------------------------------------------------------------- */
+
+html[data-theme] .top-app-menu-button-modern {
+  border-color: color-mix(
+    in srgb,
+    var(--theme-border-default) 84%,
+    var(--theme-accent) 16%
+  );
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-highlight) 34%, transparent),
+      transparent 58%
+    ),
+    color-mix(
+      in srgb,
+      var(--theme-surface-control) 78%,
+      var(--theme-surface-nav) 22%
+    );
+  color: var(--theme-text-primary);
+  box-shadow:
+    0 7px 18px color-mix(in srgb, var(--theme-shadow) 24%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--theme-highlight) 88%, transparent);
+}
+
+html[data-theme] .top-app-menu-button-modern:hover {
+  border-color: color-mix(
+    in srgb,
+    var(--theme-border-default) 62%,
+    var(--theme-accent) 38%
+  );
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-highlight) 42%, transparent),
+      transparent 58%
+    ),
+    color-mix(in srgb, var(--theme-accent) 7%, var(--theme-surface-control));
+}
+
+html[data-theme] .bottom-tab-bar {
+  border-color: color-mix(
+    in srgb,
+    var(--theme-border-default) 86%,
+    var(--theme-accent) 14%
+  );
+  background:
+    radial-gradient(
+      circle at 50% -45%,
+      color-mix(in srgb, var(--theme-accent) 8%, transparent),
+      transparent 52%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-highlight) 30%, transparent),
+      transparent 58%
+    ),
+    color-mix(
+      in srgb,
+      var(--theme-surface-nav) 91%,
+      var(--theme-surface-primary) 9%
+    );
+  box-shadow:
+    0 18px 42px color-mix(in srgb, var(--theme-shadow) 42%, transparent),
+    0 4px 12px color-mix(in srgb, var(--theme-shadow) 18%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--theme-highlight) 94%, transparent);
+}
+
+html[data-theme] .bottom-tab-item-active {
+  border-color: color-mix(
+    in srgb,
+    var(--theme-accent) 24%,
+    var(--theme-border-default)
+  );
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      color-mix(in srgb, var(--theme-accent) 13%, transparent),
+      transparent 66%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-highlight) 38%, transparent),
+      transparent 58%
+    ),
+    color-mix(in srgb, var(--theme-accent) 7%, var(--theme-surface-control));
+  box-shadow:
+    0 5px 14px color-mix(in srgb, var(--theme-shadow) 17%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--theme-highlight) 94%, transparent);
+}
+
+:root[data-theme$="-light"] .top-app-menu-button-modern {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.58), transparent 60%),
+    color-mix(
+      in srgb,
+      var(--theme-surface-control) 82%,
+      var(--theme-surface-nav) 18%
+    );
+  box-shadow:
+    0 6px 16px color-mix(in srgb, var(--theme-shadow) 19%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+:root[data-theme$="-light"] .bottom-tab-bar {
+  background:
+    radial-gradient(
+      circle at 50% -45%,
+      color-mix(in srgb, var(--theme-accent) 5%, transparent),
+      transparent 56%
+    ),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.56), transparent 62%),
+    color-mix(
+      in srgb,
+      var(--theme-surface-nav) 88%,
+      var(--theme-surface-primary) 12%
+    );
+  box-shadow:
+    0 14px 32px color-mix(in srgb, var(--theme-shadow) 26%, transparent),
+    0 3px 9px color-mix(in srgb, var(--theme-shadow) 11%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+:root[data-theme$="-light"] .bottom-tab-item-active {
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      color-mix(in srgb, var(--theme-accent) 9%, transparent),
+      transparent 68%
+    ),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.44), transparent 62%),
+    color-mix(in srgb, var(--theme-accent) 6%, var(--theme-surface-control));
+  box-shadow:
+    0 4px 12px color-mix(in srgb, var(--theme-shadow) 13%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Quiet Momentum — theme material for the gliding bottom-tab selection       */
+/* -------------------------------------------------------------------------- */
+
+html[data-theme] .bottom-tab-item-active {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-theme] .bottom-tab-bar::before {
+  border-color: color-mix(
+    in srgb,
+    var(--theme-accent) 24%,
+    var(--theme-border-default)
+  );
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      color-mix(in srgb, var(--theme-accent) 13%, transparent),
+      transparent 66%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-highlight) 38%, transparent),
+      transparent 58%
+    ),
+    color-mix(in srgb, var(--theme-accent) 7%, var(--theme-surface-control));
+  box-shadow:
+    0 5px 14px color-mix(in srgb, var(--theme-shadow) 17%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--theme-highlight) 94%, transparent);
+}
+
+:root[data-theme$="-light"] .bottom-tab-bar::before {
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      color-mix(in srgb, var(--theme-accent) 9%, transparent),
+      transparent 68%
+    ),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.44), transparent 62%),
+    color-mix(in srgb, var(--theme-accent) 6%, var(--theme-surface-control));
+  box-shadow:
+    0 4px 12px color-mix(in srgb, var(--theme-shadow) 13%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Utility Sheet — theme material                                             */
+/* -------------------------------------------------------------------------- */
+
+html[data-theme] .drawer-panel-right.drawer-utility-panel {
+  background:
+    radial-gradient(
+      circle at 92% 0%,
+      color-mix(in srgb, var(--theme-accent) 7%, transparent),
+      transparent 38%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-text) 4%, transparent),
+      transparent 52%
+    ),
+    color-mix(in srgb, var(--theme-surface-sheet) 94%, var(--theme-bg) 6%) !important;
+}
+
+:root[data-theme$="-light"] .drawer-panel-right.drawer-utility-panel {
+  background:
+    radial-gradient(
+      circle at 92% 0%,
+      color-mix(in srgb, var(--theme-accent) 4%, transparent),
+      transparent 42%
+    ),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.32), transparent 56%),
+    color-mix(in srgb, var(--theme-surface-sheet) 96%, var(--theme-bg) 4%) !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Official leftovr brand — sage, slate, and warm cream                       */
+/* -------------------------------------------------------------------------- */
+
+:root[data-theme] {
+  /* The logo keeps its two-part identity while borrowing each theme's palette. */
+  --brand-sage: var(--theme-accent);
+  --brand-sage-deep: color-mix(
+    in srgb,
+    var(--theme-accent) 72%,
+    var(--theme-bg)
+  );
+  --brand-slate: color-mix(
+    in srgb,
+    var(--theme-muted) 74%,
+    var(--theme-text) 26%
+  );
+  --brand-cream: var(--theme-text);
+  --brand-wordmark: var(--theme-text-primary);
+}
+
+:root[data-theme$="-light"] {
+  --brand-slate: color-mix(
+    in srgb,
+    var(--theme-text) 76%,
+    var(--theme-muted) 24%
+  );
+  --brand-cream: color-mix(
+    in srgb,
+    var(--theme-bg) 86%,
+    white 14%
+  );
+  --brand-wordmark: var(--theme-text-primary);
+}
+
+.leftovr-logo {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  color: var(--brand-wordmark);
+  line-height: 1;
+}
+
+.leftovr-logo-mark {
+  display: block;
+  flex: 0 0 auto;
+  transform: translateZ(0);
+  filter: drop-shadow(
+    0 6px 12px color-mix(in srgb, var(--theme-shadow) 18%, transparent)
+  );
+}
+
+.leftovr-logo-svg {
+  display: block;
+  height: 100%;
+  width: 100%;
+  overflow: visible;
+}
+
+.leftovr-logo-lockup {
+  gap: 0.62rem;
+}
+
+.leftovr-logo-copy {
+  display: grid;
+  min-width: 0;
+  align-content: center;
+  gap: 0.26rem;
+}
+
+.leftovr-logo-wordmark {
+  overflow: hidden;
+  color: var(--brand-wordmark);
+  font-size: 1rem;
+  font-weight: 560;
+  letter-spacing: 0.015em;
+  line-height: 0.95;
+  text-overflow: ellipsis;
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+
+.leftovr-logo-subtitle {
+  overflow: hidden;
+  color: color-mix(in srgb, var(--theme-accent) 62%, var(--theme-muted));
+  font-size: 0.48rem;
+  font-weight: 720;
+  letter-spacing: 0.22em;
+  line-height: 1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.leftovr-logo-small .leftovr-logo-mark {
+  height: 2.05rem;
+  width: 2.05rem;
+}
+
+.leftovr-logo-nav .leftovr-logo-mark {
+  height: 2.2rem;
+  width: 2.2rem;
+}
+
+.leftovr-logo-nav .leftovr-logo-wordmark {
+  font-size: 1.05rem;
+}
+
+.leftovr-logo-medium .leftovr-logo-mark {
+  height: 2.55rem;
+  width: 2.55rem;
+}
+
+.leftovr-logo-medium .leftovr-logo-wordmark {
+  font-size: 1.08rem;
+}
+
+.leftovr-logo-menu .leftovr-logo-mark {
+  height: 2.72rem;
+  width: 2.72rem;
+}
+
+.leftovr-logo-menu .leftovr-logo-wordmark {
+  font-size: 1.03rem;
+  font-weight: 590;
+}
+
+.leftovr-logo-large .leftovr-logo-mark {
+  height: 3.25rem;
+  width: 3.25rem;
+}
+
+.leftovr-logo-large .leftovr-logo-wordmark {
+  font-size: 1.25rem;
+}
+
+/* The top identity uses the integrated lockup so the mark and wordmark share
+   one optical center instead of behaving like two unrelated elements. */
+.top-app-bar-modern .top-app-brand {
+  gap: 0;
+  padding-left: 0;
+}
+
+.top-app-bar-modern .leftovr-logo-lockup {
+  gap: 0.58rem;
+}
+
+.top-app-bar-modern .leftovr-logo-mark,
+.top-app-bar-modern .leftovr-logo-wordmark,
+.top-app-menu-button-modern {
+  transition:
+    transform var(--leftovr-motion-control) var(--leftovr-ease-settle),
+    opacity var(--leftovr-motion-fade) ease,
+    filter var(--leftovr-motion-control) ease;
+}
+
+.top-app-bar-modern .top-app-brand:active .leftovr-logo-mark {
+  transform: scale(0.94) rotate(-1.5deg);
+}
+
+.top-app-bar-modern .top-app-brand:active .leftovr-logo-wordmark {
+  transform: translate3d(-1px, 0, 0);
+  opacity: 0.82;
+}
+
+/* Utility menu brand lockup. */
+.drawer-utility-brand {
+  min-width: 0;
+}
+
+.drawer-utility-brand .leftovr-logo-lockup {
+  gap: 0.68rem;
+}
+
+.drawer-utility-brand .leftovr-logo-mark {
+  border: 1px solid var(--theme-border-default);
+  border-radius: 0.98rem;
+  padding: 0.3rem;
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-highlight) 30%, transparent),
+      transparent 58%
+    ),
+    var(--theme-surface-control);
+  box-shadow:
+    0 5px 13px color-mix(in srgb, var(--theme-shadow) 14%, transparent),
+    inset 0 1px 0 var(--theme-highlight);
+}
+
+.drawer-utility-brand .leftovr-logo-copy {
+  gap: 0.3rem;
+}
+
+/* Official theme pair: the hero remains the leader through scale and depth,
+   while the rest of the page stays in the same slate/sage material family. */
+:root[data-theme="classic"] .liquid-glass-accent,
+:root[data-theme="classic"] .dashboard-hero-focused {
+  border-color: color-mix(in srgb, var(--theme-accent) 18%, #617078 82%);
+  background:
+    radial-gradient(
+      circle at 90% 0%,
+      color-mix(in srgb, var(--theme-accent) 12%, transparent),
+      transparent 45%
+    ),
+    linear-gradient(145deg, rgba(244, 241, 232, 0.055), transparent 53%),
+    color-mix(in srgb, var(--theme-surface-hero) 90%, #243039 10%);
+}
+
+:root[data-theme="classic"] .dashboard-surface,
+:root[data-theme="classic"] .drawer-panel-right.drawer-utility-panel {
+  background:
+    radial-gradient(
+      circle at 96% 0%,
+      color-mix(in srgb, var(--theme-accent) 4%, transparent),
+      transparent 46%
+    ),
+    linear-gradient(145deg, rgba(244, 241, 232, 0.035), transparent 60%),
+    var(--theme-surface-secondary);
+}
+
+:root[data-theme="classic-light"] .top-app-bar,
+:root[data-theme="classic-light"] .liquid-glass,
+:root[data-theme="classic-light"] .liquid-glass-soft,
+:root[data-theme="classic-light"] .dashboard-surface {
+  background:
+    radial-gradient(
+      circle at 96% 0%,
+      rgba(167, 184, 157, 0.05),
+      transparent 46%
+    ),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.32), transparent 60%),
+    var(--theme-surface-secondary);
+}
+
+:root[data-theme="classic-light"] .liquid-glass-accent,
+:root[data-theme="classic-light"] .dashboard-hero-focused {
+  border-color: color-mix(in srgb, #a7b89d 24%, var(--theme-border-default));
+  background:
+    radial-gradient(
+      circle at 90% 0%,
+      rgba(167, 184, 157, 0.12),
+      transparent 47%
+    ),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.44), transparent 56%),
+    color-mix(in srgb, var(--theme-surface-hero) 84%, #f4f1e8 16%);
+}
+
+@media (max-width: 370px) {
+  .leftovr-logo-nav .leftovr-logo-mark {
+    height: 2.08rem;
+    width: 2.08rem;
+  }
+
+  .leftovr-logo-nav .leftovr-logo-wordmark {
+    font-size: 0.99rem;
+  }
+
+  .leftovr-logo-lockup {
+    gap: 0.54rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .top-app-bar-modern .leftovr-logo-mark,
+  .top-app-bar-modern .leftovr-logo-wordmark {
+    transition: none;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Dashboard light-theme contrast — scoped and non-invasive                   */
+/*                                                                            */
+/* This block intentionally changes Dashboard section surfaces only.           */
+/* Theme tokens, dark themes, TopNav, logo variables, and shared elevation     */
+/* remain untouched.                                                           */
+/* -------------------------------------------------------------------------- */
+
+:root[data-theme$="-light"] .dashboard-section-stack > .dashboard-surface {
+  border-color: color-mix(
+    in srgb,
+    var(--theme-border-default) 88%,
+    var(--theme-accent) 12%
+  );
+  box-shadow:
+    0 5px 15px color-mix(in srgb, var(--theme-shadow) 13%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.46);
+}
+
+:root[data-theme$="-light"]
+  .dashboard-section-stack
+  > .dashboard-bills-surface {
+  background:
+    radial-gradient(
+      circle at 96% 0%,
+      color-mix(in srgb, var(--theme-accent) 2.75%, transparent),
+      transparent 50%
+    ),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.22), transparent 64%),
+    color-mix(
+      in srgb,
+      var(--theme-surface-primary) 91%,
+      var(--theme-surface-hero) 9%
+    );
+}
+
+:root[data-theme$="-light"]
+  .dashboard-section-stack
+  > .dashboard-surface:not(.dashboard-bills-surface):not(
+    .dashboard-cards-surface
+  ) {
+  background:
+    radial-gradient(
+      circle at 96% 0%,
+      color-mix(in srgb, var(--theme-accent) 2.4%, transparent),
+      transparent 52%
+    ),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.18), transparent 66%),
+    color-mix(
+      in srgb,
+      var(--theme-surface-secondary) 82%,
+      var(--theme-surface-primary) 18%
+    );
+}
+
+:root[data-theme$="-light"]
+  .dashboard-section-stack
+  > .dashboard-cards-surface {
+  background:
+    radial-gradient(
+      circle at 96% 0%,
+      color-mix(in srgb, var(--theme-accent) 2.2%, transparent),
+      transparent 54%
+    ),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.16), transparent 68%),
+    color-mix(
+      in srgb,
+      var(--theme-surface-secondary) 84%,
+      var(--theme-surface-primary) 16%
+    );
+}
+
+:root[data-theme$="-light"]
+  .dashboard-section-stack
+  .dashboard-card-balance-utilization,
+:root[data-theme$="-light"]
+  .dashboard-section-stack
+  .dashboard-last-payment-date,
+:root[data-theme$="-light"]
+  .dashboard-section-stack
+  .dashboard-payday-source {
+  color: color-mix(
+    in srgb,
+    var(--theme-text-tertiary) 84%,
+    var(--theme-text-primary) 16%
+  );
+}
+
+:root[data-theme$="-light"]
+  .dashboard-section-stack
+  .dashboard-card-balance-track {
+  background: color-mix(
+    in srgb,
+    var(--theme-text-primary) 10%,
+    var(--theme-surface-inset)
+  );
+}
+
