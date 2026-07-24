@@ -78,7 +78,7 @@ function getUpcomingPayday(preferences: LeftovrPreferences) {
   const nextPaydayDate = new Date(paydayDate);
   let advancedPeriods = 0;
 
-  while (nextPaydayDate < today && advancedPeriods < 260) {
+  while (nextPaydayDate <= today && advancedPeriods < 260) {
     nextPaydayDate.setDate(nextPaydayDate.getDate() + intervalDays);
     advancedPeriods += 1;
   }

@@ -280,7 +280,7 @@ function getCurrentPayPeriodPreferences(
 
   let advancedPeriods = 0;
 
-  while (nextPayday < today && advancedPeriods < 260) {
+  while (nextPayday <= today && advancedPeriods < 260) {
     nextPayday.setDate(nextPayday.getDate() + intervalDays);
     advancedPeriods += 1;
   }

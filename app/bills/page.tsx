@@ -142,6 +142,15 @@ function getPaidActionPaymentSourceLabel(
   );
 }
 
+function getBillPaymentSourceLabel(
+  bill: ManualBill,
+  cards: ManualCreditCard[],
+) {
+  return getPaymentSourceLabel(
+    resolveBillPaymentSource(bill, cards),
+    cards,
+  );
+}
 
 function formatMoney(amount: number) {
   return new Intl.NumberFormat("en-US", {
@@ -204,7 +213,7 @@ function getCurrentPayPeriodPreferences(
 
   let advancedPeriods = 0;
 
-  while (nextPayday < today && advancedPeriods < 260) {
+  while (nextPayday <= today && advancedPeriods < 260) {
     nextPayday.setDate(nextPayday.getDate() + intervalDays);
     advancedPeriods += 1;
   }
@@ -907,6 +916,7 @@ export default function BillsPage() {
                 : ""
             }
             bills={beforeNextPaydayBillItems}
+            cards={manualCards}
             overdueBills={overdueBillItems}
             overdueTotal={overdueTotal}
             onPayBill={markBillPaid}
@@ -1167,6 +1177,7 @@ function CurrentPayPeriodCard({
   title,
   description,
   bills,
+  cards,
   overdueBills,
   overdueTotal,
   onPayBill,
@@ -1177,6 +1188,7 @@ function CurrentPayPeriodCard({
   title: string;
   description: string;
   bills: BillOccurrenceItem[];
+  cards: ManualCreditCard[];
   overdueBills: BillOccurrenceItem[];
   overdueTotal: number;
   onPayBill: (item: BillOccurrenceItem) => void;
@@ -1208,12 +1220,16 @@ function CurrentPayPeriodCard({
         </div>
 
         {bills.length > 0 ? (
-          <div className="dashboard-bill-list dashboard-bill-list-primary bills-current-list">
+          <div className="dashboard-payday-list">
             {bills.map((item) => (
               <CurrentBillRow
                 key={item.occurrence.occurrenceKey}
                 bill={item.bill}
                 occurrenceDate={item.occurrence.dueDate}
+                paymentSourceLabel={getBillPaymentSourceLabel(
+                  item.bill,
+                  cards,
+                )}
                 onPay={() => onPayBill(item)}
               />
             ))}
@@ -1763,45 +1779,38 @@ function NextPayPeriodBillRow({
 function CurrentBillRow({
   bill,
   occurrenceDate,
+  paymentSourceLabel,
   onPay,
 }: {
   bill: ManualBill;
   occurrenceDate: Date;
+  paymentSourceLabel: string;
   onPay: () => void;
 }) {
-  return (
-    <div className="dashboard-bill-list-row bills-current-row">
-      <BillIcon name={bill.name || ""} />
+  const month = occurrenceDate
+    .toLocaleDateString("en-US", { month: "short" })
+    .toUpperCase();
+  const day = occurrenceDate.getDate();
 
-      <div className="dashboard-bill-copy">
-        <p className="dashboard-bill-name">
+  return (
+    <div className="dashboard-payday-row">
+      <div className="dashboard-payday-date" aria-hidden="true">
+        <span>{month}</span>
+        <strong>{day}</strong>
+      </div>
+
+      <div className="dashboard-payday-copy">
+        <p className="dashboard-payday-name">
           {bill.name || "Untitled Bill"}
         </p>
 
-        <p className="dashboard-bill-due">
-          <span className="dashboard-bill-due-date">
-            Due {formatBillDate(occurrenceDate)}
-          </span>
-
-          {bill.paymentMethod ? (
-            <>
-              <span
-                className="dashboard-bill-meta-divider"
-                aria-hidden="true"
-              >
-                ·
-              </span>
-
-              <span className="dashboard-bill-payment-source">
-                {bill.paymentMethod}
-              </span>
-            </>
-          ) : null}
+        <p className="dashboard-payday-source">
+          From {paymentSourceLabel}
         </p>
       </div>
 
-      <div className="dashboard-bill-trailing">
-        <p className="dashboard-bill-amount">
+      <div className="dashboard-payday-trailing">
+        <p className="dashboard-payday-amount">
           {formatMoney(parseMoney(bill.amount))}
         </p>
 
@@ -1809,9 +1818,9 @@ function CurrentBillRow({
           type="button"
           onClick={onPay}
           aria-label={`Mark ${bill.name || "bill"} paid`}
-          className="dashboard-pill-button dashboard-pay-button pressable"
+          className="dashboard-payday-pay pressable"
         >
-          <span className="text-xs">Pay</span>
+          Pay
         </button>
       </div>
     </div>
