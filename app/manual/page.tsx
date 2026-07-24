@@ -9,7 +9,7 @@ import {
 } from "react";
 import Link from "next/link";
 import TopNav from "../../components/TopNav";
-import { PageShell, Pill } from "../../components/Layout";
+import { PageShell } from "../../components/Layout";
 import { bills, creditCards, financeSummary } from "../../data/bandData";
 import {
   applyManualCardBalanceRevisions,
@@ -40,6 +40,13 @@ import {
 } from "../../lib/billStatus";
 
 type EditorTab = "overview" | "bills" | "cards";
+type GuidedSetupStage = "intro" | "balances" | "optional";
+type GuidedSetupDestination = "dashboard" | "bills" | "cards";
+
+type GuidedBalanceTouched = {
+  checkingBalance: boolean;
+  savingsBalance: boolean;
+};
 
 type NewlyAddedItem = {
   type: "bill" | "card";
@@ -68,6 +75,49 @@ type EditableManualBillField = Exclude<
   "paymentMethod" | "paymentSource"
 >;
 
+function normalizeMonthlyDueDay(value: string) {
+  const match = value
+    .trim()
+    .match(/\b([1-9]|[12]\d|3[01])(?:st|nd|rd|th)?\b/i);
+
+  return match ? String(Number(match[1])) : "";
+}
+
+function sanitizeMonthlyDueDayInput(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 2);
+
+  if (!digits) {
+    return "";
+  }
+
+  const day = Number(digits);
+
+  return day >= 1 && day <= 31 ? String(day) : null;
+}
+
+function formatOrdinalDay(value: string) {
+  const day = Number(normalizeMonthlyDueDay(value));
+
+  if (!Number.isInteger(day) || day < 1 || day > 31) {
+    return "Not set";
+  }
+
+  const remainder100 = day % 100;
+  const remainder10 = day % 10;
+  const suffix =
+    remainder100 >= 11 && remainder100 <= 13
+      ? "th"
+      : remainder10 === 1
+        ? "st"
+        : remainder10 === 2
+          ? "nd"
+          : remainder10 === 3
+            ? "rd"
+            : "th";
+
+  return `${day}${suffix}`;
+}
+
 const defaultManualData: ManualFinanceData = {
   checkingBalance: String(financeSummary.checkingBalance),
   monthlyIncome: String(financeSummary.monthlyIncome),
@@ -78,7 +128,7 @@ const defaultManualData: ManualFinanceData = {
 const defaultManualBills: ManualBill[] = bills.map((bill) => ({
   name: bill.name,
   amount: String(bill.amount),
-  dueDate: bill.dueDate,
+  dueDate: normalizeMonthlyDueDay(bill.dueDate),
   status: bill.status,
   paymentMethod: bill.paymentMethod,
 }));
@@ -299,8 +349,18 @@ export default function ManualPage() {
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [showSavedConfirmation, setShowSavedConfirmation] = useState(false);
   const [isGuidedSetup, setIsGuidedSetup] = useState(false);
+  const [guidedSetupStage, setGuidedSetupStage] =
+    useState<GuidedSetupStage>("intro");
+  const [guidedBalanceTouched, setGuidedBalanceTouched] =
+    useState<GuidedBalanceTouched>({
+      checkingBalance: false,
+      savingsBalance: false,
+    });
   const [editingBills, setEditingBills] = useState<number[]>([]);
   const [editingCards, setEditingCards] = useState<number[]>([]);
+  const [editingBalanceField, setEditingBalanceField] = useState<
+    "checkingBalance" | "savingsBalance" | "monthlyIncome" | null
+  >(null);
   const [newlyAddedItem, setNewlyAddedItem] = useState<NewlyAddedItem | null>(
     null,
   );
@@ -318,9 +378,6 @@ export default function ManualPage() {
   const manualDataRef = useRef<ManualFinanceData>(defaultManualData);
   const manualBillsRef = useRef<ManualBill[]>(defaultManualBills);
   const manualCardsRef = useRef<ManualCreditCard[]>(defaultManualCards);
-  const newItemFocusTimeout = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
   const newItemHighlightTimeout = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -329,6 +386,10 @@ export default function ManualPage() {
   const removedBillsRef = useRef<ManualBill[]>([]);
 
   useEffect(() => {
+    if (hasLoadedStoredStateRef.current) {
+      return;
+    }
+
     const storedState = loadFinanceStorageState(
       {
         summary: defaultManualData,
@@ -340,7 +401,10 @@ export default function ManualPage() {
       },
     );
     const savedCards = storedState.cards;
-    const savedBills = storedState.bills;
+    const savedBills = storedState.bills.map((bill) => ({
+      ...bill,
+      dueDate: normalizeMonthlyDueDay(bill.dueDate),
+    }));
 
     setManualData(storedState.summary);
     setManualBills(savedBills);
@@ -395,70 +459,40 @@ export default function ManualPage() {
   }, []);
 
   useEffect(() => {
+    if (!isGuidedSetup) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.documentElement.setAttribute("data-guided-setup", "true");
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.documentElement.removeAttribute("data-guided-setup");
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isGuidedSetup]);
+
+  useEffect(() => {
     if (!newlyAddedItem) {
       return;
     }
 
-    const targetTab = newlyAddedItem.type === "bill" ? "bills" : "cards";
-
-    if (activeTab !== targetTab) {
-      return;
+    if (newItemHighlightTimeout.current) {
+      clearTimeout(newItemHighlightTimeout.current);
     }
 
-    let secondAnimationFrame = 0;
-
-    const firstAnimationFrame = window.requestAnimationFrame(() => {
-      secondAnimationFrame = window.requestAnimationFrame(() => {
-        const item = document.querySelector<HTMLElement>(
-          `[data-editor-item="${newlyAddedItem.type}-${newlyAddedItem.index}"]`,
-        );
-
-        if (!item) {
-          return;
-        }
-
-        const prefersReducedMotion = window.matchMedia(
-          "(prefers-reduced-motion: reduce)",
-        ).matches;
-
-        item.scrollIntoView({
-          behavior: prefersReducedMotion ? "auto" : "smooth",
-          block: "start",
-        });
-
-        if (newItemFocusTimeout.current) {
-          clearTimeout(newItemFocusTimeout.current);
-        }
-
-        newItemFocusTimeout.current = setTimeout(
-          () => {
-            const firstField = item.querySelector<
-              HTMLInputElement | HTMLSelectElement
-            >("input, select");
-
-            firstField?.focus({ preventScroll: true });
-          },
-          prefersReducedMotion ? 0 : 450,
-        );
-
-        if (newItemHighlightTimeout.current) {
-          clearTimeout(newItemHighlightTimeout.current);
-        }
-
-        newItemHighlightTimeout.current = setTimeout(() => {
-          setNewlyAddedItem(null);
-        }, 1400);
-      });
-    });
+    newItemHighlightTimeout.current = setTimeout(() => {
+      setNewlyAddedItem(null);
+    }, 1400);
 
     return () => {
-      window.cancelAnimationFrame(firstAnimationFrame);
-
-      if (secondAnimationFrame) {
-        window.cancelAnimationFrame(secondAnimationFrame);
+      if (newItemHighlightTimeout.current) {
+        clearTimeout(newItemHighlightTimeout.current);
+        newItemHighlightTimeout.current = null;
       }
     };
-  }, [activeTab, manualBills.length, manualCards.length, newlyAddedItem]);
+  }, [newlyAddedItem]);
 
   const persistChanges = useCallback(
     (options: PersistEditorChangesOptions = {}) => {
@@ -620,10 +654,6 @@ export default function ManualPage() {
         clearTimeout(savedConfirmationTimeout.current);
       }
 
-      if (newItemFocusTimeout.current) {
-        clearTimeout(newItemFocusTimeout.current);
-      }
-
       if (newItemHighlightTimeout.current) {
         clearTimeout(newItemHighlightTimeout.current);
       }
@@ -648,6 +678,9 @@ export default function ManualPage() {
   }
 
   function chooseTab(tab: EditorTab) {
+    setEditingBalanceField(null);
+    setEditingBills([]);
+    setEditingCards([]);
     setActiveTab(tab);
 
     const nextUrl =
@@ -662,8 +695,12 @@ export default function ManualPage() {
     window.history.replaceState(null, "", nextUrl);
   }
 
-  function finishGuidedSetup() {
-    persistChanges({ updateUi: false });
+  function finishGuidedSetup(
+    destination: GuidedSetupDestination = "dashboard",
+  ) {
+    persistChanges({
+      updateUi: destination !== "dashboard",
+    });
 
     window.localStorage.removeItem(guidedSetupStorageKey);
     window.localStorage.setItem(
@@ -672,7 +709,25 @@ export default function ManualPage() {
     );
 
     setIsGuidedSetup(false);
-    window.location.assign("/");
+    setGuidedSetupStage("intro");
+    setGuidedBalanceTouched({
+      checkingBalance: false,
+      savingsBalance: false,
+    });
+
+    if (destination === "dashboard") {
+      window.location.assign("/");
+      return;
+    }
+
+    const nextTab: EditorTab =
+      destination === "bills" ? "bills" : "cards";
+
+    setEditingBalanceField(null);
+    setEditingBills([]);
+    setEditingCards([]);
+    setActiveTab(nextTab);
+    window.history.replaceState(null, "", `/manual?tab=${nextTab}`);
   }
 
   function updateManualData(field: keyof ManualFinanceData, value: string) {
@@ -761,10 +816,13 @@ export default function ManualPage() {
 
     originalBillsRef.current = [...originalBillsRef.current, null];
 
-    setEditingBills((current) => [...current, nextIndex]);
+    setEditingBalanceField(null);
+    setEditingCards([]);
+    setEditingBills([nextIndex]);
     setNewlyAddedItem({ type: "bill", index: nextIndex });
+    setActiveTab("bills");
+    window.history.replaceState(null, "", "/manual?tab=bills");
     markUnsaved();
-    chooseTab("bills");
   }
 
   function removeBill(index: number) {
@@ -812,17 +870,10 @@ export default function ManualPage() {
   }
 
   function toggleBillEditing(index: number) {
-    const isOpening = !editingBills.includes(index);
-
+    setEditingCards([]);
     setEditingBills((current) =>
-      current.includes(index)
-        ? current.filter((billIndex) => billIndex !== index)
-        : [...current, index],
+      current.includes(index) ? [] : [index],
     );
-
-    if (isOpening) {
-      scrollEditorItemIntoView("bill", index);
-    }
   }
 
   function addCard() {
@@ -844,10 +895,13 @@ export default function ManualPage() {
     manualCardsRef.current = nextCards;
     setManualCards(nextCards);
 
-    setEditingCards((current) => [...current, nextIndex]);
+    setEditingBalanceField(null);
+    setEditingBills([]);
+    setEditingCards([nextIndex]);
     setNewlyAddedItem({ type: "card", index: nextIndex });
+    setActiveTab("cards");
+    window.history.replaceState(null, "", "/manual?tab=cards");
     markUnsaved();
-    chooseTab("cards");
   }
 
   function removeCard(index: number) {
@@ -882,17 +936,10 @@ export default function ManualPage() {
   }
 
   function toggleCardEditing(index: number) {
-    const isOpening = !editingCards.includes(index);
-
+    setEditingBills([]);
     setEditingCards((current) =>
-      current.includes(index)
-        ? current.filter((cardIndex) => cardIndex !== index)
-        : [...current, index],
+      current.includes(index) ? [] : [index],
     );
-
-    if (isOpening) {
-      scrollEditorItemIntoView("card", index);
-    }
   }
 
   const sortedManualBills = sortIndexedBillsByDueDay(
@@ -906,11 +953,6 @@ export default function ManualPage() {
         parseMoney(secondCard.card.balance) -
         parseMoney(firstCard.card.balance),
     );
-
-  const billsTotal = manualBills.reduce(
-    (total, bill) => total + parseMoney(bill.amount),
-    0,
-  );
 
   const cardBalanceTotal = manualCards.reduce(
     (total, card) => total + parseMoney(card.balance),
@@ -927,19 +969,61 @@ export default function ManualPage() {
       ? Math.round((cardBalanceTotal / cardLimitTotal) * 100)
       : 0;
 
+  const activeBillIndex =
+    editingBills.length > 0
+      ? editingBills[editingBills.length - 1]
+      : null;
+
+  const activeBill =
+    activeBillIndex !== null
+      ? manualBills[activeBillIndex] ?? null
+      : null;
+
+  const activeCardIndex =
+    editingCards.length > 0
+      ? editingCards[editingCards.length - 1]
+      : null;
+
+  const activeCard =
+    activeCardIndex !== null
+      ? manualCards[activeCardIndex] ?? null
+      : null;
+
+  const activeBalanceEditor =
+    editingBalanceField === "checkingBalance"
+      ? {
+          label: "Checking",
+          detail: "Available spending balance",
+          value: manualData.checkingBalance,
+          icon: <WalletIcon />,
+          onChange: (value: string) =>
+            updateManualData("checkingBalance", value),
+        }
+      : editingBalanceField === "savingsBalance"
+        ? {
+            label: "Savings",
+            detail: "Money set aside",
+            value: manualData.savingsBalance,
+            icon: <SavingsIcon />,
+            onChange: (value: string) =>
+              updateManualData("savingsBalance", value),
+          }
+        : editingBalanceField === "monthlyIncome"
+          ? {
+              label: "Monthly Income",
+              detail: "Expected income each month",
+              value: manualData.monthlyIncome,
+              icon: <IncomeIcon />,
+              onChange: (value: string) =>
+                updateManualData("monthlyIncome", value),
+            }
+          : null;
+
   const saveStatusLabel = isAutoSaving
     ? "Saving"
     : hasUnsavedChanges
-      ? "Auto Save"
+      ? "Saving soon"
       : "Saved";
-
-  const saveStatusTitle = isAutoSaving
-    ? "Saving changes"
-    : hasUnsavedChanges
-      ? "Saving automatically"
-      : showSavedConfirmation
-        ? "Saved automatically"
-        : "Everything is current";
 
   const saveStatusDetail = isAutoSaving
     ? "Keeping this device current."
@@ -951,127 +1035,343 @@ export default function ManualPage() {
         ? `Last saved ${formatSavedTime(lastSaved)}`
         : "Everything is current.";
 
+  const hasOpenEditorSheet =
+    activeBillIndex !== null ||
+    activeCardIndex !== null ||
+    Boolean(activeBalanceEditor);
+
   return (
-    <PageShell>
+    <>
+      <style>{`
+        /* Dark-theme finishing pass: quieter status, clearer secondary text,
+           softer tabs, and more breathing room in card rows. */
+        html[data-theme]:not([data-theme$="-light"])
+          .editor-save-status[data-state="saved"] {
+          border-color:
+            color-mix(in srgb, var(--theme-text) 7%, transparent);
+          background:
+            color-mix(
+              in srgb,
+              var(--theme-row-surface) 34%,
+              transparent
+            );
+          color:
+            color-mix(
+              in srgb,
+              var(--theme-text-secondary) 78%,
+              transparent
+            );
+          box-shadow: none;
+          opacity: 0.8;
+        }
+
+        html[data-theme]:not([data-theme$="-light"])
+          .editor-save-status[data-state="saved"]
+          .editor-save-status-dot {
+          background:
+            color-mix(
+              in srgb,
+              var(--theme-accent) 58%,
+              var(--theme-text-secondary)
+            );
+          box-shadow: none;
+        }
+
+        html[data-theme]:not([data-theme$="-light"])
+          .editor-page-header
+          p,
+        html[data-theme]:not([data-theme$="-light"])
+          .editor-browse-summary,
+        html[data-theme]:not([data-theme$="-light"])
+          .editor-balance-detail,
+        html[data-theme]:not([data-theme$="-light"])
+          .editor-bill-meta,
+        html[data-theme]:not([data-theme$="-light"])
+          .editor-card-meta,
+        html[data-theme]:not([data-theme$="-light"])
+          .editor-pay-schedule-copy
+          small,
+        html[data-theme]:not([data-theme$="-light"])
+          .editor-sheet-context,
+        html[data-theme]:not([data-theme$="-light"])
+          .editor-sheet-save-note {
+          color:
+            color-mix(
+              in srgb,
+              var(--theme-text-secondary) 84%,
+              var(--theme-text) 16%
+            );
+        }
+
+        html[data-theme]:not([data-theme$="-light"])
+          .editor-sheet-field-label {
+          color:
+            color-mix(
+              in srgb,
+              var(--theme-text-secondary) 86%,
+              var(--theme-text) 14%
+            );
+        }
+
+        html[data-theme]:not([data-theme$="-light"])
+          .editor-tab-button {
+          color:
+            color-mix(
+              in srgb,
+              var(--theme-muted) 88%,
+              var(--theme-text) 12%
+            );
+        }
+
+        html[data-theme]:not([data-theme$="-light"])
+          .editor-tab-button-active {
+          border-color:
+            color-mix(
+              in srgb,
+              var(--theme-accent) 14%,
+              var(--theme-border-default)
+            );
+          background:
+            linear-gradient(
+              145deg,
+              color-mix(
+                in srgb,
+                var(--theme-highlight) 18%,
+                transparent
+              ),
+              transparent 62%
+            ),
+            color-mix(
+              in srgb,
+              var(--theme-accent) 4%,
+              var(--theme-surface-control)
+            );
+          box-shadow:
+            0 3px 10px
+              color-mix(
+                in srgb,
+                var(--theme-shadow) 10%,
+                transparent
+              ),
+            inset 0 1px 0
+              color-mix(
+                in srgb,
+                var(--theme-highlight) 64%,
+                transparent
+              );
+        }
+
+        .editor-card-trailing {
+          display: flex;
+          min-width: 4.9rem;
+          flex-direction: column;
+          align-items: flex-end;
+          justify-content: center;
+          gap: 0.48rem;
+        }
+
+        .editor-card-trailing .editor-card-balance {
+          line-height: 1.05;
+        }
+
+        .editor-card-trailing .editor-card-action {
+          min-width: 3.05rem;
+        }
+
+        @media (max-width: 370px) {
+          .editor-card-trailing {
+            min-width: 4.45rem;
+            gap: 0.42rem;
+          }
+
+          .editor-card-trailing .editor-card-action {
+            min-width: 2.82rem;
+          }
+        }
+      `}</style>
+
+      {isGuidedSetup || hasOpenEditorSheet ? (
+        <style>{`
+          .bottom-tab-shell,
+          .bottom-tab-spacer {
+            display: none !important;
+          }
+
+          .editor-bill-sheet-panel {
+            min-height: auto;
+            max-height: min(88dvh, 42rem);
+            padding-bottom:
+              calc(0.9rem + env(safe-area-inset-bottom));
+          }
+
+          .editor-bill-sheet-panel .editor-sheet-field {
+            min-height: 3.05rem;
+            padding-top: 0.68rem;
+            padding-bottom: 0.68rem;
+          }
+
+          .editor-sheet-compact-value {
+            width: min(100%, 10rem);
+            justify-self: end;
+          }
+
+          .editor-sheet-editable-control {
+            border: 1px solid
+              color-mix(in srgb, var(--theme-text) 9%, transparent);
+            border-radius: 0.72rem;
+            background:
+              color-mix(
+                in srgb,
+                var(--theme-surface-control) 72%,
+                transparent
+              );
+            transition:
+              border-color 160ms ease,
+              background 160ms ease,
+              box-shadow 160ms ease,
+              transform 160ms ease;
+          }
+
+          .editor-sheet-field:focus-within
+            .editor-sheet-editable-control {
+            border-color:
+              color-mix(
+                in srgb,
+                var(--theme-accent) 48%,
+                var(--theme-border-default)
+              );
+            background:
+              color-mix(
+                in srgb,
+                var(--theme-accent) 8%,
+                var(--theme-surface-control)
+              );
+            box-shadow:
+              0 0 0 3px
+                color-mix(
+                  in srgb,
+                  var(--theme-accent) 10%,
+                  transparent
+                );
+          }
+
+          .editor-sheet-field-input.editor-sheet-editable-control {
+            min-height: 2.48rem;
+            padding: 0.46rem 0.58rem 0.54rem;
+            line-height: 1.28;
+          }
+
+          .editor-sheet-text-control {
+            display: flex;
+            min-width: 0;
+            min-height: 2.86rem;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 0.3rem 0.58rem 0.48rem;
+            overflow: visible;
+          }
+
+          .editor-sheet-text-control
+            .editor-sheet-field-input {
+            width: 100%;
+            height: auto;
+            min-height: 2.08rem;
+            padding: 0 0 0.32rem;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+            font-family: inherit;
+            line-height: 1.5;
+            overflow: visible;
+            -webkit-appearance: none;
+            appearance: none;
+          }
+
+          .editor-sheet-money-control.editor-sheet-editable-control,
+          .editor-sheet-select-control.editor-sheet-editable-control {
+            min-height: 2.35rem;
+            padding: 0.34rem 0.52rem;
+          }
+
+          .editor-sheet-money-control.editor-sheet-editable-control
+            .editor-sheet-field-input {
+            min-height: 0;
+            padding: 0;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+          }
+
+          .editor-sheet-field-input,
+          .editor-sheet-select {
+            outline: none;
+          }
+
+          @media (prefers-reduced-motion: reduce) {
+            .editor-sheet-editable-control {
+              transition: none;
+            }
+          }
+        `}</style>
+      ) : null}
+
+      <PageShell>
       <TopNav />
 
       <div className="min-h-[70vh]">
-        <header className="-mt-1 mb-1.5 motion-card sm:-mt-2">
-          <div className="mb-1.5 flex items-center justify-between gap-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
-              Financial Setup
-            </p>
+        <header className="dashboard-intro editor-page-header motion-card mb-2">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-[2.15rem] font-bold leading-tight tracking-[-0.035em] text-[#f5f0e8] sm:text-4xl">
+                Editor
+              </h1>
 
-            <Pill>{saveStatusLabel}</Pill>
+              <p className="mt-1 max-w-[28rem] text-sm leading-6 text-stone-400">
+                Update balances, bills, and cards.
+              </p>
+            </div>
+
+            <EditorSaveStatus
+              label={saveStatusLabel}
+              detail={saveStatusDetail}
+              isSaving={isAutoSaving}
+              hasPendingChanges={hasUnsavedChanges}
+              wasJustSaved={showSavedConfirmation}
+            />
           </div>
-
-          <h1 className="text-[2.15rem] font-bold leading-tight tracking-tight text-[#f5f0e8] sm:text-4xl">
-            Editor
-          </h1>
         </header>
 
-        {isGuidedSetup ? (
-          <GuidedSetupPanel
-            activeTab={activeTab}
-            onSelectStep={chooseTab}
-            onFinish={finishGuidedSetup}
-          />
-        ) : null}
-
-        <section className="motion-card motion-card-delay-1 mb-2">
+        <section
+          className="editor-tab-shell motion-card motion-card-delay-1 mb-2"
+          style={{
+            borderRadius: "1.2rem",
+            padding: "0.28rem",
+          }}
+        >
           <div
-            aria-live="polite"
-            className={`dashboard-surface relative overflow-hidden rounded-[1.35rem] p-2 transition-all duration-300 ${
-              isAutoSaving
-                ? "shadow-[inset_0_0_0_1px_rgba(157,189,180,0.18),0_12px_28px_rgba(0,0,0,0.1)]"
-                : hasUnsavedChanges
-                  ? "shadow-[inset_0_0_0_1px_rgba(199,173,117,0.18),0_12px_28px_rgba(0,0,0,0.1)]"
-                  : showSavedConfirmation
-                    ? "shadow-[inset_0_0_0_1px_rgba(245,240,232,0.1),0_12px_28px_rgba(0,0,0,0.08)]"
-                    : "shadow-[inset_0_0_0_1px_rgba(245,240,232,0.04)]"
-            }`}
+            className="editor-tab-control"
+            role="tablist"
+            aria-label="Financial setup sections"
           >
-            <div className="dashboard-surface-glow" aria-hidden="true" />
-
-            <div className="liquid-content flex items-center justify-between gap-4">
-              <div className="flex min-w-0 items-center gap-3">
-                <span
-                  className={`h-2.5 w-2.5 shrink-0 rounded-full transition-all duration-300 ${
-                    isAutoSaving
-                      ? "scale-100 animate-pulse bg-[#9dbdb4] shadow-[0_0_16px_rgba(157,189,180,0.28)]"
-                      : hasUnsavedChanges
-                        ? "scale-100 bg-[#c7ad75] shadow-[0_0_16px_rgba(199,173,117,0.34)]"
-                        : showSavedConfirmation
-                          ? "scale-110 bg-[#f5f0e8]/85 shadow-[0_0_18px_rgba(245,240,232,0.22)]"
-                          : "scale-90 bg-[#f5f0e8]/24"
-                  }`}
-                />
-
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-[#f5f0e8] transition-colors duration-300">
-                    {saveStatusTitle}
-                  </p>
-
-                  <p className="mt-0.5 text-xs text-stone-500 transition-colors duration-300">
-                    {saveStatusDetail}
-                  </p>
-                </div>
-              </div>
-
-              <span className="hidden shrink-0 text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-600 sm:block">
-                Auto Save On
-              </span>
-            </div>
-          </div>
-        </section>
-
-        <section className="motion-card motion-card-delay-2 mb-2">
-          <div className="dashboard-compact-panel rounded-full p-1 sm:hidden">
-            <div className="liquid-content grid grid-cols-3 gap-1">
-              <EditorSegmentButton
-                label="Balances"
-                icon={<BalanceIcon />}
-                active={activeTab === "overview"}
-                onClick={() => chooseTab("overview")}
-              />
-
-              <EditorSegmentButton
-                label="Bills"
-                icon={<BillsEditorIcon />}
-                active={activeTab === "bills"}
-                onClick={() => chooseTab("bills")}
-              />
-
-              <EditorSegmentButton
-                label="Cards"
-                icon={<CardsEditorIcon />}
-                active={activeTab === "cards"}
-                onClick={() => chooseTab("cards")}
-              />
-            </div>
-          </div>
-
-          <div className="hidden gap-2 sm:grid sm:grid-cols-3">
-            <EditorSectionButton
-              title="Balances"
-              value={formatMoney(manualData.checkingBalance)}
-              detail="Checking"
+            <EditorTabButton
+              label="Balances"
+              icon={<BalanceIcon />}
               active={activeTab === "overview"}
               onClick={() => chooseTab("overview")}
             />
 
-            <EditorSectionButton
-              title="Bills"
-              value={String(manualBills.length)}
-              detail={`${formatCurrency(billsTotal)} monthly`}
+            <EditorTabButton
+              label="Bills"
+              icon={<BillsEditorIcon />}
               active={activeTab === "bills"}
               onClick={() => chooseTab("bills")}
             />
 
-            <EditorSectionButton
-              title="Credit Cards"
-              value={String(manualCards.length)}
-              detail={`${cardUtilization}% used`}
+            <EditorTabButton
+              label="Cards"
+              icon={<CardsEditorIcon />}
               active={activeTab === "cards"}
               onClick={() => chooseTab("cards")}
             />
@@ -1079,398 +1379,912 @@ export default function ManualPage() {
         </section>
 
         {activeTab === "overview" && (
-          <section className="dashboard-surface motion-card motion-card-delay-3 relative overflow-hidden rounded-[1.7rem] p-3">
-            <div className="dashboard-surface-glow" aria-hidden="true" />
+          <section
+            className="editor-browse-section editor-balances-section motion-card motion-card-delay-3"
+            style={{ borderRadius: "1.2rem" }}
+          >
+            <div className="editor-browse-header">
+              <div className="min-w-0">
+                <SectionHeading title="Balances" icon="balances" />
 
-            <div className="liquid-content">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <SectionHeading title="Balances" />
-
-                  <p className="mt-1 text-xs leading-5 text-stone-500">
-                    The core numbers that power your Dashboard.
-                  </p>
-                </div>
-
-                <span className="dashboard-pill-button shrink-0 !px-2.5 !py-0.5">
-                  3 values
-                </span>
+                <p className="editor-browse-summary">
+                  The numbers behind your money plan.
+                </p>
               </div>
 
-              <div className="mt-2.5 grid gap-1.5 sm:grid-cols-2">
-                <BalanceEditorCard
-                  label="Checking"
-                  detail="Available spending balance"
-                  value={manualData.checkingBalance}
-                  icon={<WalletIcon />}
-                  onChange={(value) =>
-                    updateManualData("checkingBalance", value)
-                  }
-                />
+              <span
+                className="shrink-0 text-xs font-semibold"
+                style={{ color: "var(--theme-text-tertiary)" }}
+              >
+                3 values
+              </span>
+            </div>
 
-                <BalanceEditorCard
-                  label="Savings"
-                  detail="Money set aside"
-                  value={manualData.savingsBalance}
-                  icon={<SavingsIcon />}
-                  onChange={(value) =>
-                    updateManualData("savingsBalance", value)
-                  }
-                />
+            <div className="editor-balances-list">
+              <BalanceEditorCard
+                label="Checking"
+                detail="Available spending balance"
+                value={manualData.checkingBalance}
+                icon={<WalletIcon />}
+                isEditing={editingBalanceField === "checkingBalance"}
+                onEdit={() =>
+                  setEditingBalanceField(
+                    editingBalanceField === "checkingBalance"
+                      ? null
+                      : "checkingBalance",
+                  )
+                }
+              />
 
-                <BalanceEditorCard
-                  label="Monthly Income"
-                  detail="Expected income each month"
-                  value={manualData.monthlyIncome}
-                  icon={<IncomeIcon />}
-                  onChange={(value) => updateManualData("monthlyIncome", value)}
-                  wide
-                />
-              </div>
+              <BalanceEditorCard
+                label="Savings"
+                detail="Money set aside"
+                value={manualData.savingsBalance}
+                icon={<SavingsIcon />}
+                isEditing={editingBalanceField === "savingsBalance"}
+                onEdit={() =>
+                  setEditingBalanceField(
+                    editingBalanceField === "savingsBalance"
+                      ? null
+                      : "savingsBalance",
+                  )
+                }
+              />
+
+              <BalanceEditorCard
+                label="Monthly income"
+                detail="Expected income each month"
+                value={manualData.monthlyIncome}
+                icon={<IncomeIcon />}
+                isEditing={editingBalanceField === "monthlyIncome"}
+                onEdit={() =>
+                  setEditingBalanceField(
+                    editingBalanceField === "monthlyIncome"
+                      ? null
+                      : "monthlyIncome",
+                  )
+                }
+              />
 
               <Link
                 href="/account/preferences"
-                className="dashboard-preview-row pressable mt-2 block !px-3 !py-2.5"
+                className="editor-pay-schedule-row pressable"
               >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[0.95rem] border border-[#c7ad75]/22 bg-[#c7ad75]/9 text-[#c7ad75] shadow-[inset_0_1px_0_rgba(245,240,232,0.07)]">
-                      <CalendarIcon />
-                    </span>
+                <span className="editor-balance-icon" aria-hidden="true">
+                  <CalendarIcon />
+                </span>
 
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-[#f5f0e8]">
-                        Pay Schedule
-                      </p>
+                <span className="editor-pay-schedule-copy">
+                  <strong>Pay schedule</strong>
+                  <small>Next payday and pay frequency.</small>
+                </span>
 
-                      <p className="mt-0.5 text-xs leading-5 text-stone-500">
-                        Payday and frequency are managed in Preferences.
-                      </p>
-                    </div>
-                  </div>
-
-                  <span className="dashboard-pill-button shrink-0 !px-2.5 !py-0.5">
-                    Open
-                  </span>
-                </div>
+                <span className="editor-pay-schedule-action">Edit</span>
               </Link>
             </div>
           </section>
         )}
 
         {activeTab === "bills" && (
-          <section className="dashboard-surface motion-card motion-card-delay-3 relative overflow-hidden rounded-[1.7rem] p-3">
-            <div className="dashboard-surface-glow" aria-hidden="true" />
+          <section
+            className="editor-browse-section editor-bills-section motion-card motion-card-delay-3"
+            style={{ borderRadius: "1.2rem" }}
+          >
+            <div className="editor-browse-header">
+              <div className="min-w-0">
+                <SectionHeading title="Bills" icon="bills" />
 
-            <div className="liquid-content">
-              <div className="mb-2.5 flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <SectionHeading title="Bills" />
-
-                  <p className="mt-1 text-xs leading-5 text-stone-500">
-                    {manualBills.length} recurring bill
-                    {manualBills.length === 1 ? "" : "s"} • Organized by due
-                    date
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={addBill}
-                  className="dashboard-pill-button pressable shrink-0"
-                >
-                  + Add Bill
-                </button>
+                <p className="editor-browse-summary">
+                  {manualBills.length} recurring bill
+                  {manualBills.length === 1 ? "" : "s"} · Sorted by due day
+                </p>
               </div>
 
-              <div className="grid gap-1.5">
-                {manualBills.length > 0 ? (
-                  sortedManualBills.map(({ bill, index }) => (
-                    <BillEditorRow
-                      key={`bill-${index}`}
-                      itemIndex={index}
-                      bill={bill}
-                      cards={manualCards}
-                      isEditing={editingBills.includes(index)}
-                      isDimmed={
-                        editingBills.length > 0 && !editingBills.includes(index)
-                      }
-                      isNewlyAdded={
-                        newlyAddedItem?.type === "bill" &&
-                        newlyAddedItem.index === index
-                      }
-                      onToggleEditing={() => toggleBillEditing(index)}
-                      onRemove={() => removeBill(index)}
-                      onChange={(field, value) =>
-                        updateBill(index, field, value)
-                      }
-                      onPaymentSourceChange={(paymentSource) =>
-                        updateBillPaymentSource(index, paymentSource)
-                      }
-                    />
-                  ))
-                ) : (
-                  <EmptyState
-                    title="No bills yet"
-                    text="Add your first bill to start building your monthly view."
+              <button
+                type="button"
+                onClick={addBill}
+                className="editor-add-button pressable"
+              >
+                <span aria-hidden="true">+</span>
+                Add bill
+              </button>
+            </div>
+
+            <div className="editor-bills-list">
+              {manualBills.length > 0 ? (
+                sortedManualBills.map(({ bill, index }) => (
+                  <BillEditorRow
+                    key={`bill-${index}`}
+                    itemIndex={index}
+                    bill={bill}
+                    cards={manualCards}
+                    isEditing={editingBills.includes(index)}
+                    isDimmed={
+                      editingBills.length > 0 && !editingBills.includes(index)
+                    }
+                    isNewlyAdded={
+                      newlyAddedItem?.type === "bill" &&
+                      newlyAddedItem.index === index
+                    }
+                    onToggleEditing={() => toggleBillEditing(index)}
+                    onRemove={() => removeBill(index)}
+                    onChange={(field, value) =>
+                      updateBill(index, field, value)
+                    }
+                    onPaymentSourceChange={(paymentSource) =>
+                      updateBillPaymentSource(index, paymentSource)
+                    }
                   />
-                )}
-              </div>
+                ))
+              ) : (
+                <EmptyState
+                  title="No bills yet"
+                  text="Add your first bill to start building your monthly view."
+                />
+              )}
             </div>
           </section>
         )}
 
         {activeTab === "cards" && (
-          <section className="dashboard-surface motion-card motion-card-delay-3 relative overflow-hidden rounded-[1.7rem] p-3">
-            <div className="dashboard-surface-glow" aria-hidden="true" />
+          <section
+            className="editor-browse-section editor-cards-section motion-card motion-card-delay-3"
+            style={{ borderRadius: "1.2rem" }}
+          >
+            <div className="editor-browse-header">
+              <div className="min-w-0">
+                <SectionHeading title="Credit cards" icon="cards" />
 
-            <div className="liquid-content">
-              <div className="mb-2.5 flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <SectionHeading title="Credit Cards" />
-
-                  <p className="mt-1 text-xs leading-5 text-stone-500">
-                    {manualCards.length} card
-                    {manualCards.length === 1 ? "" : "s"} • {cardUtilization}%
-                    overall utilization
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={addCard}
-                  className="dashboard-pill-button pressable shrink-0"
-                >
-                  + Add Card
-                </button>
+                <p className="editor-browse-summary">
+                  {manualCards.length} card
+                  {manualCards.length === 1 ? "" : "s"} · {cardUtilization}%
+                  utilization
+                </p>
               </div>
 
-              <div className="grid gap-1.5">
-                {manualCards.length > 0 ? (
-                  sortedManualCards.map(({ card, index }) => (
-                    <CardEditorRow
-                      key={`card-${index}`}
-                      itemIndex={index}
-                      card={card}
-                      isEditing={editingCards.includes(index)}
-                      isDimmed={
-                        editingCards.length > 0 && !editingCards.includes(index)
-                      }
-                      isNewlyAdded={
-                        newlyAddedItem?.type === "card" &&
-                        newlyAddedItem.index === index
-                      }
-                      onToggleEditing={() => toggleCardEditing(index)}
-                      onRemove={() => removeCard(index)}
-                      onChange={(field, value) =>
-                        updateCard(index, field, value)
-                      }
-                    />
-                  ))
-                ) : (
-                  <EmptyState
-                    title="No credit cards yet"
-                    text="Add a card when you want leftovr to track utilization and payoff pressure."
+              <button
+                type="button"
+                onClick={addCard}
+                className="editor-add-button pressable"
+              >
+                <span aria-hidden="true">+</span>
+                Add card
+              </button>
+            </div>
+
+            <div className="editor-cards-list">
+              {manualCards.length > 0 ? (
+                sortedManualCards.map(({ card, index }) => (
+                  <CardEditorRow
+                    key={`card-${index}`}
+                    itemIndex={index}
+                    card={card}
+                    isEditing={editingCards.includes(index)}
+                    isDimmed={
+                      editingCards.length > 0 && !editingCards.includes(index)
+                    }
+                    isNewlyAdded={
+                      newlyAddedItem?.type === "card" &&
+                      newlyAddedItem.index === index
+                    }
+                    onToggleEditing={() => toggleCardEditing(index)}
+                    onRemove={() => removeCard(index)}
+                    onChange={(field, value) =>
+                      updateCard(index, field, value)
+                    }
                   />
-                )}
-              </div>
+                ))
+              ) : (
+                <EmptyState
+                  title="No credit cards yet"
+                  text="Add a card to start tracking balances, limits, and utilization."
+                />
+              )}
             </div>
           </section>
         )}
       </div>
-    </PageShell>
+      </PageShell>
+
+      {isGuidedSetup ? (
+        <GuidedSetupOverlay
+          stage={guidedSetupStage}
+          manualData={manualData}
+          touched={guidedBalanceTouched}
+          onStageChange={setGuidedSetupStage}
+          onCheckingChange={(value) => {
+            setGuidedBalanceTouched((current) => ({
+              ...current,
+              checkingBalance: true,
+            }));
+            updateManualData("checkingBalance", value);
+          }}
+          onSavingsChange={(value) => {
+            setGuidedBalanceTouched((current) => ({
+              ...current,
+              savingsBalance: true,
+            }));
+            updateManualData("savingsBalance", value);
+          }}
+          onFinish={finishGuidedSetup}
+        />
+      ) : null}
+
+      {activeBillIndex !== null && activeBill ? (
+        <BillEditorSheet
+          key={`bill-editor-sheet-${activeBill.id ?? activeBillIndex}`}
+          bill={activeBill}
+          cards={manualCards}
+          onClose={() => setEditingBills([])}
+          onRemove={() => removeBill(activeBillIndex)}
+          onChange={(field, value) =>
+            updateBill(activeBillIndex, field, value)
+          }
+          onPaymentSourceChange={(paymentSource) =>
+            updateBillPaymentSource(activeBillIndex, paymentSource)
+          }
+        />
+      ) : null}
+
+      {activeCardIndex !== null && activeCard ? (
+        <CardEditorSheet
+          key={`card-editor-sheet-${activeCard.id ?? activeCardIndex}`}
+          card={activeCard}
+          onClose={() => setEditingCards([])}
+          onRemove={() => removeCard(activeCardIndex)}
+          onChange={(field, value) =>
+            updateCard(activeCardIndex, field, value)
+          }
+        />
+      ) : null}
+
+      {activeBalanceEditor ? (
+        <BalanceEditorSheet
+          key={`balance-editor-sheet-${editingBalanceField}`}
+          label={activeBalanceEditor.label}
+          detail={activeBalanceEditor.detail}
+          value={activeBalanceEditor.value}
+          icon={activeBalanceEditor.icon}
+          onClose={() => setEditingBalanceField(null)}
+          onChange={activeBalanceEditor.onChange}
+        />
+      ) : null}
+    </>
   );
 }
 
-function GuidedSetupPanel({
-  activeTab,
-  onSelectStep,
+function GuidedSetupOverlay({
+  stage,
+  manualData,
+  touched,
+  onStageChange,
+  onCheckingChange,
+  onSavingsChange,
   onFinish,
 }: {
-  activeTab: EditorTab;
-  onSelectStep: (tab: EditorTab) => void;
-  onFinish: () => void;
+  stage: GuidedSetupStage;
+  manualData: ManualFinanceData;
+  touched: GuidedBalanceTouched;
+  onStageChange: (stage: GuidedSetupStage) => void;
+  onCheckingChange: (value: string) => void;
+  onSavingsChange: (value: string) => void;
+  onFinish: (destination?: GuidedSetupDestination) => void;
 }) {
   const stepNumber =
-    activeTab === "overview" ? 1 : activeTab === "bills" ? 2 : 3;
+    stage === "intro" ? 1 : stage === "balances" ? 2 : 3;
 
-  const stepTitle =
-    activeTab === "overview"
-      ? "Start with the numbers you use every day."
-      : activeTab === "bills"
-        ? "Add the bills that shape your month."
-        : "Add credit cards when you want the full picture.";
+  const checkingIsValid =
+    touched.checkingBalance &&
+    manualData.checkingBalance.trim() !== "" &&
+    Number.isFinite(Number(manualData.checkingBalance));
 
-  const stepDetail =
-    activeTab === "overview"
-      ? "Enter checking, savings, and monthly income. Everything saves automatically."
-      : activeTab === "bills"
-        ? "Bills are optional for now. Add the recurring payments you want leftovr to organize."
-        : "Credit cards are optional too. Add balances, limits, and minimums now or return later.";
+  const savingsIsValid =
+    touched.savingsBalance &&
+    manualData.savingsBalance.trim() !== "" &&
+    Number.isFinite(Number(manualData.savingsBalance));
+
+  const balancesAreReady = checkingIsValid && savingsIsValid;
 
   return (
-    <section className="dashboard-surface motion-card motion-card-delay-1 relative mb-2 overflow-hidden rounded-[1.55rem] p-2.5">
-      <div className="dashboard-surface-glow" aria-hidden="true" />
+    <div
+      className="fixed inset-0 z-[140] flex items-end justify-center bg-black/52 px-2.5 pb-[max(0.65rem,env(safe-area-inset-bottom))] pt-[max(0.65rem,env(safe-area-inset-top))] backdrop-blur-[12px] backdrop-saturate-110 sm:items-center sm:p-6"
+      aria-hidden="false"
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="guided-setup-title"
+        aria-describedby="guided-setup-description"
+        className="relative flex max-h-[calc(100dvh-1.3rem)] w-full max-w-[34rem] flex-col overflow-hidden rounded-[1.85rem] border text-[color:var(--theme-text)] sm:max-h-[calc(100dvh-3rem)] sm:rounded-[2rem]"
+        style={{
+          borderColor:
+            "color-mix(in srgb, var(--theme-border-strong) 72%, var(--theme-border-default))",
+          background:
+            "radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--theme-accent) 11%, transparent), transparent 34%), linear-gradient(145deg, color-mix(in srgb, var(--theme-highlight) 48%, transparent), transparent 52%), var(--theme-surface-sheet)",
+          boxShadow:
+            "0 30px 90px color-mix(in srgb, var(--theme-shadow) 72%, transparent), inset 0 1px 0 var(--theme-highlight)",
+        }}
+      >
+        <div
+          className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full blur-3xl"
+          style={{
+            background:
+              "color-mix(in srgb, var(--theme-accent) 15%, transparent)",
+          }}
+          aria-hidden="true"
+        />
 
-      <div className="liquid-content">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2.5">
-              <span className="dashboard-section-dot h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75]" />
+        <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-3.5 sm:px-5 sm:pt-5">
+          <div
+            className="mx-auto mb-3 h-1 w-10 rounded-full sm:hidden"
+            style={{
+              background:
+                "color-mix(in srgb, var(--theme-muted) 34%, transparent)",
+            }}
+            aria-hidden="true"
+          />
 
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
-                Guided Setup
+          <header className="flex items-start justify-between gap-3.5">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5">
+                <span
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{
+                    background: "var(--theme-accent)",
+                    boxShadow:
+                      "0 0 0 5px color-mix(in srgb, var(--theme-accent) 10%, transparent), 0 0 18px color-mix(in srgb, var(--theme-accent) 28%, transparent)",
+                  }}
+                  aria-hidden="true"
+                />
+
+                <p
+                  className="text-[10px] font-semibold uppercase tracking-[0.24em]"
+                  style={{
+                    color:
+                      "color-mix(in srgb, var(--theme-accent) 82%, var(--theme-text))",
+                  }}
+                >
+                  Guided setup
+                </p>
+              </div>
+
+              <h1
+                id="guided-setup-title"
+                className="mt-2 text-[1.62rem] font-bold leading-[1.04] tracking-[-0.04em] sm:text-[2rem]"
+              >
+                {stage === "intro"
+                  ? "Let’s build your starting point."
+                  : stage === "balances"
+                    ? "What do you have right now?"
+                    : "Your starting point is ready."}
+              </h1>
+
+              <p
+                id="guided-setup-description"
+                className="mt-2 max-w-[29rem] text-[0.8rem] leading-5 sm:text-sm sm:leading-6"
+                style={{ color: "var(--theme-text-secondary)" }}
+              >
+                {stage === "intro"
+                  ? "Start with two real numbers. Everything else can be added when you feel ready."
+                  : stage === "balances"
+                    ? "Enter your current checking and savings balances. Both can be $0."
+                    : "Your balances are saved. Add more now, or head straight to your Dashboard."}
               </p>
             </div>
 
-            <p className="mt-1 text-xs leading-5 text-stone-500">
-              A quick first pass through the parts that power your Dashboard.
-            </p>
+            <span
+              className="shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]"
+              style={{
+                borderColor: "var(--theme-border-default)",
+                background: "var(--theme-surface-control)",
+                color: "var(--theme-text-secondary)",
+              }}
+            >
+              {stepNumber} of 3
+            </span>
+          </header>
+
+          <div
+            className="mt-3.5 h-1 overflow-hidden rounded-full"
+            role="progressbar"
+            aria-label="Guided setup progress"
+            aria-valuemin={1}
+            aria-valuemax={3}
+            aria-valuenow={stepNumber}
+            style={{
+              background:
+                "color-mix(in srgb, var(--theme-text) 8%, transparent)",
+            }}
+          >
+            <span
+              className="block h-full rounded-full transition-[width] duration-500"
+              style={{
+                width: `${Math.round((stepNumber / 3) * 100)}%`,
+                background:
+                  "linear-gradient(90deg, color-mix(in srgb, var(--theme-accent) 72%, var(--theme-text) 4%), var(--theme-accent))",
+              }}
+            />
           </div>
 
-          <span className="dashboard-pill-button shrink-0 !px-2.5 !py-0.5 text-[10px] uppercase tracking-[0.14em]">
-            Step {stepNumber} of 3
-          </span>
+          {stage === "intro" ? (
+            <div className="mt-3.5 grid gap-2">
+              <SetupOverviewCard
+                icon={<WalletIcon />}
+                title="Balances"
+                badge="Required"
+                detail="Enter checking and savings so leftovr starts with your real money."
+                emphasized
+              />
+
+              <SetupOverviewCard
+                icon={<BillsEditorIcon />}
+                title="Bills"
+                badge="Optional"
+                detail="Add recurring payments now or return after you explore the app."
+              />
+
+              <SetupOverviewCard
+                icon={<CardsEditorIcon />}
+                title="Credit Cards"
+                badge="Optional"
+                detail="Track balances, limits, and utilization whenever you’re ready."
+              />
+            </div>
+          ) : null}
+
+          {stage === "balances" ? (
+            <div className="mt-3.5 grid gap-2.5">
+              <GuidedMoneyField
+                label="Checking balance"
+                detail="What is currently available to spend?"
+                value={manualData.checkingBalance}
+                touched={touched.checkingBalance}
+                valid={checkingIsValid}
+                icon={<WalletIcon />}
+                onChange={onCheckingChange}
+              />
+
+              <GuidedMoneyField
+                label="Savings balance"
+                detail="What is currently set aside?"
+                value={manualData.savingsBalance}
+                touched={touched.savingsBalance}
+                valid={savingsIsValid}
+                icon={<SavingsIcon />}
+                onChange={onSavingsChange}
+              />
+
+              <div
+                className="flex items-start gap-2.5 rounded-[1rem] border px-3 py-2.5"
+                style={{
+                  borderColor: "var(--theme-border-subtle)",
+                  background: "var(--theme-surface-inset)",
+                }}
+              >
+                <span
+                  className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-bold"
+                  style={{
+                    background:
+                      "color-mix(in srgb, var(--theme-accent) 12%, transparent)",
+                    color: "var(--theme-accent)",
+                  }}
+                  aria-hidden="true"
+                >
+                  ✓
+                </span>
+
+                <p
+                  className="text-xs leading-5"
+                  style={{ color: "var(--theme-text-tertiary)" }}
+                >
+                  These numbers save automatically and can be changed anytime.
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          {stage === "optional" ? (
+            <div className="mt-3.5 grid gap-2.5">
+              <SetupChoiceCard
+                icon={<BillsEditorIcon />}
+                title="Add Bills"
+                detail="Organize recurring payments and due dates."
+                action="Add now"
+                onClick={() => onFinish("bills")}
+              />
+
+              <SetupChoiceCard
+                icon={<CardsEditorIcon />}
+                title="Add Credit Cards"
+                detail="Track balances, limits, and utilization."
+                action="Add now"
+                onClick={() => onFinish("cards")}
+              />
+
+              <p
+                className="px-1 pb-2 text-center text-[11px] leading-5"
+                style={{ color: "var(--theme-text-tertiary)" }}
+              >
+                Bills and credit cards are completely optional. You can add them
+                later from the Editor.
+              </p>
+            </div>
+          ) : null}
         </div>
 
-        <div className="mt-2.5 grid grid-cols-3 gap-1.5">
-          <GuidedStepButton
-            label="Balances"
-            step={1}
-            active={activeTab === "overview"}
-            complete={stepNumber > 1}
-            onClick={() => onSelectStep("overview")}
-          />
+        <footer
+          className="relative z-10 flex shrink-0 items-center gap-2 border-t px-4 pb-[calc(0.85rem+env(safe-area-inset-bottom))] pt-3 sm:px-5 sm:pb-5"
+          style={{
+            borderColor: "var(--theme-divider)",
+            background:
+              "color-mix(in srgb, var(--theme-surface-sheet) 96%, transparent)",
+            boxShadow:
+              "0 -12px 30px color-mix(in srgb, var(--theme-shadow) 18%, transparent)",
+          }}
+        >
+          {stage !== "intro" ? (
+            <button
+              type="button"
+              onClick={() =>
+                onStageChange(stage === "optional" ? "balances" : "intro")
+              }
+              className="pressable rounded-full border px-4 py-2.5 text-sm font-semibold"
+              style={{
+                borderColor: "var(--theme-border-default)",
+                background: "var(--theme-surface-control)",
+                color: "var(--theme-text-secondary)",
+              }}
+            >
+              Back
+            </button>
+          ) : null}
 
-          <GuidedStepButton
-            label="Bills"
-            step={2}
-            active={activeTab === "bills"}
-            complete={stepNumber > 2}
-            onClick={() => onSelectStep("bills")}
-          />
-
-          <GuidedStepButton
-            label="Cards"
-            step={3}
-            active={activeTab === "cards"}
-            complete={false}
-            onClick={() => onSelectStep("cards")}
-          />
-        </div>
-
-        <div className="mt-2.5 rounded-[1.15rem] border border-[#f5f0e8]/8 bg-[#11100d]/18 p-3">
-          <p className="text-base font-semibold text-[#f5f0e8]">
-            {stepTitle}
-          </p>
-
-          <p className="mt-1 text-sm leading-6 text-stone-400">
-            {stepDetail}
-          </p>
-
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {activeTab !== "overview" ? (
-              <button
-                type="button"
-                onClick={() =>
-                  onSelectStep(
-                    activeTab === "cards" ? "bills" : "overview",
-                  )
-                }
-                className="pressable rounded-full border border-[#f5f0e8]/12 bg-[#f5f0e8]/[0.045] px-4 py-2.5 text-sm font-semibold text-stone-300 transition hover:bg-[#f5f0e8]/[0.075]"
-              >
-                Back
-              </button>
-            ) : (
-              <div className="hidden sm:block" aria-hidden="true" />
-            )}
-
-            {activeTab === "overview" ? (
-              <button
-                type="button"
-                onClick={() => onSelectStep("bills")}
-                className="pressable rounded-full border border-[#c7ad75]/38 bg-[#c7ad75]/16 px-4 py-2.5 text-sm font-semibold text-[#f5f0e8] transition hover:border-[#c7ad75]/50 hover:bg-[#c7ad75]/22"
-              >
-                Continue to Bills
-              </button>
-            ) : activeTab === "bills" ? (
-              <button
-                type="button"
-                onClick={() => onSelectStep("cards")}
-                className="pressable rounded-full border border-[#c7ad75]/38 bg-[#c7ad75]/16 px-4 py-2.5 text-sm font-semibold text-[#f5f0e8] transition hover:border-[#c7ad75]/50 hover:bg-[#c7ad75]/22"
-              >
-                Continue to Cards
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={onFinish}
-                className="pressable rounded-full border border-[#c7ad75]/38 bg-[#c7ad75]/16 px-4 py-2.5 text-sm font-semibold text-[#f5f0e8] transition hover:border-[#c7ad75]/50 hover:bg-[#c7ad75]/22"
-              >
-                Open Dashboard
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </section>
+          {stage === "intro" ? (
+            <button
+              type="button"
+              onClick={() => onStageChange("balances")}
+              className="pressable ml-auto inline-flex flex-1 items-center justify-center gap-2 rounded-full border px-4 py-3 text-sm font-semibold sm:flex-none sm:min-w-[12rem]"
+              style={{
+                borderColor:
+                  "color-mix(in srgb, var(--theme-accent) 36%, var(--theme-border-default))",
+                background:
+                  "color-mix(in srgb, var(--theme-accent) 14%, var(--theme-surface-control))",
+                color: "var(--theme-text)",
+              }}
+            >
+              Start with balances
+              <ChevronRightIcon />
+            </button>
+          ) : stage === "balances" ? (
+            <button
+              type="button"
+              disabled={!balancesAreReady}
+              onClick={() => onStageChange("optional")}
+              className="pressable ml-auto inline-flex flex-1 items-center justify-center gap-2 rounded-full border px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none sm:min-w-[12rem]"
+              style={{
+                borderColor:
+                  "color-mix(in srgb, var(--theme-accent) 36%, var(--theme-border-default))",
+                background:
+                  "color-mix(in srgb, var(--theme-accent) 14%, var(--theme-surface-control))",
+                color: "var(--theme-text)",
+              }}
+            >
+              Save starting point
+              <ChevronRightIcon />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onFinish("dashboard")}
+              className="pressable ml-auto inline-flex flex-1 items-center justify-center gap-2 rounded-full border px-4 py-3 text-sm font-semibold sm:flex-none sm:min-w-[12rem]"
+              style={{
+                borderColor:
+                  "color-mix(in srgb, var(--theme-accent) 36%, var(--theme-border-default))",
+                background:
+                  "color-mix(in srgb, var(--theme-accent) 14%, var(--theme-surface-control))",
+                color: "var(--theme-text)",
+              }}
+            >
+              Open Dashboard
+              <ChevronRightIcon />
+            </button>
+          )}
+        </footer>
+      </section>
+    </div>
   );
 }
 
-function GuidedStepButton({
+function SetupOverviewCard({
+  icon,
+  title,
+  badge,
+  detail,
+  emphasized = false,
+}: {
+  icon: ReactNode;
+  title: string;
+  badge: string;
+  detail: string;
+  emphasized?: boolean;
+}) {
+  return (
+    <article
+      className="flex items-center gap-3 rounded-[1.15rem] border p-3"
+      style={{
+        borderColor: emphasized
+          ? "color-mix(in srgb, var(--theme-accent) 30%, var(--theme-border-default))"
+          : "var(--theme-border-default)",
+        background: emphasized
+          ? "color-mix(in srgb, var(--theme-accent) 8%, var(--theme-surface-row))"
+          : "var(--theme-surface-row)",
+        boxShadow:
+          "inset 0 1px 0 color-mix(in srgb, var(--theme-highlight) 72%, transparent)",
+      }}
+    >
+      <span
+        className="grid h-10 w-10 shrink-0 place-items-center rounded-[0.9rem] border"
+        style={{
+          borderColor:
+            "color-mix(in srgb, var(--theme-accent) 22%, var(--theme-border-default))",
+          background:
+            "color-mix(in srgb, var(--theme-accent) 8%, var(--theme-surface-control))",
+          color: "var(--theme-accent)",
+        }}
+        aria-hidden="true"
+      >
+        {icon}
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold">{title}</h2>
+
+          <span
+            className="shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em]"
+            style={{
+              borderColor: emphasized
+                ? "color-mix(in srgb, var(--theme-accent) 28%, var(--theme-border-default))"
+                : "var(--theme-border-subtle)",
+              color: emphasized
+                ? "color-mix(in srgb, var(--theme-accent) 82%, var(--theme-text))"
+                : "var(--theme-text-tertiary)",
+            }}
+          >
+            {badge}
+          </span>
+        </div>
+
+        <p
+          className="mt-1 text-xs leading-5"
+          style={{ color: "var(--theme-text-secondary)" }}
+        >
+          {detail}
+        </p>
+      </div>
+    </article>
+  );
+}
+
+function GuidedMoneyField({
   label,
-  step,
-  active,
-  complete,
-  onClick,
+  detail,
+  value,
+  touched,
+  valid,
+  icon,
+  onChange,
 }: {
   label: string;
-  step: number;
-  active: boolean;
-  complete: boolean;
+  detail: string;
+  value: string;
+  touched: boolean;
+  valid: boolean;
+  icon: ReactNode;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label
+      className="grid gap-3 rounded-[1.2rem] border p-3.5"
+      style={{
+        borderColor: valid
+          ? "color-mix(in srgb, var(--theme-accent) 32%, var(--theme-border-default))"
+          : "var(--theme-border-default)",
+        background: "var(--theme-surface-row)",
+        boxShadow:
+          "inset 0 1px 0 color-mix(in srgb, var(--theme-highlight) 72%, transparent)",
+      }}
+    >
+      <span className="flex items-start gap-3">
+        <span
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-[0.9rem] border"
+          style={{
+            borderColor:
+              "color-mix(in srgb, var(--theme-accent) 22%, var(--theme-border-default))",
+            background:
+              "color-mix(in srgb, var(--theme-accent) 8%, var(--theme-surface-control))",
+            color: "var(--theme-accent)",
+          }}
+          aria-hidden="true"
+        >
+          {icon}
+        </span>
+
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center justify-between gap-3">
+            <strong className="text-sm font-semibold">{label}</strong>
+
+            {touched ? (
+              <span
+                className="text-[10px] font-semibold"
+                style={{
+                  color: valid
+                    ? "var(--theme-accent)"
+                    : "var(--theme-text-tertiary)",
+                }}
+              >
+                {valid ? "Ready" : "Enter a value"}
+              </span>
+            ) : (
+              <span
+                className="text-[10px] font-semibold uppercase tracking-[0.1em]"
+                style={{ color: "var(--theme-text-tertiary)" }}
+              >
+                Required
+              </span>
+            )}
+          </span>
+
+          <span
+            className="mt-1 block text-xs leading-5"
+            style={{ color: "var(--theme-text-secondary)" }}
+          >
+            {detail}
+          </span>
+        </span>
+      </span>
+
+      <span
+        className="flex items-center rounded-[1rem] border px-3 py-2.5 focus-within:ring-2"
+        style={{
+          borderColor: "var(--theme-border-default)",
+          background: "var(--theme-surface-inset)",
+          color: "var(--theme-text)",
+          boxShadow:
+            "inset 0 1px 2px color-mix(in srgb, var(--theme-shadow) 16%, transparent)",
+        }}
+      >
+        <span
+          className="mr-2 text-lg font-semibold"
+          style={{ color: "var(--theme-accent)" }}
+          aria-hidden="true"
+        >
+          $
+        </span>
+
+        <input
+          type="number"
+          inputMode="decimal"
+          value={value}
+          placeholder="0.00"
+          aria-label={label}
+          onFocus={(event) => {
+            if (value === "0" || value === "0.00") {
+              event.currentTarget.select();
+            }
+          }}
+          onChange={(event) => onChange(event.target.value)}
+          className="min-w-0 flex-1 bg-transparent text-right text-[1.35rem] font-semibold tracking-[-0.03em] outline-none placeholder:opacity-35"
+          style={{ color: "var(--theme-text)" }}
+        />
+      </span>
+    </label>
+  );
+}
+
+function SetupChoiceCard({
+  icon,
+  title,
+  detail,
+  action,
+  onClick,
+}: {
+  icon: ReactNode;
+  title: string;
+  detail: string;
+  action: string;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
-      aria-current={active ? "step" : undefined}
       onClick={onClick}
-      className={`pressable rounded-[1rem] border px-2 py-2 text-left transition ${
-        active
-          ? "border-[#c7ad75]/34 bg-[#c7ad75]/12"
-          : "border-[#f5f0e8]/8 bg-[#f5f0e8]/[0.025] hover:border-[#c7ad75]/20 hover:bg-[#c7ad75]/[0.055]"
-      }`}
+      className="pressable flex w-full items-center gap-3 rounded-[1.15rem] border p-3 text-left"
+      style={{
+        borderColor: "var(--theme-border-default)",
+        background: "var(--theme-surface-row)",
+        color: "var(--theme-text)",
+        boxShadow:
+          "inset 0 1px 0 color-mix(in srgb, var(--theme-highlight) 72%, transparent)",
+      }}
     >
-      <div className="flex items-center justify-between gap-2">
-        <span
-          className={`grid h-5 w-5 place-items-center rounded-full text-[10px] font-bold ${
-            active || complete
-              ? "bg-[#c7ad75]/18 text-[#c7ad75]"
-              : "bg-[#f5f0e8]/6 text-stone-600"
-          }`}
-        >
-          {complete ? "✓" : step}
-        </span>
-
-        <span
-          className={`h-1.5 w-1.5 rounded-full ${
-            active ? "bg-[#c7ad75]" : "bg-[#f5f0e8]/14"
-          }`}
-        />
-      </div>
-
-      <p
-        className={`mt-1.5 truncate text-xs font-semibold ${
-          active ? "text-[#f5f0e8]" : "text-stone-500"
-        }`}
+      <span
+        className="grid h-10 w-10 shrink-0 place-items-center rounded-[0.9rem] border"
+        style={{
+          borderColor:
+            "color-mix(in srgb, var(--theme-accent) 22%, var(--theme-border-default))",
+          background:
+            "color-mix(in srgb, var(--theme-accent) 8%, var(--theme-surface-control))",
+          color: "var(--theme-accent)",
+        }}
+        aria-hidden="true"
       >
-        {label}
-      </p>
+        {icon}
+      </span>
+
+      <span className="min-w-0 flex-1">
+        <strong className="block text-sm font-semibold">{title}</strong>
+
+        <span
+          className="mt-1 block text-xs leading-5"
+          style={{ color: "var(--theme-text-secondary)" }}
+        >
+          {detail}
+        </span>
+      </span>
+
+      <span
+        className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold"
+        style={{ color: "var(--theme-accent)" }}
+      >
+        {action}
+        <ChevronRightIcon />
+      </span>
     </button>
   );
 }
 
-function EditorSegmentButton({
+function EditorSaveStatus({
+  label,
+  detail,
+  isSaving,
+  hasPendingChanges,
+  wasJustSaved,
+}: {
+  label: string;
+  detail: string;
+  isSaving: boolean;
+  hasPendingChanges: boolean;
+  wasJustSaved: boolean;
+}) {
+  const state = isSaving
+    ? "saving"
+    : hasPendingChanges
+      ? "pending"
+      : wasJustSaved
+        ? "confirmed"
+        : "saved";
+
+  return (
+    <div
+      className="editor-save-status"
+      data-state={state}
+      aria-live="polite"
+      title={detail}
+      style={{
+        minHeight: "2rem",
+        padding: "0.42rem 0.7rem",
+        borderRadius: "999px",
+      }}
+    >
+      <span className="editor-save-status-dot" aria-hidden="true" />
+
+      <span className="editor-save-status-label">{label}</span>
+    </div>
+  );
+}
+
+function EditorTabButton({
   label,
   icon,
   active,
@@ -1484,75 +2298,64 @@ function EditorSegmentButton({
   return (
     <button
       type="button"
-      aria-pressed={active}
+      role="tab"
+      aria-selected={active}
       onClick={onClick}
-      className={`pressable rounded-full px-3 py-1.5 text-sm font-semibold transition-all duration-300 ${
-        active
-          ? "bg-[#c7ad75]/20 text-[#f5f0e8] shadow-[inset_0_0_0_1px_rgba(199,173,117,0.26),inset_0_1px_0_rgba(245,240,232,0.08)]"
-          : "text-stone-400 hover:bg-[#c7ad75]/10 hover:text-[#f5f0e8]"
+      className={`editor-tab-button pressable ${
+        active ? "editor-tab-button-active" : ""
       }`}
+      style={{
+        minHeight: "2.8rem",
+        padding: "0.58rem 0.5rem",
+        borderRadius: "0.92rem",
+      }}
     >
-      <span className="flex items-center justify-center gap-1.5">
+      <span className="editor-tab-icon" aria-hidden="true">
         {icon}
-        <span>{label}</span>
       </span>
+
+      <span className="editor-tab-label">{label}</span>
     </button>
   );
 }
 
-function EditorSectionButton({
+function SectionHeading({
   title,
-  value,
-  detail,
-  active,
-  onClick,
+  icon,
 }: {
   title: string;
-  value: string;
-  detail: string;
-  active: boolean;
-  onClick: () => void;
+  icon: "balances" | "bills" | "cards";
 }) {
   return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={`dashboard-compact-panel pressable rounded-[1.25rem] p-2.5 text-left transition-all duration-300 ${
-        active
-          ? "border-[#c7ad75]/38 bg-[#c7ad75]/13 shadow-[inset_0_1px_0_rgba(245,240,232,0.09),0_16px_28px_rgba(0,0,0,0.13)]"
-          : "hover:border-[#c7ad75]/24 hover:bg-[#f5f0e8]/5"
-      }`}
-    >
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c7ad75]/75">
-          {title}
-        </p>
+    <div className="flex min-w-0 items-center gap-2.5">
+      <span
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-[0.68rem] border"
+        style={{
+          borderColor: "var(--theme-border-default)",
+          background:
+            "color-mix(in srgb, var(--theme-accent) 6%, var(--theme-surface-control))",
+          color: "var(--theme-accent)",
+        }}
+        aria-hidden="true"
+      >
+        {icon === "balances" ? (
+          <BalanceIcon />
+        ) : icon === "bills" ? (
+          <BillsEditorIcon />
+        ) : (
+          <CardsEditorIcon />
+        )}
+      </span>
 
-        <span
-          className={`h-2.5 w-2.5 shrink-0 rounded-full transition ${
-            active
-              ? "bg-[#c7ad75] shadow-[0_0_14px_rgba(199,173,117,0.28)]"
-              : "bg-[#f5f0e8]/18"
-          }`}
-        />
-      </div>
-
-      <p className="truncate text-xl font-bold tracking-tight text-[#f5f0e8]">
-        {value}
-      </p>
-
-      <p className="mt-0.5 text-sm text-stone-400">{detail}</p>
-    </button>
-  );
-}
-
-function SectionHeading({ title }: { title: string }) {
-  return (
-    <div className="flex min-w-0 items-center gap-3">
-      <span className="dashboard-section-dot h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75]" />
-
-      <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
+      <h2
+        style={{
+          color: "var(--theme-text)",
+          fontSize: "1.02rem",
+          fontWeight: 650,
+          letterSpacing: "-0.012em",
+          lineHeight: 1.2,
+        }}
+      >
         {title}
       </h2>
     </div>
@@ -1567,9 +2370,9 @@ function BillEditorRow({
   isDimmed,
   isNewlyAdded,
   onToggleEditing,
-  onRemove,
-  onChange,
-  onPaymentSourceChange,
+  onRemove: _onRemove,
+  onChange: _onChange,
+  onPaymentSourceChange: _onPaymentSourceChange,
 }: {
   itemIndex: number;
   bill: ManualBill;
@@ -1582,13 +2385,93 @@ function BillEditorRow({
   onChange: (field: EditableManualBillField, value: string) => void;
   onPaymentSourceChange: (paymentSource: PaymentSource) => void;
 }) {
+  return (
+    <article
+      data-editor-item={`bill-${itemIndex}`}
+      className={`editor-bill-card scroll-mt-28 ${
+        isEditing ? "editor-bill-card-open" : ""
+      } ${isNewlyAdded ? "editor-bill-card-new" : ""} ${
+        isDimmed ? "editor-bill-card-dimmed" : ""
+      }`}
+    >
+      <div className="editor-bill-summary">
+        <span className="editor-bill-icon" aria-hidden="true">
+          <BillsEditorIcon />
+        </span>
+
+        <div className="editor-bill-copy">
+          <div className="editor-bill-heading">
+            <p className="editor-bill-name">
+              {bill.name || "Untitled Bill"}
+            </p>
+
+            <p className="editor-bill-amount">
+              {formatMoney(bill.amount)}
+            </p>
+          </div>
+
+          <p className="editor-bill-meta">
+            <span>
+              {bill.dueDate
+                ? `Due ${formatOrdinalDay(bill.dueDate)}`
+                : "Due day not set"}
+            </span>
+            <span aria-hidden="true">·</span>
+            <span>
+              {getPaymentSourceLabel(bill.paymentSource, cards)}
+            </span>
+          </p>
+        </div>
+
+        <button
+          type="button"
+          aria-expanded={isEditing}
+          aria-label={`Edit ${bill.name || "bill"}`}
+          onClick={onToggleEditing}
+          className="editor-bill-action pressable"
+        >
+          Edit
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function BillEditorSheet({
+  bill,
+  cards,
+  onClose,
+  onRemove,
+  onChange,
+  onPaymentSourceChange,
+}: {
+  bill: ManualBill;
+  cards: ManualCreditCard[];
+  onClose: () => void;
+  onRemove: () => void;
+  onChange: (field: EditableManualBillField, value: string) => void;
+  onPaymentSourceChange: (paymentSource: PaymentSource) => void;
+}) {
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
 
   useEffect(() => {
-    if (!isEditing) {
-      setShowRemoveConfirm(false);
+    const previousOverflow = document.body.style.overflow;
+
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
     }
-  }, [isEditing]);
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
 
   function confirmRemove() {
     setShowRemoveConfirm(false);
@@ -1596,161 +2479,334 @@ function BillEditorRow({
   }
 
   return (
-    <article
-      data-editor-item={`bill-${itemIndex}`}
-      className={`dashboard-preview-row scroll-mt-28 overflow-hidden rounded-[1.2rem] border transition-all duration-300 ${
-        isNewlyAdded
-          ? "border-[#c7ad75]/48 shadow-[0_0_0_1px_rgba(199,173,117,0.12),0_12px_30px_rgba(0,0,0,0.08),0_0_22px_rgba(199,173,117,0.08)]"
-          : isEditing
-            ? "border-[#c7ad75]/28 shadow-[0_14px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(245,240,232,0.06)]"
-            : "border-[#f5f0e8]/10 hover:border-[#c7ad75]/20"
-      } ${isDimmed ? "opacity-70" : "opacity-100"}`}
-    >
-      {isEditing ? (
-        <div className="relative px-3.5 py-2.5">
-          <span
-            className="absolute inset-y-3 left-0 w-[2px] rounded-r-full bg-[#c7ad75]"
-            aria-hidden="true"
-          />
+    <div className="editor-sheet-layer">
+      <button
+        type="button"
+        aria-label="Close bill editor"
+        className="editor-sheet-backdrop"
+        onClick={onClose}
+      />
 
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[0.9rem] border border-[#f5f0e8]/12 bg-[#f5f0e8]/5 text-[#c7ad75] shadow-[inset_0_1px_0_rgba(245,240,232,0.07)]">
-                <EditPencilIcon />
-              </span>
+      <section
+        className="editor-sheet-panel editor-standard-sheet-panel editor-bill-sheet-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="bill-editor-sheet-title"
+      >
+        <div className="editor-sheet-handle" aria-hidden="true" />
 
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/75">
-                  Editing Bill
-                </p>
-
-                <p className="mt-0.5 truncate text-base font-semibold text-[#f5f0e8]">
-                  {bill.name || "New Bill"}
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              aria-expanded={isEditing}
-              aria-label={`Close editor for ${bill.name || "bill"}`}
-              onClick={onToggleEditing}
-              className="dashboard-pill-button pressable inline-flex shrink-0 items-center gap-1.5 !px-3 !py-1.5 text-xs font-semibold text-[#f5f0e8]"
-            >
-              <CheckIcon />
-              Done
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex items-start justify-between gap-4 p-2.5">
-          <div className="flex min-w-0 items-start gap-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[0.9rem] border border-[#f5f0e8]/10 bg-[#f5f0e8]/5 text-[#c7ad75] shadow-[inset_0_1px_0_rgba(245,240,232,0.06)]">
+        <div className="editor-sheet-header">
+          <div className="editor-sheet-title-group">
+            <span className="editor-sheet-icon" aria-hidden="true">
               <BillsEditorIcon />
             </span>
 
             <div className="min-w-0">
-              <p className="truncate text-base font-semibold text-[#f5f0e8]">
-                {bill.name || "Untitled Bill"}
+              <p
+                className="editor-sheet-eyebrow"
+                style={{
+                  letterSpacing: "0.06em",
+                  textTransform: "none",
+                }}
+              >
+                Bill details
               </p>
 
-              <p className="mt-0.5 text-xs text-stone-500">
-                Paid from {getPaymentSourceLabel(bill.paymentSource, cards)}
-              </p>
-
-              <p className="mt-1 text-sm font-medium text-stone-300">
-                {formatMoney(bill.amount)}
-                <span className="mx-1.5 text-stone-600">•</span>
-                Due {bill.dueDate || "TBD"}
-              </p>
+              <h2
+                id="bill-editor-sheet-title"
+                className="editor-sheet-title"
+              >
+                {bill.name || "New Bill"}
+              </h2>
             </div>
           </div>
 
           <button
             type="button"
-            aria-expanded={isEditing}
-            aria-label={`Edit ${bill.name || "bill"}`}
-            onClick={onToggleEditing}
-            className="dashboard-pill-button pressable shrink-0 !px-3 !py-1 text-xs font-semibold"
+            onClick={onClose}
+            className="editor-sheet-done pressable"
           >
-            Edit
+            <CheckIcon />
+            Done
           </button>
         </div>
-      )}
 
-      {isEditing && (
-        <div className="border-t border-[#f5f0e8]/10 px-3.5 pb-3 pt-2.5">
-          <div className="dashboard-compact-panel !overflow-hidden !rounded-[1rem] !p-0">
-            <TextInput
-              label="Bill Name"
-              value={bill.name}
-              placeholder="Example: Car Payment"
-              onChange={(value) => onChange("name", value)}
-            />
+        <div className="editor-sheet-intro">
+          <p className="editor-sheet-context">
+            Monthly bill
+          </p>
 
-            <MoneyInput
-              label="Amount"
-              value={bill.amount}
-              onChange={(value) => onChange("amount", value)}
-            />
+          <p className="editor-sheet-save-note">
+            Changes save automatically.
+          </p>
+        </div>
 
-            <TextInput
-              label="Due Date"
-              value={bill.dueDate}
-              placeholder="Example: 15th"
-              onChange={(value) => onChange("dueDate", value)}
-            />
+        <div className="editor-sheet-form">
+          <SheetTextInput
+            label="Bill name"
+            value={bill.name}
+            placeholder="Phone, rent, insurance..."
+            onChange={(value) => onChange("name", value)}
+          />
 
-            <PaymentSourceSelect
-              value={bill.paymentSource ?? { type: "checking" }}
-              cards={cards}
-              onChange={onPaymentSourceChange}
-            />
-          </div>
+          <SheetMoneyInput
+            label="Amount"
+            value={bill.amount}
+            placeholder="0.00"
+            compact
+            onChange={(value) => onChange("amount", value)}
+          />
 
-          {showRemoveConfirm ? (
-            <div className="mt-2 rounded-[1rem] border border-[#dc2626]/22 bg-[#dc2626]/6 p-2.5">
-              <p className="text-sm font-semibold text-[#f5f0e8]">
+          <SheetDueDayInput
+            value={bill.dueDate}
+            onChange={(value) => onChange("dueDate", value)}
+          />
+
+          <SheetPaymentSourceSelect
+            value={bill.paymentSource ?? { type: "checking" }}
+            cards={cards}
+            onChange={onPaymentSourceChange}
+          />
+        </div>
+
+        {showRemoveConfirm ? (
+          <div className="editor-sheet-remove-confirm">
+            <div>
+              <p className="editor-sheet-remove-title">
                 Remove this bill?
               </p>
 
-              <p className="mt-1 text-xs leading-5 text-stone-500">
-                This change saves automatically.
+              <p className="editor-sheet-remove-copy">
+                This cannot be undone after it saves.
               </p>
-
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowRemoveConfirm(false)}
-                  className="pressable rounded-full border border-[#f5f0e8]/10 bg-[#f5f0e8]/5 px-4 py-2 text-sm font-semibold text-stone-300 transition hover:border-[#f5f0e8]/16 hover:bg-[#f5f0e8]/8 hover:text-[#f5f0e8]"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="button"
-                  onClick={confirmRemove}
-                  className="pressable rounded-full border border-[#dc2626]/42 bg-[#dc2626]/14 px-4 py-2 text-sm font-bold text-[#ef4444] transition hover:border-[#dc2626]/58 hover:bg-[#dc2626]/20"
-                >
-                  Remove
-                </button>
-              </div>
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowRemoveConfirm(true)}
-              className="pressable mt-2.5 inline-flex items-center gap-1.5 border-0 bg-transparent px-1 py-1 text-xs font-semibold text-[#dc2626]/85 transition hover:text-[#dc2626]"
-            >
-              <TrashIcon />
-              Remove Bill
-            </button>
-          )}
-        </div>
-      )}
-    </article>
+
+            <div className="editor-sheet-remove-actions">
+              <button
+                type="button"
+                onClick={() => setShowRemoveConfirm(false)}
+                className="editor-sheet-remove-cancel pressable"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={confirmRemove}
+                className="editor-sheet-remove-confirm-button pressable"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowRemoveConfirm(true)}
+            className="editor-sheet-remove-link pressable"
+          >
+            <TrashIcon />
+            Remove bill
+          </button>
+        )}
+      </section>
+    </div>
   );
 }
+
+function SheetTextInput({
+  label,
+  value,
+  placeholder,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="editor-sheet-field">
+      <span
+        className="editor-sheet-field-label"
+        style={{
+          letterSpacing: "0.01em",
+          textTransform: "none",
+        }}
+      >
+        {label}
+      </span>
+
+      <span className="editor-sheet-text-control editor-sheet-editable-control">
+        <input
+          type="text"
+          value={value}
+          placeholder={placeholder}
+          onChange={(event) => onChange(event.target.value)}
+          className="editor-sheet-field-input"
+        />
+      </span>
+    </label>
+  );
+}
+
+function SheetDueDayInput({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const normalizedValue = normalizeMonthlyDueDay(value);
+
+  return (
+    <label className="editor-sheet-field">
+      <span
+        className="editor-sheet-field-label"
+        style={{
+          letterSpacing: "0.01em",
+          textTransform: "none",
+        }}
+      >
+        Due day each month
+      </span>
+
+      <input
+        type="number"
+        inputMode="numeric"
+        min={1}
+        max={31}
+        step={1}
+        value={normalizedValue}
+        placeholder="16"
+        aria-label="Due day each month, from 1 through 31"
+        onChange={(event) => {
+          const nextValue = sanitizeMonthlyDueDayInput(
+            event.target.value,
+          );
+
+          if (nextValue !== null) {
+            onChange(nextValue);
+          }
+        }}
+        className="editor-sheet-field-input editor-sheet-editable-control editor-sheet-compact-value"
+      />
+    </label>
+  );
+}
+
+function SheetMoneyInput({
+  label,
+  value,
+  placeholder,
+  compact = false,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  compact?: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="editor-sheet-field">
+      <span
+        className="editor-sheet-field-label"
+        style={{
+          letterSpacing: "0.01em",
+          textTransform: "none",
+        }}
+      >
+        {label}
+      </span>
+
+      <span
+        className={`editor-sheet-money-control editor-sheet-editable-control ${
+          compact ? "editor-sheet-compact-value" : ""
+        }`}
+      >
+        <span aria-hidden="true">$</span>
+
+        <input
+          type="number"
+          inputMode="decimal"
+          value={value}
+          placeholder={placeholder}
+          onFocus={() => clearZeroOnFocus(value, onChange)}
+          onChange={(event) => onChange(event.target.value)}
+          className="editor-sheet-field-input"
+        />
+      </span>
+    </label>
+  );
+}
+
+function SheetPaymentSourceSelect({
+  value,
+  cards,
+  onChange,
+}: {
+  value: PaymentSource;
+  cards: ManualCreditCard[];
+  onChange: (paymentSource: PaymentSource) => void;
+}) {
+  const selectedValue =
+    value.type === "credit-card"
+      ? `credit-card:${value.creditCardId}`
+      : "checking";
+
+  function handleChange(nextValue: string) {
+    if (nextValue === "checking") {
+      onChange({ type: "checking" });
+      return;
+    }
+
+    const creditCardId = nextValue.replace("credit-card:", "");
+
+    if (creditCardId) {
+      onChange({
+        type: "credit-card",
+        creditCardId,
+      });
+    }
+  }
+
+  return (
+    <label className="editor-sheet-field">
+      <span
+        className="editor-sheet-field-label"
+        style={{
+          letterSpacing: "0.01em",
+          textTransform: "none",
+        }}
+      >
+        Paid from
+      </span>
+
+      <span className="editor-sheet-select-control editor-sheet-editable-control">
+        <select
+          value={selectedValue}
+          onChange={(event) => handleChange(event.target.value)}
+          className="editor-sheet-select"
+          aria-label="Payment source"
+        >
+          <option value="checking">Checking account</option>
+
+          {cards.map((card, index) =>
+            card.id ? (
+              <option key={card.id} value={`credit-card:${card.id}`}>
+                {card.name.trim() || `Credit Card ${index + 1}`}
+              </option>
+            ) : null,
+          )}
+        </select>
+
+        <ChevronDownIcon />
+      </span>
+    </label>
+  );
+}
+
 
 function CardEditorRow({
   itemIndex,
@@ -1759,8 +2815,8 @@ function CardEditorRow({
   isDimmed,
   isNewlyAdded,
   onToggleEditing,
-  onRemove,
-  onChange,
+  onRemove: _onRemove,
+  onChange: _onChange,
 }: {
   itemIndex: number;
   card: ManualCreditCard;
@@ -1771,251 +2827,402 @@ function CardEditorRow({
   onRemove: () => void;
   onChange: (field: keyof ManualCreditCard, value: string) => void;
 }) {
-  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
-
-  useEffect(() => {
-    if (!isEditing) {
-      setShowRemoveConfirm(false);
-    }
-  }, [isEditing]);
-
-  function confirmRemove() {
-    setShowRemoveConfirm(false);
-    onRemove();
-  }
-
   const balance = parseMoney(card.balance);
   const limit = parseMoney(card.limit);
   const utilization = limit > 0 ? Math.round((balance / limit) * 100) : 0;
+  const availableCredit = Math.max(limit - balance, 0);
+  const isPaidOff = balance <= 0.005;
 
   return (
     <article
       data-editor-item={`card-${itemIndex}`}
-      className={`dashboard-preview-row scroll-mt-28 overflow-hidden rounded-[1.2rem] border transition-all duration-300 ${
-        isNewlyAdded
-          ? "border-[#c7ad75]/48 shadow-[0_0_0_1px_rgba(199,173,117,0.12),0_12px_30px_rgba(0,0,0,0.08),0_0_22px_rgba(199,173,117,0.08)]"
-          : isEditing
-            ? "border-[#c7ad75]/28 shadow-[0_14px_30px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(245,240,232,0.06)]"
-            : "border-[#f5f0e8]/10 hover:border-[#c7ad75]/20"
-      } ${isDimmed ? "opacity-70" : "opacity-100"}`}
+      className={`editor-card-row scroll-mt-28 ${
+        isEditing ? "editor-card-row-open" : ""
+      } ${isNewlyAdded ? "editor-card-row-new" : ""} ${
+        isDimmed ? "editor-card-row-dimmed" : ""
+      }`}
     >
-      {isEditing ? (
-        <div className="relative px-3.5 py-2.5">
-          <span
-            className="absolute inset-y-3 left-0 w-[2px] rounded-r-full bg-[#c7ad75]"
-            aria-hidden="true"
-          />
+      <div className="editor-card-summary">
+        <span className="editor-card-icon" aria-hidden="true">
+          <CardsEditorIcon />
+        </span>
 
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[0.9rem] border border-[#f5f0e8]/12 bg-[#f5f0e8]/5 text-[#c7ad75] shadow-[inset_0_1px_0_rgba(245,240,232,0.07)]">
-                <EditPencilIcon />
-              </span>
+        <div className="editor-card-copy">
+          <p className="editor-card-name">
+            {card.name || "Untitled Card"}
+          </p>
 
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/75">
-                  Editing Card
-                </p>
+          <p className="editor-card-meta">
+            <span>{isPaidOff ? "Paid off" : `${utilization}% used`}</span>
+            <span aria-hidden="true">·</span>
+            <span>{formatCurrency(availableCredit)} available</span>
+          </p>
 
-                <p className="mt-0.5 truncate text-base font-semibold text-[#f5f0e8]">
-                  {card.name || "New Card"}
-                </p>
-              </div>
+          {!isPaidOff ? (
+            <div className="editor-card-progress" aria-hidden="true">
+              <span style={{ width: `${Math.min(utilization, 100)}%` }} />
             </div>
-
-            <button
-              type="button"
-              aria-expanded={isEditing}
-              aria-label={`Close editor for ${card.name || "card"}`}
-              onClick={onToggleEditing}
-              className="dashboard-pill-button pressable inline-flex shrink-0 items-center gap-1.5 !px-3 !py-1.5 text-xs font-semibold text-[#f5f0e8]"
-            >
-              <CheckIcon />
-              Done
-            </button>
-          </div>
+          ) : null}
         </div>
-      ) : (
-        <div className="flex items-start justify-between gap-4 p-2.5">
-          <div className="flex min-w-0 items-start gap-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[0.9rem] border border-[#f5f0e8]/10 bg-[#f5f0e8]/5 text-[#c7ad75] shadow-[inset_0_1px_0_rgba(245,240,232,0.06)]">
-              <CardsEditorIcon />
-            </span>
 
-            <div className="min-w-0">
-              <p className="truncate text-base font-semibold text-[#f5f0e8]">
-                {card.name || "Untitled Card"}
-              </p>
-
-              <p className="mt-0.5 text-xs text-stone-500">Revolving account</p>
-
-              <p className="mt-1 text-sm font-medium text-stone-300">
-                {formatMoney(card.balance)}
-                <span className="mx-1.5 text-stone-600">•</span>
-                {utilization}% used
-              </p>
-            </div>
-          </div>
+        <div className="editor-card-trailing">
+          <p className="editor-card-balance">
+            {formatCurrency(balance)}
+          </p>
 
           <button
             type="button"
             aria-expanded={isEditing}
             aria-label={`Edit ${card.name || "card"}`}
             onClick={onToggleEditing}
-            className="dashboard-pill-button pressable shrink-0 !px-3 !py-1 text-xs font-semibold"
+            className="editor-card-action pressable"
           >
             Edit
           </button>
         </div>
-      )}
-
-      {!isEditing ? (
-        <div className="mx-3 mb-2.5 dashboard-progress-track h-1.5 overflow-hidden rounded-full bg-black/30">
-          <div
-            className="liquid-progress dashboard-progress-fill h-full rounded-full bg-[#c7ad75]"
-            style={{ width: `${Math.min(utilization, 100)}%` }}
-          />
-        </div>
-      ) : null}
-
-      {isEditing && (
-        <div className="border-t border-[#f5f0e8]/10 px-3.5 pb-3 pt-2.5">
-          <div className="dashboard-compact-panel !overflow-hidden !rounded-[1rem] !p-0">
-            <TextInput
-              label="Card Name"
-              value={card.name}
-              placeholder="Example: Amex"
-              onChange={(value) => onChange("name", value)}
-            />
-
-            <MoneyInput
-              label="Balance"
-              value={card.balance}
-              onChange={(value) => onChange("balance", value)}
-            />
-
-            <MoneyInput
-              label="Credit Limit"
-              value={card.limit}
-              onChange={(value) => onChange("limit", value)}
-            />
-
-            <MoneyInput
-              label="Minimum Payment"
-              value={card.minimumPayment}
-              onChange={(value) => onChange("minimumPayment", value)}
-            />
-
-            <TextInput
-              label="Due Date"
-              value={card.dueDate}
-              placeholder="Example: 2nd"
-              onChange={(value) => onChange("dueDate", value)}
-            />
-          </div>
-
-          {showRemoveConfirm ? (
-            <div className="mt-2 rounded-[1rem] border border-[#dc2626]/22 bg-[#dc2626]/6 p-2.5">
-              <p className="text-sm font-semibold text-[#f5f0e8]">
-                Remove this card?
-              </p>
-
-              <p className="mt-1 text-xs leading-5 text-stone-500">
-                This change saves automatically.
-              </p>
-
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowRemoveConfirm(false)}
-                  className="pressable rounded-full border border-[#f5f0e8]/10 bg-[#f5f0e8]/5 px-4 py-2 text-sm font-semibold text-stone-300 transition hover:border-[#f5f0e8]/16 hover:bg-[#f5f0e8]/8 hover:text-[#f5f0e8]"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="button"
-                  onClick={confirmRemove}
-                  className="pressable rounded-full border border-[#dc2626]/42 bg-[#dc2626]/14 px-4 py-2 text-sm font-bold text-[#ef4444] transition hover:border-[#dc2626]/58 hover:bg-[#dc2626]/20"
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowRemoveConfirm(true)}
-              className="pressable mt-2.5 inline-flex items-center gap-1.5 border-0 bg-transparent px-1 py-1 text-xs font-semibold text-[#dc2626]/85 transition hover:text-[#dc2626]"
-            >
-              <TrashIcon />
-              Remove Card
-            </button>
-          )}
-        </div>
-      )}
+      </div>
     </article>
   );
 }
+
+function CardEditorSheet({
+  card,
+  onClose,
+  onRemove,
+  onChange,
+}: {
+  card: ManualCreditCard;
+  onClose: () => void;
+  onRemove: () => void;
+  onChange: (field: keyof ManualCreditCard, value: string) => void;
+}) {
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  function confirmRemove() {
+    setShowRemoveConfirm(false);
+    onRemove();
+  }
+
+  return (
+    <div className="editor-sheet-layer">
+      <button
+        type="button"
+        aria-label="Close card editor"
+        className="editor-sheet-backdrop"
+        onClick={onClose}
+      />
+
+      <section
+        className="editor-sheet-panel editor-standard-sheet-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="card-editor-sheet-title"
+      >
+        <div className="editor-sheet-handle" aria-hidden="true" />
+
+        <div className="editor-sheet-header">
+          <div className="editor-sheet-title-group">
+            <span className="editor-sheet-icon" aria-hidden="true">
+              <CardsEditorIcon />
+            </span>
+
+            <div className="min-w-0">
+              <p
+                className="editor-sheet-eyebrow"
+                style={{
+                  letterSpacing: "0.06em",
+                  textTransform: "none",
+                }}
+              >
+                Card details
+              </p>
+
+              <h2
+                id="card-editor-sheet-title"
+                className="editor-sheet-title"
+              >
+                {card.name || "New Card"}
+              </h2>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="editor-sheet-done pressable"
+          >
+            <CheckIcon />
+            Done
+          </button>
+        </div>
+
+        <div className="editor-sheet-intro">
+          <p className="editor-sheet-context">
+            Credit card
+          </p>
+
+          <p className="editor-sheet-save-note">
+            Changes save automatically.
+          </p>
+        </div>
+
+        <div className="editor-sheet-form">
+          <SheetTextInput
+            label="Card name"
+            value={card.name}
+            placeholder="Freedom, Amex, CareCredit..."
+            onChange={(value) => onChange("name", value)}
+          />
+
+          <SheetMoneyInput
+            label="Balance"
+            value={card.balance}
+            placeholder="0.00"
+            onChange={(value) => onChange("balance", value)}
+          />
+
+          <SheetMoneyInput
+            label="Credit limit"
+            value={card.limit}
+            placeholder="0.00"
+            onChange={(value) => onChange("limit", value)}
+          />
+
+          <SheetMoneyInput
+            label="Minimum payment"
+            value={card.minimumPayment}
+            placeholder="0.00"
+            onChange={(value) => onChange("minimumPayment", value)}
+          />
+
+          <SheetTextInput
+            label="Due date"
+            value={card.dueDate === "TBD" ? "" : card.dueDate}
+            placeholder="Not set"
+            onChange={(value) => onChange("dueDate", value)}
+          />
+        </div>
+
+        {showRemoveConfirm ? (
+          <div className="editor-sheet-remove-confirm">
+            <div>
+              <p className="editor-sheet-remove-title">
+                Remove this card?
+              </p>
+
+              <p className="editor-sheet-remove-copy">
+                This cannot be undone after it saves.
+              </p>
+            </div>
+
+            <div className="editor-sheet-remove-actions">
+              <button
+                type="button"
+                onClick={() => setShowRemoveConfirm(false)}
+                className="editor-sheet-remove-cancel pressable"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={confirmRemove}
+                className="editor-sheet-remove-confirm-button pressable"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowRemoveConfirm(true)}
+            className="editor-sheet-remove-link pressable"
+          >
+            <TrashIcon />
+            Remove Card
+          </button>
+        )}
+      </section>
+    </div>
+  );
+}
+
 
 function BalanceEditorCard({
   label,
   detail,
   value,
   icon,
-  onChange,
-  wide = false,
+  isEditing,
+  onEdit,
 }: {
   label: string;
   detail: string;
   value: string;
   icon: ReactNode;
-  onChange: (value: string) => void;
-  wide?: boolean;
+  isEditing: boolean;
+  onEdit: () => void;
 }) {
   return (
-    <label
-      className={`dashboard-preview-row group block cursor-text !px-3 !py-2.5 transition focus-within:border-[#c7ad75]/34 focus-within:bg-[#c7ad75]/[0.055] ${
-        wide ? "sm:col-span-2" : ""
+    <article
+      className={`editor-balance-row ${
+        isEditing ? "editor-balance-row-open" : ""
       }`}
     >
-      <div className="flex items-start gap-3">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[0.95rem] border border-[#c7ad75]/22 bg-[#c7ad75]/9 text-[#c7ad75] shadow-[inset_0_1px_0_rgba(245,240,232,0.07)]">
-          {icon}
-        </span>
+      <span className="editor-balance-icon" aria-hidden="true">
+        {icon}
+      </span>
 
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-[#f5f0e8]">{label}</p>
+      <div className="editor-balance-copy">
+        <div className="editor-balance-heading">
+          <p className="editor-balance-title">{label}</p>
 
-              <p className="mt-0.5 text-xs leading-5 text-stone-500">
-                {detail}
-              </p>
-            </div>
-
-            <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#c7ad75]/65">
-              Edit
-            </span>
-          </div>
-
-          <div className="mt-1.5 flex items-baseline gap-1.5 border-t border-[#f5f0e8]/8 pt-1.5">
-            <span className="text-lg font-semibold text-stone-500">$</span>
-
-            <input
-              type="number"
-              inputMode="decimal"
-              value={value}
-              onFocus={() => clearZeroOnFocus(value, onChange)}
-              onChange={(event) => onChange(event.target.value)}
-              className="min-w-0 flex-1 bg-transparent text-2xl font-bold tracking-tight text-[#f5f0e8] outline-none placeholder:text-stone-600"
-            />
-          </div>
+          <p className="editor-balance-value">{formatMoney(value)}</p>
         </div>
+
+        <p className="editor-balance-detail">{detail}</p>
       </div>
-    </label>
+
+      <button
+        type="button"
+        onClick={onEdit}
+        aria-expanded={isEditing}
+        className="editor-balance-action pressable"
+      >
+        Edit
+      </button>
+    </article>
   );
 }
+
+
+function BalanceEditorSheet({
+  label,
+  detail,
+  value,
+  icon,
+  onClose,
+  onChange,
+}: {
+  label: string;
+  detail: string;
+  value: string;
+  icon: ReactNode;
+  onClose: () => void;
+  onChange: (value: string) => void;
+}) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  return (
+    <div className="editor-sheet-layer">
+      <button
+        type="button"
+        aria-label={`Close ${label} editor`}
+        className="editor-sheet-backdrop"
+        onClick={onClose}
+      />
+
+      <section
+        className="editor-sheet-panel editor-compact-sheet-panel editor-balance-sheet-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="balance-editor-sheet-title"
+      >
+        <div className="editor-sheet-handle" aria-hidden="true" />
+
+        <div className="editor-sheet-header">
+          <div className="editor-sheet-title-group">
+            <span className="editor-sheet-icon" aria-hidden="true">
+              {icon}
+            </span>
+
+            <div className="min-w-0">
+              <p
+                className="editor-sheet-eyebrow"
+                style={{
+                  letterSpacing: "0.06em",
+                  textTransform: "none",
+                }}
+              >
+                Balance details
+              </p>
+
+              <h2
+                id="balance-editor-sheet-title"
+                className="editor-sheet-title"
+              >
+                {label}
+              </h2>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="editor-sheet-done pressable"
+          >
+            <CheckIcon />
+            Done
+          </button>
+        </div>
+
+        <div className="editor-sheet-intro">
+          <p className="editor-sheet-context">{detail}</p>
+
+          <p className="editor-sheet-save-note">
+            Changes save automatically.
+          </p>
+        </div>
+
+        <div className="editor-sheet-form editor-balance-sheet-form">
+          <SheetMoneyInput
+            label={label}
+            value={value}
+            placeholder="0.00"
+            onChange={onChange}
+          />
+        </div>
+      </section>
+    </div>
+  );
+}
+
 
 function WalletIcon() {
   return (
@@ -2155,6 +3362,25 @@ function PaymentSourceSelect({
         </span>
       </span>
     </label>
+  );
+}
+
+function ChevronRightIcon() {
+  return (
+    <svg
+      className="h-4 w-4 shrink-0"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="m9 6 6 6-6 6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

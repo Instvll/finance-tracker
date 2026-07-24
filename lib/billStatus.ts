@@ -380,48 +380,28 @@ export function getActiveBillOccurrence(
   referenceDate = new Date()
 ): ActiveBillOccurrence | null {
   const savedOccurrence = parseLocalDate(savedOccurrenceDate ?? "");
-  const currentMonthOccurrence = getCurrentMonthBillDueDate(
-    bill.dueDate,
-    referenceDate
-  );
 
-  const candidateDates = [
-    savedOccurrence,
-    currentMonthOccurrence,
-  ].filter((value): value is Date => value !== null);
+  // A saved occurrence belongs to an already tracked bill and remains
+  // authoritative, including when it has genuinely become overdue.
+  // A bill without saved tracking begins with its next real due date so
+  // adding an existing monthly bill never invents a past-due occurrence.
+  const startingOccurrence =
+    savedOccurrence ??
+    getNextBillDueDate(bill.dueDate, referenceDate);
 
-  if (candidateDates.length === 0) {
+  if (!startingOccurrence) {
     return null;
   }
 
-  const resolvedCandidates = candidateDates
-    .map((candidateDate) =>
-      resolveFirstUnpaidBillOccurrence(
-        bill,
-        candidateDate,
-        paidOccurrences
-      )
-    )
-    .filter(
-      (
-        candidate
-      ): candidate is {
-        occurrenceDate: Date;
-        occurrenceKey: string;
-      } => candidate !== null
-    );
+  const activeOccurrence = resolveFirstUnpaidBillOccurrence(
+    bill,
+    startingOccurrence,
+    paidOccurrences
+  );
 
-  if (resolvedCandidates.length === 0) {
+  if (!activeOccurrence) {
     return null;
   }
-
-  const activeOccurrence = resolvedCandidates.reduce(
-    (earliestCandidate, candidate) =>
-      candidate.occurrenceDate.getTime() <
-      earliestCandidate.occurrenceDate.getTime()
-        ? candidate
-        : earliestCandidate
-  );
 
   const today = getStartOfDay(referenceDate);
 

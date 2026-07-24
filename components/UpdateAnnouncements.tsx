@@ -6,7 +6,7 @@ import LogoMark from "@/components/LogoMark";
 
 const welcomeStorageKey = "leftovr-welcome-seen";
 const lastSeenVersionStorageKey = "leftovr-last-seen-version";
-const currentRelease = "v1.3-beta";
+const currentRelease = "v2.0-beta";
 
 export default function UpdateAnnouncements() {
   const pathname = usePathname();
@@ -68,9 +68,15 @@ export default function UpdateAnnouncements() {
   }
 
   return (
-    <div className="fixed inset-0 z-[94] flex items-center justify-center overflow-y-auto px-4 py-5">
+    <div className="fixed inset-0 z-[94] flex items-center justify-center overflow-y-auto px-4 py-5 sm:px-6">
       <div
-        className="absolute inset-0 bg-black/58 backdrop-blur-[14px] backdrop-saturate-150"
+        className="absolute inset-0"
+        style={{
+          background:
+            "color-mix(in srgb, var(--theme-background) 68%, rgba(0, 0, 0, 0.46))",
+          backdropFilter: "blur(16px) saturate(128%)",
+          WebkitBackdropFilter: "blur(16px) saturate(128%)",
+        }}
         aria-hidden="true"
       />
 
@@ -78,97 +84,155 @@ export default function UpdateAnnouncements() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="update-announcement-title"
-        className="liquid-glass-accent hero-glass-card dashboard-hero motion-card relative my-auto w-full max-w-md overflow-hidden rounded-[2rem]"
+        className="motion-card relative my-auto w-full max-w-[27rem] overflow-hidden rounded-[2rem] border"
+        style={{
+          maxHeight: "calc(100dvh - 2rem)",
+          overflowY: "auto",
+          color: "var(--theme-text)",
+          borderColor: "var(--theme-border)",
+          background:
+            "linear-gradient(145deg, color-mix(in srgb, var(--theme-surface-strong) 96%, var(--theme-accent) 4%), var(--theme-surface))",
+          boxShadow:
+            "inset 0 1px 0 color-mix(in srgb, var(--theme-text) 8%, transparent), 0 28px 70px rgba(0, 0, 0, 0.28)",
+        }}
       >
-        <div className="liquid-content dashboard-hero-content relative p-4 sm:p-5">
-          <div
-            className="dashboard-hero-glow dashboard-hero-glow-accent"
-            aria-hidden="true"
-          />
+        <div
+          className="pointer-events-none absolute inset-x-6 top-0 h-px"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent, color-mix(in srgb, var(--theme-text) 18%, transparent), transparent)",
+          }}
+          aria-hidden="true"
+        />
 
-          <div
-            className="dashboard-hero-glow dashboard-hero-glow-soft"
-            aria-hidden="true"
-          />
-
-          <div
-            className="dashboard-hero-reflection"
-            aria-hidden="true"
-          />
-
-          <div className="relative flex items-center justify-between gap-4">
+        <div className="relative p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
               <LogoMark />
 
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold lowercase tracking-[0.24em] text-[#f5f0e8]">
+                <p
+                  className="truncate text-[1.05rem] font-semibold tracking-[-0.025em]"
+                  style={{ color: "var(--theme-text)" }}
+                >
                   leftovr
                 </p>
 
-                <p className="mt-0.5 text-[0.58rem] uppercase tracking-[0.24em] text-[#c7ad75]/70">
-                  What&apos;s New
+                <p
+                  className="mt-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.22em]"
+                  style={{ color: "var(--theme-text-tertiary)" }}
+                >
+                  What&apos;s new
                 </p>
               </div>
             </div>
 
-            <span className="dashboard-pill-button shrink-0 !px-3 !py-1 text-[10px] uppercase tracking-[0.14em]">
-              v1.3 Beta
+            <span
+              className="shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold"
+              style={{
+                color: "var(--theme-text-secondary)",
+                borderColor:
+                  "color-mix(in srgb, var(--theme-border) 82%, var(--theme-accent) 18%)",
+                background:
+                  "color-mix(in srgb, var(--theme-surface) 88%, var(--theme-accent) 12%)",
+              }}
+            >
+              v2.0 Beta
             </span>
           </div>
 
-          <div className="relative mt-5">
+          <div className="mt-5">
             <div className="flex items-center gap-2.5">
-              <span className="dashboard-hero-status-dot h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75]" />
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{
+                  backgroundColor: "var(--theme-accent)",
+                  boxShadow:
+                    "0 0 0 6px color-mix(in srgb, var(--theme-accent) 12%, transparent)",
+                }}
+                aria-hidden="true"
+              />
 
-              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#c7ad75]/75">
-                Clearer by Payday
+              <p
+                className="text-[0.65rem] font-semibold uppercase tracking-[0.24em]"
+                style={{ color: "var(--theme-accent)" }}
+              >
+                Connected by Design
               </p>
             </div>
 
             <h1
               id="update-announcement-title"
-              className="mt-3 max-w-[21rem] text-[2rem] font-bold leading-[1.07] tracking-[-0.04em] text-[#f5f0e8] sm:text-[2.2rem]"
+              className="mt-3 max-w-[22rem] text-[2rem] font-bold leading-[1.04] tracking-[-0.045em] sm:text-[2.2rem]"
+              style={{ color: "var(--theme-text)" }}
             >
-              Planning between paychecks just got clearer.
+              Saving, syncing, and planning now work as one.
             </h1>
 
-            <p className="mt-3 max-w-[23rem] text-sm leading-6 text-stone-400">
-              v1.3 brings leftovr&apos;s bills, payday planning, editing, and
-              backups into a more connected experience.
+            <p
+              className="mt-3 max-w-[23rem] text-sm leading-6"
+              style={{ color: "var(--theme-text-secondary)" }}
+            >
+              leftovr now saves automatically, protects changes across devices,
+              and brings a more consistent experience to every part of the app.
             </p>
           </div>
 
-          <div className="relative mt-4 overflow-hidden rounded-[1.3rem] border border-[#f5f0e8]/10 bg-[#11100d]/18 shadow-[inset_0_1px_0_rgba(245,240,232,0.045)]">
+          <div
+            className="mt-5 overflow-hidden rounded-[1.45rem] border"
+            style={{
+              borderColor: "var(--theme-border)",
+              background:
+                "color-mix(in srgb, var(--theme-surface) 92%, var(--theme-accent) 8%)",
+              boxShadow:
+                "inset 0 1px 0 color-mix(in srgb, var(--theme-text) 5%, transparent)",
+            }}
+          >
             <UpdateHighlight
-              title="Payday-aware planning"
-              description="Upcoming bills now stay organized around your next paycheck."
+              title="Automatic saving"
+              description="Changes save quietly while leftovr keeps your device and account state aligned."
             />
 
             <UpdateHighlight
-              title="Bill progress that stays in sync"
-              description="Paid, overdue, and upcoming bills now match across the app."
+              title="Safer device updates"
+              description="Guarded restores, recovery checks, and conflict review help protect newer data."
             />
 
             <UpdateHighlight
-              title="Safer editing and backups"
-              description="Your tracker preserves more history and restores more completely."
+              title="Refined from end to end"
+              description="Dashboard, Bills, Cards, Editor, settings, and account tools now feel like one product."
               last
             />
           </div>
 
-          <div className="relative mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <div className="mt-5 grid gap-2.5">
             <button
               type="button"
               onClick={handleSeeWhatsNew}
-              className="pressable dashboard-wide-button w-full"
+              className="pressable w-full rounded-full border px-4 py-3 text-sm font-semibold transition"
+              style={{
+                color:
+                  "color-mix(in srgb, var(--theme-background) 90%, var(--theme-text) 10%)",
+                borderColor:
+                  "color-mix(in srgb, var(--theme-accent) 78%, var(--theme-border) 22%)",
+                backgroundColor: "var(--theme-accent)",
+                boxShadow:
+                  "inset 0 1px 0 color-mix(in srgb, white 22%, transparent), 0 12px 28px color-mix(in srgb, var(--theme-accent) 18%, transparent)",
+              }}
             >
-              See What&apos;s New
+              See what&apos;s new
             </button>
 
             <button
               type="button"
               onClick={handleContinue}
-              className="pressable w-full rounded-full border border-[#c7ad75]/38 bg-[#c7ad75]/16 px-4 py-3 text-sm font-semibold text-[#f5f0e8] shadow-[inset_0_1px_0_rgba(245,240,232,0.09),0_14px_30px_rgba(0,0,0,0.18)] transition hover:border-[#c7ad75]/50 hover:bg-[#c7ad75]/22 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c7ad75]/35"
+              className="pressable w-full rounded-full border px-4 py-3 text-sm font-semibold transition"
+              style={{
+                color: "var(--theme-text-secondary)",
+                borderColor: "var(--theme-border)",
+                background:
+                  "color-mix(in srgb, var(--theme-surface) 94%, var(--theme-accent) 6%)",
+              }}
             >
               Continue
             </button>
@@ -190,19 +254,32 @@ function UpdateHighlight({
 }) {
   return (
     <div
-      className={`flex gap-3 px-3.5 py-3 ${
-        last ? "" : "border-b border-[#f5f0e8]/8"
-      }`}
+      className="flex gap-3 px-3.5 py-3.5"
+      style={{
+        borderBottom: last ? "none" : "1px solid var(--theme-border)",
+      }}
     >
       <span
-        className="dashboard-hero-status-dot mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#c7ad75]"
+        className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
+        style={{
+          backgroundColor: "var(--theme-accent)",
+          opacity: 0.82,
+        }}
         aria-hidden="true"
       />
 
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-[#f5f0e8]">{title}</p>
+        <p
+          className="text-sm font-semibold"
+          style={{ color: "var(--theme-text)" }}
+        >
+          {title}
+        </p>
 
-        <p className="mt-0.5 text-xs leading-5 text-stone-500">
+        <p
+          className="mt-0.5 text-xs leading-5"
+          style={{ color: "var(--theme-text-secondary)" }}
+        >
           {description}
         </p>
       </div>

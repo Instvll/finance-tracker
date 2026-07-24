@@ -4,22 +4,28 @@ import type { CSSProperties, MouseEvent, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import LogoMark from "./LogoMark";
+import LeftovrLogo from "./LeftovrLogo";
 import { supabase } from "../lib/supabase/client";
 
-const drawerCloseDelay = 290;
-const drawerNavigationDelay = 95;
-
-const mainNavItems = [
-  { label: "Dashboard", href: "/", icon: DashboardIcon },
-  { label: "Bills", href: "/bills", icon: BillsIcon },
-  { label: "Credit Cards", href: "/cards", icon: CardsIcon },
-  { label: "Editor", href: "/manual", icon: EditorIcon },
-];
+const drawerCloseDelay = 270;
+const drawerNavigationDelay = 70;
 
 const utilityNavItems = [
-  { label: "Settings", href: "/account", icon: SettingsIcon },
-  { label: "What’s New", href: "/whats-new", icon: SparkIcon },
+  {
+    label: "Settings",
+    href: "/account",
+    icon: SettingsIcon,
+  },
+  {
+    label: "Account & Sync",
+    href: "/account/profile",
+    icon: AccountIcon,
+  },
+  {
+    label: "What’s New",
+    href: "/whats-new",
+    icon: SparkIcon,
+  },
 ];
 
 export default function TopNav() {
@@ -89,19 +95,23 @@ export default function TopNav() {
         navigationTimerRef.current = null;
       }, drawerNavigationDelay);
     },
-    [clearNavigationTimer, closeMenu, pathname, router]
+    [clearNavigationTimer, closeMenu, pathname, router],
   );
 
   function isActiveRoute(href: string) {
-    if (href === "/") {
-      return pathname === "/";
+    if (href === "/account") {
+      return (
+        pathname === "/account" ||
+        (pathname.startsWith("/account/") &&
+          !pathname.startsWith("/account/profile"))
+      );
     }
 
-    return pathname.startsWith(href);
+    return pathname === href || pathname.startsWith(`${href}/`);
   }
 
   useEffect(() => {
-    const routes = [...mainNavItems, ...utilityNavItems]
+    const routes = utilityNavItems
       .map((item) => item.href)
       .filter((href) => href !== pathname);
 
@@ -173,6 +183,7 @@ export default function TopNav() {
     const scrollbarWidth =
       window.innerWidth - document.documentElement.clientWidth;
 
+    document.documentElement.classList.add("leftovr-drawer-open");
     document.body.style.overflow = "hidden";
 
     if (scrollbarWidth > 0) {
@@ -196,6 +207,7 @@ export default function TopNav() {
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
+      document.documentElement.classList.remove("leftovr-drawer-open");
       document.body.style.overflow = previousOverflow;
       document.body.style.paddingRight = previousPaddingRight;
       window.removeEventListener("keydown", handleKeyDown);
@@ -205,35 +217,30 @@ export default function TopNav() {
   return (
     <>
       <nav
-        className={`sticky top-4 z-40 mb-5 transition duration-300 ${
+        className={`top-nav-shell top-nav-modern relative z-40 mb-5 transition duration-300 ${
           isDrawerMounted ? "top-nav-drawer-open" : ""
         }`}
       >
-        <div className="liquid-glass-soft top-app-bar rounded-[1.85rem] px-3.5 py-3">
-          <div className="liquid-content flex items-center justify-between gap-4">
+        <div className="top-app-bar top-app-bar-modern">
+          <div className="top-app-bar-content">
             <Link
               href="/"
-              className="flex min-w-0 items-center gap-3 transition hover:opacity-85"
+              aria-label="Go to the leftovr dashboard"
+              className="top-app-brand pressable"
               onClick={closeMenu}
             >
-              <LogoMark small />
-
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold lowercase tracking-[0.24em] text-[#f5f0e8]">
-                  leftovr
-                </p>
-
-                <p className="hidden text-[0.58rem] uppercase tracking-[0.24em] text-[#c7ad75]/70 sm:block">
-                  Personal Finance
-                </p>
-              </div>
+              <LeftovrLogo variant="lockup" size="nav" />
             </Link>
 
             <button
               type="button"
-              onClick={openMenu}
-              className="app-menu-button pressable"
-              aria-label="Open navigation menu"
+              onClick={isDrawerOpen ? closeMenu : openMenu}
+              className="app-menu-button top-app-menu-button top-app-menu-button-modern pressable"
+              aria-label={
+                isDrawerOpen
+                  ? "Close account and app menu"
+                  : "Open account and app menu"
+              }
               aria-expanded={isDrawerOpen}
               aria-controls="main-navigation-drawer"
             >
@@ -270,17 +277,16 @@ export default function TopNav() {
             />
 
             <aside
-              className="liquid-glass drawer-panel-right relative ml-auto flex h-dvh w-[88vw] max-w-[390px] rounded-l-[2rem] border-y-0 border-r-0 px-4 pb-4 pt-[1.15rem] shadow-2xl shadow-black/40 sm:px-5 sm:pb-5 sm:pt-5"
+              className="liquid-glass drawer-panel-right drawer-utility-panel"
               aria-label="Navigation menu"
               onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="liquid-content flex min-h-0 w-full flex-col">
-                <div
-                  className="drawer-menu-item mb-5 flex items-center justify-between gap-4"
-                  style={{ "--menu-item-index": 0 } as CSSProperties}
-                >
-                  <DrawerLogoLink href="/" onNavigate={navigateFromDrawer} />
+              <div className="liquid-content drawer-utility-content">
+                <header className="drawer-utility-header">
+                  <div className="drawer-utility-brand">
+                    <LeftovrLogo variant="lockup" size="menu" subtitle="Menu" />
+                  </div>
 
                   <button
                     type="button"
@@ -293,111 +299,68 @@ export default function TopNav() {
                       <span />
                     </span>
                   </button>
-                </div>
+                </header>
 
-                <div className="flex min-h-0 flex-1 flex-col">
-                  <div className="drawer-menu-scroll min-h-0 overflow-y-auto pr-1">
-                    <MenuSection label="Main">
-                      {mainNavItems.map((item, index) => {
-                        const active = isActiveRoute(item.href);
-                        const Icon = item.icon;
-
-                        return (
-                          <MenuLink
-                            key={item.label}
-                            href={item.href}
-                            active={active}
-                            onNavigate={navigateFromDrawer}
-                            icon={<Icon />}
-                            label={item.label}
-                            index={index + 1}
-                          />
-                        );
-                      })}
-                    </MenuSection>
-                  </div>
-
-                  <div className="mt-auto pt-5">
-                    <MenuSection label="App">
-                      {utilityNavItems.map((item, index) => {
-                        const active = isActiveRoute(item.href);
-                        const Icon = item.icon;
-
-                        return (
-                          <MenuLink
-                            key={item.label}
-                            href={item.href}
-                            active={active}
-                            onNavigate={navigateFromDrawer}
-                            icon={<Icon />}
-                            label={item.label}
-                            index={mainNavItems.length + index + 1}
-                          />
-                        );
-                      })}
-                    </MenuSection>
-
-                    <div
-                      className="drawer-menu-item mt-4 border-t border-[#f5f0e8]/8 pt-3.5"
-                      style={
-                        {
-                          "--menu-item-index":
-                            mainNavItems.length + utilityNavItems.length + 1,
-                        } as CSSProperties
-                      }
-                    >
-                      <div className="drawer-account-card">
-                        <div className="liquid-content relative flex min-w-0 items-center gap-3">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="drawer-account-status-dot" />
-
-                              <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/70">
-                                Signed in
-                              </p>
-                            </div>
-
-                            <p className="mt-1 truncate text-[13px] font-semibold leading-5 text-[#f5f0e8]">
-                              {accountEmail || "Account connected"}
-                            </p>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSignOutError("");
-                              setShowSignOutConfirm(true);
-                            }}
-                            className="drawer-account-signout pressable"
-                            aria-label="Sign out"
-                            title="Sign out"
-                          >
-                            <PowerIcon />
-                          </button>
-                        </div>
-
-                        <div className="liquid-content relative mt-2 flex min-w-0 items-center gap-1.5">
-                          <p className="shrink-0 text-[9px] font-semibold uppercase tracking-[0.16em] text-[#c7ad75]/60">
-                            v1.3 Beta
-                          </p>
-
-                          <span className="text-[9px] text-stone-600" aria-hidden="true">
-                            •
-                          </span>
-
-                          <p className="truncate text-[9px] font-medium text-stone-500">
-                            Clearer by Payday
-                          </p>
-                        </div>
-                      </div>
+                <section
+                  className="drawer-identity-card"
+                  aria-label="Signed-in account"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="drawer-identity-status">
+                      <span className="drawer-account-status-dot" />
+                      <span>Signed in</span>
                     </div>
+
+                    <p className="drawer-identity-email">
+                      {accountEmail || "Account connected"}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSignOutError("");
+                      setShowSignOutConfirm(true);
+                    }}
+                    className="drawer-signout-action pressable"
+                    aria-label="Sign out of leftovr"
+                  >
+                    <PowerIcon />
+                    <span>Sign out</span>
+                  </button>
+                </section>
+
+                <div className="drawer-menu-scroll">
+                  <div className="drawer-utility-list">
+                    {utilityNavItems.map((item, index) => {
+                      const active = isActiveRoute(item.href);
+                      const Icon = item.icon;
+
+                      return (
+                        <MenuLink
+                          key={item.label}
+                          href={item.href}
+                          active={active}
+                          onNavigate={navigateFromDrawer}
+                          icon={<Icon />}
+                          label={item.label}
+                          index={index + 1}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
+
+                <footer className="drawer-utility-footer">
+                  <span>v2.0 Beta</span>
+                  <span aria-hidden="true">•</span>
+                  <span>Connected by Design</span>
+                </footer>
               </div>
 
               {showSignOutConfirm ? (
                 <div
-                  className="absolute inset-0 z-20 flex items-end bg-black/25 p-4"
+                  className="drawer-signout-confirm-layer"
                   onClick={() => {
                     if (!isSigningOut) {
                       setShowSignOutConfirm(false);
@@ -409,61 +372,60 @@ export default function TopNav() {
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="sign-out-title"
-                    className="liquid-glass-soft w-full rounded-[1.5rem] border border-[#f5f0e8]/12 p-4 shadow-[0_24px_56px_rgba(0,0,0,0.34)]"
+                    aria-describedby="sign-out-description"
+                    className="drawer-signout-confirm-dialog"
                     onClick={(event) => event.stopPropagation()}
                   >
-                    <div className="liquid-content">
-                      <div className="flex items-start gap-3">
-                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#c7ad75]/24 bg-[#c7ad75]/10 text-[#c7ad75]">
-                          <PowerIcon />
-                        </span>
+                    <div className="drawer-signout-confirm-heading">
+                      <span className="drawer-signout-confirm-icon">
+                        <PowerIcon />
+                      </span>
 
-                        <div className="min-w-0">
-                          <h2
-                            id="sign-out-title"
-                            className="text-base font-semibold text-[#f5f0e8]"
-                          >
-                            Sign out of leftovr?
-                          </h2>
+                      <div className="min-w-0">
+                        <h2
+                          id="sign-out-title"
+                          className="drawer-signout-confirm-title"
+                        >
+                          Sign out of leftovr?
+                        </h2>
 
-                          <p className="mt-1 text-sm leading-6 text-stone-400">
-                            You’ll need to sign in again to access your account.
-                            Financial data stored on this device will remain here.
-                          </p>
-                        </div>
-                      </div>
-
-                      {signOutError ? (
                         <p
-                          role="alert"
-                          className="mt-3 rounded-[0.95rem] border border-[#dc2626]/24 bg-[#dc2626]/8 px-3 py-2 text-sm text-[#ef4444]"
+                          id="sign-out-description"
+                          className="drawer-signout-confirm-copy"
                         >
-                          {signOutError}
+                          You’ll need to sign in again to access your account.
+                          Financial data stored on this device will remain here.
                         </p>
-                      ) : null}
-
-                      <div className="mt-4 grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowSignOutConfirm(false);
-                            setSignOutError("");
-                          }}
-                          disabled={isSigningOut}
-                          className="pressable rounded-full border border-[#f5f0e8]/10 bg-[#f5f0e8]/5 px-4 py-2.5 text-sm font-semibold text-stone-300 transition hover:border-[#f5f0e8]/16 hover:bg-[#f5f0e8]/8 hover:text-[#f5f0e8] disabled:opacity-50"
-                        >
-                          Cancel
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={signOut}
-                          disabled={isSigningOut}
-                          className="pressable rounded-full border border-[#c7ad75]/34 bg-[#c7ad75]/14 px-4 py-2.5 text-sm font-semibold text-[#f5f0e8] transition hover:border-[#c7ad75]/46 hover:bg-[#c7ad75]/20 disabled:opacity-60"
-                        >
-                          {isSigningOut ? "Signing Out…" : "Sign Out"}
-                        </button>
                       </div>
+                    </div>
+
+                    {signOutError ? (
+                      <p role="alert" className="drawer-signout-confirm-error">
+                        {signOutError}
+                      </p>
+                    ) : null}
+
+                    <div className="drawer-signout-confirm-actions">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowSignOutConfirm(false);
+                          setSignOutError("");
+                        }}
+                        disabled={isSigningOut}
+                        className="drawer-signout-confirm-button drawer-signout-confirm-cancel pressable"
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={signOut}
+                        disabled={isSigningOut}
+                        className="drawer-signout-confirm-button drawer-signout-confirm-primary pressable"
+                      >
+                        {isSigningOut ? "Signing Out…" : "Sign Out"}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -473,60 +435,6 @@ export default function TopNav() {
         </>
       )}
     </>
-  );
-}
-
-function DrawerLogoLink({
-  href,
-  onNavigate,
-}: {
-  href: string;
-  onNavigate: (href: string) => void;
-}) {
-  function handleClick(event: MouseEvent<HTMLAnchorElement>) {
-    if (shouldUseDefaultLinkBehavior(event)) {
-      return;
-    }
-
-    event.preventDefault();
-    event.stopPropagation();
-    onNavigate(href);
-  }
-
-  return (
-    <Link
-      href={href}
-      onClick={handleClick}
-      className="flex min-w-0 items-center gap-3 transition hover:opacity-85"
-    >
-      <LogoMark />
-
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold lowercase tracking-[0.22em] text-[#f5f0e8]">
-          leftovr
-        </p>
-
-        <p className="text-[0.62rem] uppercase tracking-[0.24em] text-[#c7ad75]/75">
-          Personal Finance
-        </p>
-      </div>
-    </Link>
-  );
-}
-
-function MenuSection({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <section>
-      <p className="drawer-section-label">{label}</p>
-
-      <div className="grid gap-1.5">{children}</div>
-    </section>
   );
 }
 
@@ -574,15 +482,12 @@ function MenuLink({
           {icon}
         </span>
 
-        <span className="drawer-nav-label truncate">{label}</span>
+        <span className="drawer-nav-label">{label}</span>
       </span>
 
-      <span
-        className={`drawer-nav-dot ${
-          active ? "drawer-nav-dot-active" : ""
-        }`}
-        aria-hidden="true"
-      />
+      <span className="drawer-nav-trailing" aria-hidden="true">
+        <ChevronRightIcon />
+      </span>
     </Link>
   );
 }
@@ -595,6 +500,25 @@ function shouldUseDefaultLinkBehavior(event: MouseEvent<HTMLAnchorElement>) {
     event.altKey ||
     event.button !== 0 ||
     event.currentTarget.target === "_blank"
+  );
+}
+
+function ChevronRightIcon() {
+  return (
+    <svg
+      className="h-4 w-4 shrink-0"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="m9 6 6 6-6 6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
@@ -645,55 +569,49 @@ function PowerIcon() {
   );
 }
 
-function DashboardIcon() {
-  return (
-    <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1v-8.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function BillsIcon() {
-  return (
-    <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M7 3h10a1 1 0 0 1 1 1v17l-3-1.8-3 1.8-3-1.8L6 21V4a1 1 0 0 1 1-1Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M9 8h6M9 12h6M9 16h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function CardsIcon() {
-  return (
-    <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M4 9h16M8 15h3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function EditorIcon() {
-  return (
-    <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M5 19h4l10-10a2.1 2.1 0 0 0-3-3L6 16l-1 3Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="m14.5 7.5 2 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function SettingsIcon() {
   return (
-    <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M19.4 13.5c.1-.5.1-1 .1-1.5s0-1-.1-1.5l2-1.5-2-3.5-2.4 1a8.7 8.7 0 0 0-2.6-1.5L14 2h-4l-.4 3a8.7 8.7 0 0 0-2.6 1.5l-2.4-1-2 3.5 2 1.5c-.1.5-.1 1-.1 1.5s0 1 .1 1.5l-2 1.5 2 3.5 2.4-1a8.7 8.7 0 0 0 2.6 1.5l.4 3h4l.4-3a8.7 8.7 0 0 0 2.6-1.5l2.4 1 2-3.5-2-1.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+    <svg
+      className="h-4 w-4 shrink-0"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M19.4 13.5c.1-.5.1-1 .1-1.5s0-1-.1-1.5l2-1.5-2-3.5-2.4 1a8.7 8.7 0 0 0-2.6-1.5L14 2h-4l-.4 3a8.7 8.7 0 0 0-2.6 1.5l-2.4-1-2 3.5 2 1.5c-.1.5-.1 1-.1 1.5s0 1 .1 1.5l-2 1.5 2 3.5 2.4-1a8.7 8.7 0 0 0 2.6 1.5l.4 3h4l.4-3a8.7 8.7 0 0 0 2.6-1.5l2.4 1 2-3.5-2-1.5Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
 
 function SparkIcon() {
   return (
-    <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 3l1.6 5.2L19 10l-5.4 1.8L12 17l-1.6-5.2L5 10l5.4-1.8L12 3Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8L18 15Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+    <svg
+      className="h-4 w-4 shrink-0"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M12 3l1.6 5.2L19 10l-5.4 1.8L12 17l-1.6-5.2L5 10l5.4-1.8L12 3Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8L18 15Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

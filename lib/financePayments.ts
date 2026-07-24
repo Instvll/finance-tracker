@@ -5,6 +5,8 @@ import {
   parseMoney,
   resolveBillPaymentSource,
   type ActiveBillOccurrenceDates,
+  type CheckingBalanceAdjustment,
+  type CreditCardAdjustment,
   type ManualBill,
   type ManualCreditCard,
   type PaidBillAction,
@@ -23,8 +25,15 @@ export type BillOccurrencePaymentItem = {
   occurrence: ActiveBillOccurrence;
 };
 
-export type MarkBillPaidInput = {
+export type BillPaymentSummary = {
+  checkingBalance: string;
+};
+
+export type MarkBillPaidInput<
+  TSummary extends BillPaymentSummary,
+> = {
   item: BillOccurrencePaymentItem;
+  summary: TSummary;
   cards: ManualCreditCard[];
   activeOccurrenceDates: ActiveBillOccurrenceDates;
   paidOccurrences: PaidBillOccurrences;
@@ -34,8 +43,11 @@ export type MarkBillPaidInput = {
   recentActionLimit?: number;
 };
 
-export type MarkBillPaidResult = {
+export type MarkBillPaidResult<
+  TSummary extends BillPaymentSummary,
+> = {
   didApply: boolean;
+  summary: TSummary;
   cards: ManualCreditCard[];
   activeOccurrenceDates: ActiveBillOccurrenceDates;
   paidOccurrences: PaidBillOccurrences;
@@ -43,21 +55,113 @@ export type MarkBillPaidResult = {
   paidAction: PaidBillAction | null;
 };
 
-export type UndoBillPaymentInput = {
+export type UndoBillPaymentInput<
+  TSummary extends BillPaymentSummary,
+> = {
   action: PaidBillAction;
+  summary: TSummary;
   cards: ManualCreditCard[];
   activeOccurrenceDates: ActiveBillOccurrenceDates;
   paidOccurrences: PaidBillOccurrences;
   paidActions: PaidBillAction[];
 };
 
-export type UndoBillPaymentResult = {
+export type UndoBillPaymentBlockedReason =
+  | "card-not-found"
+  | "card-balance-changed"
+  | "checking-balance-changed"
+  | "missing-balance-history";
+
+export type UndoBillPaymentResult<
+  TSummary extends BillPaymentSummary,
+> = {
+  didUndo: boolean;
+  summary: TSummary;
   cards: ManualCreditCard[];
   activeOccurrenceDates: ActiveBillOccurrenceDates;
   paidOccurrences: PaidBillOccurrences;
   paidActions: PaidBillAction[];
   didReverseCardBalance: boolean;
+  didReverseCheckingBalance: boolean;
+  blockedReason: UndoBillPaymentBlockedReason | null;
 };
+
+function normalizeOptionalMoneyValue(
+  value: string | undefined,
+) {
+  if (typeof value !== "string" || value.trim() === "") {
+    return null;
+  }
+
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue)) {
+    return null;
+  }
+
+  return getStoredMoneyValue(numericValue);
+}
+
+function getSafeCardUndoBalance(
+  card: ManualCreditCard,
+  adjustment: CreditCardAdjustment,
+) {
+  const currentBalance = getStoredMoneyValue(
+    parseMoney(card.balance),
+  );
+  const savedBalanceBefore = normalizeOptionalMoneyValue(
+    adjustment.balanceBefore,
+  );
+  const savedBalanceAfter = normalizeOptionalMoneyValue(
+    adjustment.balanceAfter,
+  );
+
+  if (savedBalanceBefore !== null && savedBalanceAfter !== null) {
+    return currentBalance === savedBalanceAfter
+      ? savedBalanceBefore
+      : null;
+  }
+
+  const currentRevision = getCardBalanceRevision(card);
+  const paymentRevision = getAdjustmentBalanceRevision(
+    adjustment,
+  );
+
+  if (currentRevision !== paymentRevision) {
+    return null;
+  }
+
+  return getStoredMoneyValue(
+    Math.max(
+      0,
+      parseMoney(currentBalance) -
+        parseMoney(adjustment.amount),
+    ),
+  );
+}
+
+function getSafeCheckingUndoBalance(
+  summary: BillPaymentSummary,
+  adjustment: CheckingBalanceAdjustment,
+) {
+  const currentBalance = getStoredMoneyValue(
+    parseMoney(summary.checkingBalance),
+  );
+  const savedBalanceBefore = normalizeOptionalMoneyValue(
+    adjustment.balanceBefore,
+  );
+  const savedBalanceAfter = normalizeOptionalMoneyValue(
+    adjustment.balanceAfter,
+  );
+
+  if (savedBalanceBefore === null || savedBalanceAfter === null) {
+    return null;
+  }
+
+  return currentBalance === savedBalanceAfter
+    ? savedBalanceBefore
+    : null;
+}
 
 export function normalizeRecentPaidActions(
   actions: PaidBillAction[],
@@ -109,11 +213,14 @@ export function normalizeRecentPaidActions(
     : normalizedActions;
 }
 
-export function markBillOccurrencePaid(
-  input: MarkBillPaidInput,
-): MarkBillPaidResult {
+export function markBillOccurrencePaid<
+  TSummary extends BillPaymentSummary,
+>(
+  input: MarkBillPaidInput<TSummary>,
+): MarkBillPaidResult<TSummary> {
   const {
     item,
+    summary,
     cards,
     activeOccurrenceDates,
     paidOccurrences,
@@ -126,6 +233,7 @@ export function markBillOccurrencePaid(
   if (paidOccurrences[occurrence.occurrenceKey]) {
     return {
       didApply: false,
+      summary,
       cards,
       activeOccurrenceDates,
       paidOccurrences,
@@ -140,6 +248,37 @@ export function markBillOccurrencePaid(
     cards,
   );
   const billAmount = parseMoney(bill.amount);
+
+  const checkingBalanceBefore =
+    paymentSource.type === "checking"
+      ? getStoredMoneyValue(
+          parseMoney(summary.checkingBalance),
+        )
+      : null;
+  const checkingBalanceAfter =
+    checkingBalanceBefore !== null
+      ? getStoredMoneyValue(
+          parseMoney(checkingBalanceBefore) - billAmount,
+        )
+      : null;
+  const checkingBalanceAdjustment =
+    checkingBalanceBefore !== null &&
+    checkingBalanceAfter !== null
+      ? {
+          amount: getStoredMoneyValue(billAmount),
+          balanceBefore: checkingBalanceBefore,
+          balanceAfter: checkingBalanceAfter,
+        }
+      : undefined;
+
+  const nextSummary = checkingBalanceAdjustment
+    ? {
+        ...summary,
+        checkingBalance:
+          checkingBalanceAdjustment.balanceAfter,
+      }
+    : summary;
+
   const linkedCreditCard =
     paymentSource.type === "credit-card"
       ? cards.find(
@@ -147,26 +286,44 @@ export function markBillOccurrencePaid(
             card.id === paymentSource.creditCardId,
         )
       : undefined;
-  const creditCardAdjustment = linkedCreditCard?.id
-    ? {
-        creditCardId: linkedCreditCard.id,
-        amount: getStoredMoneyValue(billAmount),
-        balanceRevision:
-          getCardBalanceRevision(linkedCreditCard),
-      }
-    : undefined;
+  const linkedCardBalanceBefore = linkedCreditCard
+    ? getStoredMoneyValue(
+        parseMoney(linkedCreditCard.balance),
+      )
+    : null;
+  const linkedCardBalanceAfter =
+    linkedCreditCard && linkedCardBalanceBefore !== null
+      ? getStoredMoneyValue(
+          parseMoney(linkedCardBalanceBefore) + billAmount,
+        )
+      : null;
+  const creditCardAdjustment =
+    linkedCreditCard?.id &&
+    linkedCardBalanceBefore !== null &&
+    linkedCardBalanceAfter !== null
+      ? {
+          creditCardId: linkedCreditCard.id,
+          amount: getStoredMoneyValue(billAmount),
+          balanceRevision:
+            getCardBalanceRevision(linkedCreditCard),
+          balanceBefore: linkedCardBalanceBefore,
+          balanceAfter: linkedCardBalanceAfter,
+        }
+      : undefined;
 
   const nextCards = creditCardAdjustment
     ? cards.map((card) =>
         card.id === creditCardAdjustment.creditCardId
           ? {
               ...card,
-              balance: getStoredMoneyValue(
-                parseMoney(card.balance) +
-                  parseMoney(
-                    creditCardAdjustment.amount,
-                  ),
-              ),
+              balance:
+                creditCardAdjustment.balanceAfter ??
+                getStoredMoneyValue(
+                  parseMoney(card.balance) +
+                    parseMoney(
+                      creditCardAdjustment.amount,
+                    ),
+                ),
             }
           : card,
       )
@@ -205,6 +362,7 @@ export function markBillOccurrencePaid(
     billAmount: bill.amount,
     paymentSource,
     creditCardAdjustment,
+    checkingBalanceAdjustment,
   };
 
   const nextPaidActions =
@@ -225,6 +383,7 @@ export function markBillOccurrencePaid(
 
   return {
     didApply: true,
+    summary: nextSummary,
     cards: nextCards,
     activeOccurrenceDates:
       nextActiveOccurrenceDates,
@@ -234,11 +393,14 @@ export function markBillOccurrencePaid(
   };
 }
 
-export function undoBillPayment(
-  input: UndoBillPaymentInput,
-): UndoBillPaymentResult {
+export function undoBillPayment<
+  TSummary extends BillPaymentSummary,
+>(
+  input: UndoBillPaymentInput<TSummary>,
+): UndoBillPaymentResult<TSummary> {
   const {
     action,
+    summary,
     cards,
     activeOccurrenceDates,
     paidOccurrences,
@@ -246,44 +408,107 @@ export function undoBillPayment(
   } = input;
   const creditCardAdjustment =
     action.creditCardAdjustment;
+  const checkingBalanceAdjustment =
+    action.checkingBalanceAdjustment;
+
+  if (
+    !creditCardAdjustment &&
+    !checkingBalanceAdjustment
+  ) {
+    return {
+      didUndo: false,
+      summary,
+      cards,
+      activeOccurrenceDates,
+      paidOccurrences,
+      paidActions,
+      didReverseCardBalance: false,
+      didReverseCheckingBalance: false,
+      blockedReason: "missing-balance-history",
+    };
+  }
+
+  let nextSummary = summary;
+  let nextCards = cards;
   let didReverseCardBalance = false;
+  let didReverseCheckingBalance = false;
 
-  const nextCards = creditCardAdjustment
-    ? cards.map((card) => {
-        if (
-          card.id !==
-          creditCardAdjustment.creditCardId
-        ) {
-          return card;
-        }
+  if (creditCardAdjustment) {
+    const linkedCard = cards.find(
+      (card) =>
+        card.id === creditCardAdjustment.creditCardId,
+    );
 
-        const currentRevision =
-          getCardBalanceRevision(card);
-        const paymentRevision =
-          getAdjustmentBalanceRevision(
-            creditCardAdjustment,
-          );
+    if (!linkedCard) {
+      return {
+        didUndo: false,
+        summary,
+        cards,
+        activeOccurrenceDates,
+        paidOccurrences,
+        paidActions,
+        didReverseCardBalance: false,
+        didReverseCheckingBalance: false,
+        blockedReason: "card-not-found",
+      };
+    }
 
-        if (currentRevision !== paymentRevision) {
-          return card;
-        }
+    const safeUndoBalance = getSafeCardUndoBalance(
+      linkedCard,
+      creditCardAdjustment,
+    );
 
-        didReverseCardBalance = true;
+    if (safeUndoBalance === null) {
+      return {
+        didUndo: false,
+        summary,
+        cards,
+        activeOccurrenceDates,
+        paidOccurrences,
+        paidActions,
+        didReverseCardBalance: false,
+        didReverseCheckingBalance: false,
+        blockedReason: "card-balance-changed",
+      };
+    }
 
-        return {
-          ...card,
-          balance: getStoredMoneyValue(
-            Math.max(
-              0,
-              parseMoney(card.balance) -
-                parseMoney(
-                  creditCardAdjustment.amount,
-                ),
-            ),
-          ),
-        };
-      })
-    : cards;
+    didReverseCardBalance = true;
+    nextCards = cards.map((card) =>
+      card.id === creditCardAdjustment.creditCardId
+        ? {
+            ...card,
+            balance: safeUndoBalance,
+          }
+        : card,
+    );
+  }
+
+  if (checkingBalanceAdjustment) {
+    const safeUndoBalance = getSafeCheckingUndoBalance(
+      summary,
+      checkingBalanceAdjustment,
+    );
+
+    if (safeUndoBalance === null) {
+      return {
+        didUndo: false,
+        summary,
+        cards,
+        activeOccurrenceDates,
+        paidOccurrences,
+        paidActions,
+        didReverseCardBalance: false,
+        didReverseCheckingBalance: false,
+        blockedReason: "checking-balance-changed",
+      };
+    }
+
+    didReverseCheckingBalance = true;
+    nextSummary = {
+      ...summary,
+      checkingBalance: safeUndoBalance,
+    };
+  }
 
   const nextPaidOccurrences = {
     ...paidOccurrences,
@@ -291,6 +516,8 @@ export function undoBillPayment(
   delete nextPaidOccurrences[action.occurrenceKey];
 
   return {
+    didUndo: true,
+    summary: nextSummary,
     cards: nextCards,
     activeOccurrenceDates: {
       ...activeOccurrenceDates,
@@ -304,5 +531,7 @@ export function undoBillPayment(
         action.occurrenceKey,
     ),
     didReverseCardBalance,
+    didReverseCheckingBalance,
+    blockedReason: null,
   };
 }

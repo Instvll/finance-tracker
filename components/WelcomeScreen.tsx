@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import LogoMark from "@/components/LogoMark";
+import LeftovrLogo from "@/components/LeftovrLogo";
 
 const welcomeStorageKey = "leftovr-welcome-seen";
 const lastSeenVersionStorageKey = "leftovr-last-seen-version";
-const guidedSetupStorageKey =
-  "leftovr-finance-onboarding-active";
-const currentRelease = "v1.3-beta";
+const guidedSetupStorageKey = "leftovr-finance-onboarding-active";
+const currentRelease = "v2.0-beta";
 
 export default function WelcomeScreen() {
   const pathname = usePathname();
@@ -35,10 +34,7 @@ export default function WelcomeScreen() {
 
   function handleGetStarted() {
     window.localStorage.setItem(welcomeStorageKey, "true");
-    window.localStorage.setItem(
-      lastSeenVersionStorageKey,
-      currentRelease,
-    );
+    window.localStorage.setItem(lastSeenVersionStorageKey, currentRelease);
     window.localStorage.setItem(guidedSetupStorageKey, "true");
 
     setShowWelcome(false);
@@ -73,28 +69,17 @@ export default function WelcomeScreen() {
             aria-hidden="true"
           />
 
-          <div
-            className="dashboard-hero-reflection"
-            aria-hidden="true"
-          />
+          <div className="dashboard-hero-reflection" aria-hidden="true" />
 
           <div className="relative flex items-center justify-between gap-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <LogoMark />
-
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold lowercase tracking-[0.24em] text-[#f5f0e8]">
-                  leftovr
-                </p>
-
-                <p className="mt-0.5 text-[0.58rem] uppercase tracking-[0.24em] text-[#c7ad75]/70">
-                  Personal Finance
-                </p>
-              </div>
-            </div>
+            <LeftovrLogo
+              variant="lockup"
+              size="medium"
+              subtitle="Personal Finance"
+            />
 
             <span className="dashboard-pill-button shrink-0 !px-3 !py-1 text-[10px] uppercase tracking-[0.14em]">
-              v1.3 Beta
+              v2.0 Beta
             </span>
           </div>
 
@@ -103,7 +88,7 @@ export default function WelcomeScreen() {
               <span className="dashboard-hero-status-dot h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75]" />
 
               <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#c7ad75]/75">
-                Clearer by Payday
+                Connected by Design
               </p>
             </div>
 
@@ -116,8 +101,8 @@ export default function WelcomeScreen() {
 
             <p className="mt-3 max-w-[23rem] text-sm leading-6 text-stone-400">
               Start with the essentials. leftovr will guide you through the
-              real Editor, save as you go, and build your Dashboard around
-              your numbers.
+              Editor, save automatically, and build your Dashboard around your
+              numbers.
             </p>
           </div>
 

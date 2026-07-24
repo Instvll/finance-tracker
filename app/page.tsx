@@ -8,10 +8,8 @@ import { financeSummary, bills, creditCards } from "../data/bandData";
 import {
   findBillForPaidAction,
   migrateBillOccurrenceState,
-  normalizeText,
   parseMoney,
   resolveBillPaymentSource,
-  type CreditCardAdjustment,
   type ManualBill,
   type ManualCreditCard,
   type PaidBillAction,
@@ -21,6 +19,7 @@ import {
   clearLegacyPaidAction,
   loadFinanceStorageState,
   saveActiveBillOccurrenceDates,
+  saveBillPaymentStorageState,
   saveFinanceBills,
   saveFinanceCards,
   saveFinancePreferences,
@@ -39,10 +38,8 @@ import {
   getBillIdentity,
   getBillOccurrencePayPeriod,
   getDaysUntilDate,
-  getFollowingBillDueDate,
   getPayPeriodLength,
   getPlanningAmount,
-  isDateInCurrentPayPeriod,
   parseLocalDate,
   type ActiveBillOccurrence,
   type PaidBillOccurrences,
@@ -396,38 +393,6 @@ function normalizeActiveBillOccurrenceDates(
   return normalizedDates;
 }
 
-function scrollExpandedSectionIntoView(sectionId: string) {
-  window.requestAnimationFrame(() => {
-    window.requestAnimationFrame(() => {
-      const section = document.getElementById(sectionId);
-
-      if (!section) {
-        return;
-      }
-
-      const rect = section.getBoundingClientRect();
-      const topClearance = 112;
-      const bottomClearance = 24;
-      const isComfortablyVisible =
-        rect.top >= topClearance &&
-        rect.bottom <= window.innerHeight - bottomClearance;
-
-      if (isComfortablyVisible) {
-        return;
-      }
-
-      const prefersReducedMotion = window.matchMedia(
-        "(prefers-reduced-motion: reduce)",
-      ).matches;
-
-      section.scrollIntoView({
-        behavior: prefersReducedMotion ? "auto" : "smooth",
-        block: "start",
-      });
-    });
-  });
-}
-
 export default function DashboardPage() {
   const [manualData, setManualData] =
     useState<ManualFinanceData>(defaultManualData);
@@ -448,10 +413,11 @@ export default function DashboardPage() {
   const [paidConfirmationAction, setPaidConfirmationAction] =
     useState<PaidBillAction | null>(null);
   const [showPaidConfirmation, setShowPaidConfirmation] = useState(false);
-  const [showCards, setShowCards] = useState(false);
-  const [showNextPayPeriod, setShowNextPayPeriod] = useState(false);
+  const [undoBlockedMessage, setUndoBlockedMessage] = useState("");
 
   const paidConfirmationTimeout =
+    useRef<ReturnType<typeof setTimeout> | null>(null);
+  const undoBlockedTimeout =
     useRef<ReturnType<typeof setTimeout> | null>(null);
   const processingPaymentKeys = useRef<Set<string>>(new Set());
 
@@ -592,6 +558,10 @@ export default function DashboardPage() {
       if (paidConfirmationTimeout.current) {
         clearTimeout(paidConfirmationTimeout.current);
       }
+
+      if (undoBlockedTimeout.current) {
+        clearTimeout(undoBlockedTimeout.current);
+      }
     };
   }, []);
 
@@ -631,6 +601,7 @@ export default function DashboardPage() {
 
     const result = markBillOccurrencePaid({
       item,
+      summary: manualData,
       cards: manualCards,
       activeOccurrenceDates:
         activeBillOccurrenceDates,
@@ -646,11 +617,8 @@ export default function DashboardPage() {
       return;
     }
 
-    if (result.cards !== manualCards) {
-      setManualCards(result.cards);
-      saveFinanceCards(result.cards);
-    }
-
+    setManualData(result.summary);
+    setManualCards(result.cards);
     setPaidBillOccurrences(
       result.paidOccurrences,
     );
@@ -659,15 +627,14 @@ export default function DashboardPage() {
     );
     setRecentPaidActions(result.paidActions);
 
-    savePaidBillOccurrences(
-      result.paidOccurrences,
-    );
-    saveActiveBillOccurrenceDates(
-      result.activeOccurrenceDates,
-    );
-    saveRecentPaidActions(
-      result.paidActions,
-    );
+    saveBillPaymentStorageState({
+      summary: result.summary,
+      cards: result.cards,
+      activeOccurrenceDates:
+        result.activeOccurrenceDates,
+      paidOccurrences: result.paidOccurrences,
+      paidActions: result.paidActions,
+    });
 
     setPaidConfirmationAction(
       result.paidAction,
@@ -689,6 +656,7 @@ export default function DashboardPage() {
   function undoPaidBill(action: PaidBillAction) {
     const result = undoBillPayment({
       action,
+      summary: manualData,
       cards: manualCards,
       activeOccurrenceDates:
         activeBillOccurrenceDates,
@@ -696,11 +664,45 @@ export default function DashboardPage() {
       paidActions: recentPaidActions,
     });
 
-    if (result.cards !== manualCards) {
-      setManualCards(result.cards);
-      saveFinanceCards(result.cards);
+    if (!result.didUndo) {
+      const message =
+        result.blockedReason === "card-not-found"
+          ? "The linked credit card is no longer available. Nothing was changed."
+          : result.blockedReason === "card-balance-changed"
+            ? "The linked card balance changed after this payment. Nothing was changed."
+            : result.blockedReason === "checking-balance-changed"
+              ? "The checking balance changed after this payment. Nothing was changed."
+              : "This older payment does not include enough balance history to undo safely.";
+
+      setUndoBlockedMessage(message);
+      setShowPaidConfirmation(false);
+
+      if (paidConfirmationTimeout.current) {
+        clearTimeout(paidConfirmationTimeout.current);
+        paidConfirmationTimeout.current = null;
+      }
+
+      if (undoBlockedTimeout.current) {
+        clearTimeout(undoBlockedTimeout.current);
+      }
+
+      undoBlockedTimeout.current = setTimeout(() => {
+        setUndoBlockedMessage("");
+        undoBlockedTimeout.current = null;
+      }, 6000);
+
+      return;
     }
 
+    setUndoBlockedMessage("");
+
+    if (undoBlockedTimeout.current) {
+      clearTimeout(undoBlockedTimeout.current);
+      undoBlockedTimeout.current = null;
+    }
+
+    setManualData(result.summary);
+    setManualCards(result.cards);
     setPaidBillOccurrences(
       result.paidOccurrences,
     );
@@ -709,15 +711,14 @@ export default function DashboardPage() {
     );
     setRecentPaidActions(result.paidActions);
 
-    savePaidBillOccurrences(
-      result.paidOccurrences,
-    );
-    saveActiveBillOccurrenceDates(
-      result.activeOccurrenceDates,
-    );
-    saveRecentPaidActions(
-      result.paidActions,
-    );
+    saveBillPaymentStorageState({
+      summary: result.summary,
+      cards: result.cards,
+      activeOccurrenceDates:
+        result.activeOccurrenceDates,
+      paidOccurrences: result.paidOccurrences,
+      paidActions: result.paidActions,
+    });
 
     processingPaymentKeys.current.delete(
       action.occurrenceKey,
@@ -736,24 +737,6 @@ export default function DashboardPage() {
         );
         paidConfirmationTimeout.current = null;
       }
-    }
-  }
-
-  function toggleNextPayPeriod() {
-    const isOpening = !showNextPayPeriod;
-    setShowNextPayPeriod(isOpening);
-
-    if (isOpening) {
-      scrollExpandedSectionIntoView("dashboard-next-pay-period");
-    }
-  }
-
-  function toggleCards() {
-    const isOpening = !showCards;
-    setShowCards(isOpening);
-
-    if (isOpening) {
-      scrollExpandedSectionIntoView("dashboard-credit-cards");
     }
   }
 
@@ -805,19 +788,6 @@ export default function DashboardPage() {
         }),
       );
 
-  const nextPayPeriodBillItems = hasCurrentPayday
-    ? sortBillOccurrenceItems(
-        upcomingBillItems.filter(
-          (item) =>
-            getBillOccurrencePayPeriod(
-              item.occurrence.dueDate,
-              preferences,
-              today,
-            ) === "next-pay-period",
-        ),
-      )
-    : [];
-
   const overdueTotal = getBillOccurrenceItemsTotal(
     overdueBillItems,
     preferences,
@@ -826,12 +796,6 @@ export default function DashboardPage() {
     beforeNextPaydayBillItems,
     preferences,
   );
-  const nextPayPeriodTotal = getBillOccurrenceItemsTotal(
-    nextPayPeriodBillItems,
-    preferences,
-  );
-  const upNextBillCount = nextPayPeriodBillItems.length;
-  const upNextTotal = nextPayPeriodTotal;
   const unpaidCheckingBeforePaydayTotal =
     getCheckingBillOccurrenceItemsTotal(
       overdueBillItems,
@@ -844,65 +808,13 @@ export default function DashboardPage() {
       manualCards,
     );
 
-  const paidCheckingBeforePaydayTotal = recentPaidActions.reduce(
-    (total, action) => {
-      const occurrenceDate = parseLocalDate(action.occurrenceDateKey);
-
-      if (!occurrenceDate) {
-        return total;
-      }
-
-      const belongsToCurrentPlanningWindow = hasCurrentPayday
-        ? payday !== null &&
-          occurrenceDate.getTime() <= payday.getTime()
-        : getDaysUntilDate(occurrenceDate, today) <= payPeriodDays;
-
-      if (!belongsToCurrentPlanningWindow) {
-        return total;
-      }
-
-      const paymentSource = getPaidActionPaymentSource(
-        action,
-        manualBills,
-        manualCards,
-      );
-
-      if (paymentSource.type !== "checking") {
-        return total;
-      }
-
-      return (
-        total +
-        getPaidActionPlanningAmount(
-          action,
-          manualBills,
-          preferences,
-        )
-      );
-    },
-    0,
-  );
-
   const plannedBeforePaydayTotal =
-    unpaidCheckingBeforePaydayTotal +
-    paidCheckingBeforePaydayTotal;
+    unpaidCheckingBeforePaydayTotal;
 
   const cardBalanceTotal = manualCards.reduce(
     (total, card) => total + parseMoney(card.balance),
     0,
   );
-
-  const cardLimitTotal = manualCards.reduce(
-    (total, card) => total + parseMoney(card.limit),
-    0,
-  );
-
-  const availableCredit = cardLimitTotal - cardBalanceTotal;
-
-  const cardUtilization =
-    cardLimitTotal > 0
-      ? Math.round((cardBalanceTotal / cardLimitTotal) * 100)
-      : 0;
 
   const sortedManualCards = [...manualCards].sort(
     (firstCard, secondCard) =>
@@ -912,6 +824,7 @@ export default function DashboardPage() {
   const cardsWithBalances = sortedManualCards.filter(
     (card) => parseMoney(card.balance) > 0,
   );
+  const dashboardCardPreviews = cardsWithBalances.slice(0, 3);
 
   const mostRecentPaidAction = recentPaidActions[0] ?? null;
   const mostRecentPaidAmount = mostRecentPaidAction
@@ -926,18 +839,37 @@ export default function DashboardPage() {
     checkingBalance - plannedBeforePaydayTotal;
 
   const primaryBillsTitle = hasCurrentPayday
-    ? "Before Next Payday"
-    : "Next Bills";
+    ? "Before next payday"
+    : "Next bills";
 
   const primaryEmptyTitle = hasCurrentPayday
-    ? "Nothing due before payday"
+    ? "Nothing due"
     : "No bills due soon";
 
   const primaryEmptyText = hasCurrentPayday
-    ? `You have no additional unpaid bills due before ${formatPayday(
+    ? `All caught up through ${formatPayday(
         preferences.nextPayday,
       )}.`
-    : `You have nothing due within the next ${payPeriodDays} days.`;
+    : `You’re all caught up for the next ${payPeriodDays} days.`;
+
+  const primaryBillsSummary =
+    beforeNextPaydayBillItems.length === 0
+      ? hasCurrentPayday
+        ? `All caught up through ${formatPayday(
+            preferences.nextPayday,
+          )}`
+        : `Nothing due in the next ${payPeriodDays} days`
+      : beforeNextPaydayBillItems.length === 1
+        ? hasCurrentPayday
+          ? `One payment left before ${formatPayday(
+              preferences.nextPayday,
+            )}`
+          : `One payment due in the next ${payPeriodDays} days`
+        : hasCurrentPayday
+          ? `${beforeNextPaydayBillItems.length} payments left before ${formatPayday(
+              preferences.nextPayday,
+            )}`
+          : `${beforeNextPaydayBillItems.length} payments due in the next ${payPeriodDays} days`;
 
   const heroLabel = hasCurrentPayday
     ? "Left After Bills"
@@ -951,8 +883,12 @@ export default function DashboardPage() {
     ? getPayPeriodProgress(preferences, today)
     : null;
   const heroPlanningWindow = hasCurrentPayday
-    ? `Through ${formatPayday(preferences.nextPayday)}`
-    : `Next ${payPeriodDays} days`;
+    ? `through ${formatPayday(preferences.nextPayday)}`
+    : `next ${payPeriodDays} days`;
+  const heroPlanningSummary =
+    plannedBeforePaydayTotal <= 0
+      ? "All caught up"
+      : `${formatMoney(plannedBeforePaydayTotal)} planned`;
 
   return (
     <PageShell>
@@ -970,7 +906,14 @@ export default function DashboardPage() {
         </p>
       </header>
 
-      <section className="liquid-glass-accent hero-glass-card dashboard-hero dashboard-hero-focused motion-card motion-card-delay-1 mb-2 rounded-[2rem]">
+      <section
+        className="liquid-glass-accent hero-glass-card dashboard-hero dashboard-hero-focused motion-card motion-card-delay-1 mb-2 rounded-[1.55rem]"
+        style={{
+          borderRadius: "1.55rem",
+          clipPath: "inset(0 round 1.55rem)",
+          WebkitClipPath: "inset(0 round 1.55rem)",
+        }}
+      >
         <div className="liquid-content dashboard-hero-content relative p-3.5 sm:p-4">
           <div
             className="dashboard-hero-glow dashboard-hero-glow-accent"
@@ -996,28 +939,45 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <div className="shrink-0">
+            <div
+              className="shrink-0"
+              title={
+                lastSaved
+                  ? `Saved ${formatSavedTime(lastSaved)}`
+                  : "Saved locally"
+              }
+            >
               <Pill>
-                <span className="sm:hidden">Saved</span>
-                <span className="hidden sm:inline">
-                  {formatSavedTime(lastSaved)}
+                <span className="inline-flex items-center gap-1.5">
+                  <span
+                    className="dashboard-hero-saved-check"
+                    aria-hidden="true"
+                  >
+                    ✓
+                  </span>
+
+                  <span>Saved</span>
                 </span>
               </Pill>
             </div>
           </div>
 
-          <div className="dashboard-hero-main relative mt-1.5">
-            <div className="min-w-0">
+          <div className="dashboard-hero-main relative mt-1">
+            <div className="dashboard-hero-balance-block min-w-0">
               <p className="dashboard-hero-balance break-words font-bold leading-none tracking-[-0.05em] text-[#f5f0e8]">
                 {formatMoney(moneyLeftAfterBills)}
               </p>
 
               <div className="dashboard-hero-context mt-2">
-                <span>Planned bills</span>
-                <strong>{formatMoney(plannedBeforePaydayTotal)}</strong>
-                <span className="dashboard-hero-context-divider" aria-hidden="true">
-                  •
+                <strong>{heroPlanningSummary}</strong>
+
+                <span
+                  className="dashboard-hero-context-divider"
+                  aria-hidden="true"
+                >
+                  ·
                 </span>
+
                 <span>{heroPlanningWindow}</span>
               </div>
             </div>
@@ -1028,7 +988,7 @@ export default function DashboardPage() {
             />
           </div>
 
-          <div className="dashboard-hero-stats relative mt-3">
+          <div className="dashboard-hero-stats relative mt-2">
             <HeroMetricCard
               label="Checking"
               value={formatMoney(checkingBalance)}
@@ -1040,28 +1000,33 @@ export default function DashboardPage() {
               value={formatMoney(savingsBalance)}
               icon={<SavingsHeroIcon />}
             />
-
           </div>
         </div>
       </section>
 
-      <section className="grid gap-2">
-        <section className="dashboard-surface dashboard-bills-surface motion-card motion-card-delay-2 rounded-[1.7rem] p-2.5">
+      <section className="dashboard-section-stack grid gap-2.5">
+        <section
+          className="dashboard-surface dashboard-bills-surface motion-card motion-card-delay-2 rounded-[1.2rem]"
+          style={{
+            borderRadius: "1.2rem",
+            padding: "0.6rem",
+          }}
+        >
           <div
             className="dashboard-surface-glow"
             aria-hidden="true"
           />
 
           <div className="liquid-content">
-            <div className="mb-2.5 flex items-start justify-between gap-3">
+            <div className="mb-1.5 flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <SectionTitle title={primaryBillsTitle} />
+                <SectionTitle title={primaryBillsTitle} icon="calendar" />
 
-                <p className="mt-1 text-xs text-stone-500">
-                  {beforeNextPaydayBillItems.length} bill
-                  {beforeNextPaydayBillItems.length === 1 ? "" : "s"} •{" "}
-                  {formatMoney(beforeNextPaydayTotal)} due
-                </p>
+                {beforeNextPaydayBillItems.length > 0 ? (
+                  <p className="dashboard-bills-summary mt-1">
+                    {primaryBillsSummary}
+                  </p>
+                ) : null}
               </div>
 
               <Link
@@ -1073,9 +1038,9 @@ export default function DashboardPage() {
             </div>
 
             {beforeNextPaydayBillItems.length > 0 ? (
-              <div className="dashboard-bill-list dashboard-bill-list-primary">
+              <div className="dashboard-payday-list">
                 {beforeNextPaydayBillItems.map((item) => (
-                  <BillPreviewRow
+                  <PaydayBillRow
                     key={item.occurrence.occurrenceKey}
                     bill={item.bill}
                     occurrenceDate={item.occurrence.dueDate}
@@ -1088,7 +1053,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <EmptyPreview
+              <BillsClearState
                 title={primaryEmptyTitle}
                 text={primaryEmptyText}
               />
@@ -1097,7 +1062,7 @@ export default function DashboardPage() {
             {overdueBillItems.length > 0 ? (
               <div className="mt-3 border-t border-[#f5f0e8]/8 pt-3">
                 <div className="mb-2.5">
-                  <SectionTitle title="Needs Attention" />
+                  <SectionTitle title="Needs attention" />
 
                   <p className="mt-1 text-xs text-stone-500">
                     {overdueBillItems.length} overdue •{" "}
@@ -1123,8 +1088,35 @@ export default function DashboardPage() {
               </div>
             ) : null}
 
-            {mostRecentPaidAction ? (
-              <div className="dashboard-last-payment-footer mt-3 border-t border-[#f5f0e8]/8 pt-2.5">
+          </div>
+        </section>
+
+        {mostRecentPaidAction ? (
+          <section
+            className="dashboard-surface motion-card motion-card-delay-3 rounded-[1.2rem]"
+            style={{
+              borderRadius: "1.2rem",
+              padding: "0.6rem",
+            }}
+          >
+            <div
+              className="dashboard-surface-glow"
+              aria-hidden="true"
+            />
+
+            <div className="liquid-content">
+              <div className="mb-1 flex items-center justify-between gap-3">
+                <SectionTitle title="Recently paid" icon="receipt" />
+
+                <Link
+                  href="/bills"
+                  className="dashboard-section-link pressable shrink-0"
+                >
+                  View all
+                </Link>
+              </div>
+
+              <div key={mostRecentPaidAction.occurrenceKey}>
                 <RecentPaymentRow
                   action={mostRecentPaidAction}
                   amount={mostRecentPaidAmount}
@@ -1136,114 +1128,14 @@ export default function DashboardPage() {
                   onUndo={() => undoPaidBill(mostRecentPaidAction)}
                 />
               </div>
-            ) : null}
-          </div>
-        </section>
-
-        <section className="dashboard-surface dashboard-up-next-surface motion-card motion-card-delay-3 rounded-[1.7rem] p-2.5">
-          <div
-            className="dashboard-surface-glow"
-            aria-hidden="true"
-          />
-
-          <div className="liquid-content">
-            <div className="mb-2.5 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <SectionTitle title="Up Next" />
-
-                <p className="mt-1 text-xs text-stone-500">
-                  {upNextBillCount} bill
-                  {upNextBillCount === 1 ? "" : "s"} •{" "}
-                  {formatMoney(upNextTotal)} scheduled
-                </p>
-              </div>
-
-              <Link
-                href="/bills"
-                className="dashboard-section-link pressable shrink-0"
-              >
-                View all bills
-              </Link>
             </div>
-
-            <div className="dashboard-up-next-list dashboard-up-next-list-flat">
-              {hasCurrentPayday ? (
-                <div
-                  id="dashboard-next-pay-period"
-                  className="dashboard-up-next-group scroll-mt-28"
-                >
-                  <button
-                    type="button"
-                    onClick={toggleNextPayPeriod}
-                    aria-expanded={showNextPayPeriod}
-                    aria-controls="dashboard-next-pay-period-content"
-                    className="dashboard-up-next-row pressable text-left"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-[#f5f0e8]">
-                        Next Pay Period
-                      </p>
-
-                      <p className="mt-1 text-xs text-stone-400">
-                        {nextPayPeriodBillItems.length} bill
-                        {nextPayPeriodBillItems.length === 1 ? "" : "s"} coming
-                      </p>
-                    </div>
-
-                    <div className="dashboard-up-next-trailing">
-                      <p className="dashboard-up-next-amount">
-                        {formatMoney(nextPayPeriodTotal)}
-                      </p>
-
-                      <span className="dashboard-up-next-action">
-                        {showNextPayPeriod ? "Hide" : "View"}
-                      </span>
-                    </div>
-                  </button>
-
-                  {showNextPayPeriod ? (
-                    <div
-                      id="dashboard-next-pay-period-content"
-                      className="dashboard-up-next-expanded"
-                    >
-                      {nextPayPeriodBillItems.length > 0 ? (
-                        <div className="dashboard-bill-list dashboard-bill-list-muted dashboard-bill-list-up-next">
-                          {nextPayPeriodBillItems.map((item) => (
-                            <BillPreviewRow
-                              key={item.occurrence.occurrenceKey}
-                              bill={item.bill}
-                              occurrenceDate={item.occurrence.dueDate}
-                              paymentSourceLabel={getBillPaymentSourceLabel(
-                                item.bill,
-                                manualCards,
-                              )}
-                              muted
-                              onPay={() => markBillPaid(item)}
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        <EmptyPreview
-                          title="Nothing due next pay period"
-                          text="No bills are currently scheduled in that window."
-                        />
-                      )}
-                    </div>
-                  ) : null}
-                </div>
-              ) : (
-                <EmptyPreview
-                  title="Next payday not set"
-                  text="Set your next payday to preview the following pay period."
-                />
-              )}
-            </div>
-          </div>
-        </section>
+          </section>
+        ) : null}
 
         <section
           id="dashboard-credit-cards"
-          className="dashboard-surface dashboard-cards-surface motion-card motion-card-delay-4 scroll-mt-28 rounded-[1.7rem] p-2.5"
+          className="dashboard-surface dashboard-cards-surface motion-card motion-card-delay-3 scroll-mt-28 rounded-[1.2rem] p-2.5"
+          style={{ borderRadius: "1.2rem" }}
         >
           <div
             className="dashboard-surface-glow"
@@ -1251,95 +1143,103 @@ export default function DashboardPage() {
           />
 
           <div className="liquid-content">
-            <button
-              type="button"
-              onClick={toggleCards}
-              aria-expanded={showCards}
-              aria-controls="dashboard-credit-card-details"
-              className="dashboard-card-section-toggle pressable w-full text-left"
-            >
+            <div className="dashboard-card-section-header">
               <div className="min-w-0">
-                <SectionTitle title="Credit Cards" />
+                <SectionTitle title="Credit cards" icon="card" />
 
-                <p className="mt-1 text-xs text-stone-500">
+                <p
+                  className="dashboard-card-section-summary mt-0.5"
+                  style={{ color: "var(--theme-text-tertiary)" }}
+                >
                   {cardsWithBalances.length > 0
-                    ? `${cardsWithBalances.length} card${
+                    ? `${cardsWithBalances.length} balance${
                         cardsWithBalances.length === 1 ? "" : "s"
-                      } with balances • ${cardUtilization}% used`
+                      } · ${formatMoney(cardBalanceTotal)} total`
                     : manualCards.length > 0
-                      ? "No card balances"
+                      ? "All cards paid off"
                       : "No cards tracked"}
                 </p>
               </div>
 
-              <span className="dashboard-card-section-action">
-                {showCards ? "Hide" : "View"}
-              </span>
-            </button>
-
-            <div className="dashboard-card-summary mt-2">
-              <CompactStat
-                label="Balance"
-                value={formatMoney(cardBalanceTotal)}
-              />
-
-              <CompactStat
-                label="Credit Left"
-                value={formatMoney(availableCredit)}
-              />
+              <Link
+                href="/cards"
+                className="dashboard-section-link pressable shrink-0"
+              >
+                View all
+              </Link>
             </div>
 
-            {showCards && (
+            {cardsWithBalances.length > 0 ? (
               <div
-                id="dashboard-credit-card-details"
-                className="dashboard-card-details mt-2"
+                className="dashboard-card-overview"
+                style={{ marginTop: "0.42rem" }}
               >
-                {cardsWithBalances.length > 0 ? (
-                  <div className="dashboard-card-balance-list">
-                    {cardsWithBalances.map((card, index) => {
-                      const balance = parseMoney(card.balance);
-                      const limit = parseMoney(card.limit);
-                      const utilization =
-                        limit > 0
-                          ? Math.round((balance / limit) * 100)
-                          : 0;
+                <div className="dashboard-card-balance-list">
+                  {dashboardCardPreviews.map((card, index) => {
+                    const balance = parseMoney(card.balance);
+                    const limit = parseMoney(card.limit);
+                    const utilization =
+                      limit > 0
+                        ? Math.round((balance / limit) * 100)
+                        : 0;
 
-                      return (
-                        <CardPreviewRow
-                          key={`dashboard-card-${index}`}
-                          name={card.name}
-                          balance={balance}
-                          utilization={utilization}
-                        />
-                      );
-                    })}
-                  </div>
-                ) : manualCards.length > 0 ? (
-                  <EmptyPreview
-                    title="No card balances"
-                    text="Your credit cards are currently paid off."
-                  />
-                ) : (
-                  <EmptyPreview
-                    title="No credit cards yet"
-                    text="Add a card in the Editor to track utilization."
-                  />
-                )}
+                    return (
+                      <CardPreviewRow
+                        key={`dashboard-card-${index}`}
+                        name={card.name}
+                        balance={balance}
+                        utilization={utilization}
+                      />
+                    );
+                  })}
+                </div>
 
-                <Link
-                  href="/cards"
-                  className="dashboard-card-footer-link pressable"
-                >
-                  Open Credit Cards
-                </Link>
+
+              </div>
+            ) : manualCards.length > 0 ? (
+              <div className="mt-2">
+                <EmptyPreview
+                  title="No card balances"
+                  text="Your credit cards are currently paid off."
+                />
+              </div>
+            ) : (
+              <div className="mt-2">
+                <EmptyPreview
+                  title="No credit cards yet"
+                  text="Add a card in the Editor to track utilization."
+                />
               </div>
             )}
           </div>
         </section>
       </section>
 
-      {paidConfirmationAction && showPaidConfirmation ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-5 z-50 flex justify-center px-4 pb-[env(safe-area-inset-bottom)]">
+      {undoBlockedMessage ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(6.75rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-4">
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="dashboard-surface pointer-events-auto relative w-full max-w-[23rem] overflow-hidden rounded-[1.35rem] border border-[#f5f0e8]/10 p-3 shadow-[0_18px_42px_rgba(0,0,0,0.28)]"
+          >
+            <div
+              className="dashboard-surface-glow"
+              aria-hidden="true"
+            />
+
+            <div className="liquid-content">
+              <p className="text-[0.95rem] font-semibold text-[#f5f0e8]">
+                Undo paused
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-stone-400">
+                {undoBlockedMessage}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : paidConfirmationAction && showPaidConfirmation ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(6.75rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-4">
           <div
             role="status"
             aria-live="polite"
@@ -1373,7 +1273,16 @@ export default function DashboardPage() {
                         manualBills,
                         manualCards,
                       )}.`
-                    : "Already included in Left After Bills."}
+                    : `${formatMoney(
+                        getPaidActionPlanningAmount(
+                          paidConfirmationAction,
+                          manualBills,
+                          {
+                            ...preferences,
+                            roundBillsForPlanning: false,
+                          },
+                        ),
+                      )} paid from Checking.`}
                 </p>
               </div>
 
@@ -1392,15 +1301,105 @@ export default function DashboardPage() {
   );
 }
 
-function SectionTitle({ title }: { title: string }) {
+function SectionTitle({
+  title,
+  icon,
+}: {
+  title: string;
+  icon?: "calendar" | "card" | "receipt";
+}) {
   return (
-    <div className="flex items-center gap-2.5">
-      <span className="dashboard-section-dot h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75]" />
+    <div className="dashboard-section-title">
+      {icon ? (
+        <span
+          className={`dashboard-section-symbol dashboard-section-symbol-${icon}`}
+          aria-hidden="true"
+        >
+          {icon === "calendar" ? (
+            <CalendarSectionIcon />
+          ) : icon === "receipt" ? (
+            <ReceiptSectionIcon />
+          ) : (
+            <CreditCardSectionIcon />
+          )}
+        </span>
+      ) : (
+        <span className="dashboard-section-dot h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75]" />
+      )}
 
-      <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
+      <h2 className="text-[1.02rem] font-semibold tracking-[-0.012em] text-[#f5f0e8]">
         {title}
       </h2>
     </div>
+  );
+}
+
+function CalendarSectionIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none">
+      <rect
+        x="4"
+        y="5.5"
+        width="16"
+        height="14"
+        rx="2.5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+      />
+      <path
+        d="M8 3.8v3.4M16 3.8v3.4M4 9.3h16"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+      <path
+        d="M8.2 13h2.2M13.6 13h2.2M8.2 16.2h2.2"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function ReceiptSectionIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none">
+      <path
+        d="M6.5 4.5h11v15l-2.2-1.25-2.2 1.25-2.2-1.25-2.2 1.25-2.2-1.25V4.5Z"
+        stroke="currentColor"
+        strokeWidth="1.65"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.2 8.2h5.6M9.2 11.5h5.6M9.2 14.8h3.7"
+        stroke="currentColor"
+        strokeWidth="1.65"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function CreditCardSectionIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none">
+      <rect
+        x="3.5"
+        y="5.5"
+        width="17"
+        height="13"
+        rx="2.5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+      />
+      <path
+        d="M3.5 9.5h17M7.2 14h4"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 
@@ -1422,13 +1421,10 @@ function HeroPaydayVisual({
         className="dashboard-hero-payday-compact dashboard-hero-payday-compact-link pressable"
         aria-label="Set your next payday"
       >
-        <span className="dashboard-hero-payday-compact-label">
-          Pay period
-        </span>
-
-        <span className="dashboard-hero-payday-compact-action">
-          Set payday
-        </span>
+        <div className="dashboard-hero-payday-compact-heading">
+          <span>Pay period</span>
+          <strong>Set payday</strong>
+        </div>
 
         <span
           className="dashboard-hero-payday-compact-line"
@@ -1440,16 +1436,28 @@ function HeroPaydayVisual({
     );
   }
 
+  const daysUntilPayday = Math.max(
+    getDaysUntilDate(progress.endDate),
+    0,
+  );
+
+  const daysUntilPaydayLabel =
+    daysUntilPayday === 0
+      ? "Payday today"
+      : `${daysUntilPayday} day${
+          daysUntilPayday === 1 ? "" : "s"
+        } left`;
+
   return (
     <div
       className="dashboard-hero-payday-compact"
-      aria-label={`${progress.percentage}% through the current pay period. Next payday ${formatPayday(
+      aria-label={`${progress.percentage}% through the current pay period. ${daysUntilPaydayLabel}. Next payday ${formatPayday(
         payday,
       )}.`}
     >
       <div className="dashboard-hero-payday-compact-heading">
         <span>Pay period</span>
-        <strong>{progress.percentage}%</strong>
+        <strong>{daysUntilPaydayLabel}</strong>
       </div>
 
       <span
@@ -1462,8 +1470,6 @@ function HeroPaydayVisual({
           }}
         />
       </span>
-
-      <p>Payday {formatPayday(payday)}</p>
     </div>
   );
 }
@@ -1544,6 +1550,57 @@ function SavingsHeroIcon() {
   );
 }
 
+function PaydayBillRow({
+  bill,
+  occurrenceDate,
+  paymentSourceLabel,
+  onPay,
+}: {
+  bill: ManualBill;
+  occurrenceDate: Date;
+  paymentSourceLabel: string;
+  onPay: () => void;
+}) {
+  const month = occurrenceDate
+    .toLocaleDateString("en-US", { month: "short" })
+    .toUpperCase();
+  const day = occurrenceDate.getDate();
+
+  return (
+    <div className="dashboard-payday-row">
+      <div className="dashboard-payday-date" aria-hidden="true">
+        <span>{month}</span>
+        <strong>{day}</strong>
+      </div>
+
+      <div className="dashboard-payday-copy">
+        <p className="dashboard-payday-name">
+          {bill.name || "Untitled Bill"}
+        </p>
+
+        <p className="dashboard-payday-source">
+          From {paymentSourceLabel}
+        </p>
+      </div>
+
+      <div className="dashboard-payday-trailing">
+        <p className="dashboard-payday-amount">
+          {formatMoney(parseMoney(bill.amount))}
+        </p>
+
+        <button
+          type="button"
+          onClick={onPay}
+          aria-label={`Mark ${bill.name || "bill"} paid`}
+          className="dashboard-payday-pay pressable"
+        >
+          Pay
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function BillPreviewRow({
   bill,
   occurrenceDate,
@@ -1581,13 +1638,22 @@ function BillPreviewRow({
             overdue ? "dashboard-bill-due-overdue" : ""
           }`}
         >
-          {overdue
-            ? `Overdue · ${formatBillDate(
-                occurrenceDate,
-              )} • ${paymentSourceLabel}`
-            : `Due ${formatBillDate(
-                occurrenceDate,
-              )} • ${paymentSourceLabel}`}
+          <span className="dashboard-bill-due-date">
+            {overdue
+              ? `Overdue · ${formatBillDate(occurrenceDate)}`
+              : `Due ${formatBillDate(occurrenceDate)}`}
+          </span>
+
+          <span
+            className="dashboard-bill-meta-divider"
+            aria-hidden="true"
+          >
+            ·
+          </span>
+
+          <span className="dashboard-bill-payment-source">
+            {paymentSourceLabel}
+          </span>
         </p>
       </div>
 
@@ -1717,19 +1783,25 @@ function RecentPaymentRow({
   onUndo: () => void;
 }) {
   return (
-    <div className="dashboard-last-payment-row">
+    <div
+      className="dashboard-last-payment-row"
+      style={{
+        paddingTop: "0.3rem",
+        paddingBottom: "0.35rem",
+      }}
+    >
       <span
         className="dashboard-last-payment-check"
+        style={{
+          width: "2rem",
+          height: "2rem",
+        }}
         aria-hidden="true"
       >
         ✓
       </span>
 
       <div className="min-w-0">
-        <p className="dashboard-last-payment-label">
-          Last payment
-        </p>
-
         <p className="dashboard-last-payment-name">
           {action.billName}
         </p>
@@ -1767,25 +1839,78 @@ function CardPreviewRow({
   utilization: number;
 }) {
   return (
-    <div className="dashboard-card-balance-row">
-      <div className="min-w-0">
-        <div className="flex items-start justify-between gap-3">
+    <div
+      className="dashboard-card-balance-row"
+      style={{
+        minHeight: "4.05rem",
+        paddingTop: "0.6rem",
+        paddingBottom: "0.58rem",
+        paddingLeft: "0.08rem",
+        paddingRight: "0.08rem",
+      }}
+    >
+      <span
+        className="dashboard-card-balance-icon"
+        style={{
+          width: "2.05rem",
+          height: "2.05rem",
+          borderRadius: "0.68rem",
+        }}
+        aria-hidden="true"
+      >
+        <CreditCardDashboardIcon />
+      </span>
+
+      <div className="dashboard-card-balance-copy">
+        <div
+          className="dashboard-card-balance-heading"
+          style={{ alignItems: "center" }}
+        >
           <div className="min-w-0">
-            <p className="dashboard-card-balance-name">
+            <p
+              className="dashboard-card-balance-name"
+              style={{
+                fontSize: "0.94rem",
+                fontWeight: 650,
+                letterSpacing: "-0.012em",
+              }}
+            >
               {name || "Untitled Card"}
             </p>
 
-            <p className="dashboard-card-balance-utilization">
-              {utilization}% of limit used
+            <p
+              className="dashboard-card-balance-utilization"
+              style={{
+                marginTop: "0.2rem",
+                fontSize: "0.69rem",
+                color: "var(--theme-text-tertiary)",
+              }}
+            >
+              {utilization}% used
             </p>
           </div>
 
-          <p className="dashboard-card-balance-amount">
+          <p
+            className="dashboard-card-balance-amount"
+            style={{
+              fontSize: "0.98rem",
+              fontWeight: 700,
+              letterSpacing: "-0.02em",
+            }}
+          >
             {formatMoney(balance)}
           </p>
         </div>
 
-        <div className="dashboard-card-balance-track">
+        <div
+          className="dashboard-card-balance-track"
+          style={{
+            width: "100%",
+            maxWidth: "none",
+            height: "0.22rem",
+            marginTop: "0.48rem",
+          }}
+        >
           <div
             className="liquid-progress dashboard-card-balance-fill"
             style={{
@@ -1798,22 +1923,61 @@ function CardPreviewRow({
   );
 }
 
-function CompactStat({
-  label,
-  value,
+function CreditCardDashboardIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none">
+      <rect
+        x="3.5"
+        y="5.5"
+        width="17"
+        height="13"
+        rx="2.5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+      />
+      <path
+        d="M3.5 9.5h17M7.2 14h4"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function BillsClearState({
+  title,
+  text,
 }: {
-  label: string;
-  value: string;
+  title: string;
+  text: string;
 }) {
   return (
-    <div className="dashboard-compact-stat !px-2.5 !py-1.5">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/70">
-        {label}
-      </p>
+    <div className="flex items-center gap-2.5 px-1 py-1.5">
+      <span
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#c7ad75]/22 bg-[#c7ad75]/8 text-[#c7ad75]"
+        aria-hidden="true"
+      >
+        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+          <path
+            d="m5.5 12.5 4 4L18.5 7.5"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </span>
 
-      <p className="mt-0.5 truncate text-base font-bold text-[#f5f0e8]">
-        {value}
-      </p>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-[#f5f0e8]">
+          {title}
+        </p>
+
+        <p className="mt-0.5 text-xs leading-5 text-stone-400">
+          {text}
+        </p>
+      </div>
     </div>
   );
 }

@@ -1,11 +1,24 @@
 "use client";
 
-import type { FormEvent } from "react";
+import type { CSSProperties, FormEvent } from "react";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import LogoMark from "@/components/LogoMark";
 import { supabase } from "@/lib/supabase/client";
+
+const pageStyle: CSSProperties = {
+  background: "var(--theme-background, var(--theme-bg, #11100d))",
+  color: "var(--theme-text, #f5f0e8)",
+};
+
+const panelStyle: CSSProperties = {
+  borderColor: "var(--theme-border-default, rgba(245, 240, 232, 0.12))",
+  background:
+    "color-mix(in srgb, var(--theme-surface-sheet, #1b211f) 96%, transparent)",
+  boxShadow:
+    "inset 0 1px 0 color-mix(in srgb, var(--theme-highlight, #ffffff) 58%, transparent), 0 24px 64px color-mix(in srgb, var(--theme-shadow, #000000) 18%, transparent)",
+};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -38,124 +51,169 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#11100d] px-4 py-5 text-[#f5f0e8] sm:px-6 sm:py-6">
-      <div
-        className="pointer-events-none absolute -left-24 top-[-8rem] h-72 w-72 rounded-full bg-[#c7ad75]/10 blur-3xl"
-        aria-hidden="true"
-      />
+    <main
+      className="relative min-h-[100svh] overflow-x-hidden px-4 py-6 sm:px-6 sm:py-8"
+      style={pageStyle}
+    >
+      <AuthBackdrop />
 
-      <div
-        className="pointer-events-none absolute -right-24 bottom-[-10rem] h-80 w-80 rounded-full bg-[#c7ad75]/8 blur-3xl"
-        aria-hidden="true"
-      />
+      <div className="relative mx-auto flex min-h-[calc(100svh-3rem)] w-full max-w-md flex-col justify-center sm:min-h-[calc(100svh-4rem)]">
+        <header className="motion-card mb-5 flex items-center justify-between gap-4 px-1">
+          <div className="flex min-w-0 items-center gap-3">
+            <LogoMark />
 
-      <div className="relative mx-auto flex min-h-[calc(100vh-2.5rem)] w-full max-w-md flex-col justify-center sm:min-h-[calc(100vh-3rem)]">
-        <section className="liquid-glass-accent hero-glass-card dashboard-hero motion-card rounded-[2rem]">
-          <div className="liquid-content dashboard-hero-content relative p-4 sm:p-5">
-            <div
-              className="dashboard-hero-glow dashboard-hero-glow-accent"
-              aria-hidden="true"
-            />
-
-            <div
-              className="dashboard-hero-glow dashboard-hero-glow-soft"
-              aria-hidden="true"
-            />
-
-            <div className="dashboard-hero-reflection" aria-hidden="true" />
-
-            <div className="relative mb-5 flex items-center justify-between gap-4">
-              <Link
-                href="/"
-                className="flex min-w-0 items-center gap-3 transition hover:opacity-85"
+            <div className="min-w-0">
+              <p
+                className="truncate text-[1.05rem] font-semibold lowercase tracking-[-0.02em]"
+                style={{ color: "var(--theme-text, #f5f0e8)" }}
               >
-                <LogoMark />
-
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold lowercase tracking-[0.24em] text-[#f5f0e8]">
-                    leftovr
-                  </p>
-
-                  <p className="mt-0.5 text-[0.58rem] uppercase tracking-[0.24em] text-[#c7ad75]/70">
-                    Personal Finance
-                  </p>
-                </div>
-              </Link>
-
-              <span className="dashboard-pill-button !px-3 !py-1 text-[10px] uppercase tracking-[0.14em]">
-                v1.3 Beta
-              </span>
-            </div>
-
-            <div className="relative mb-4">
-              <div className="flex items-center gap-2.5">
-                <span className="dashboard-hero-status-dot h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75]" />
-
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#c7ad75]/75">
-                  Welcome Back
-                </p>
-              </div>
-
-              <h1 className="mt-3 text-[2rem] font-bold leading-tight tracking-[-0.035em] text-[#f5f0e8]">
-                Sign in to leftovr
-              </h1>
-            </div>
-
-            <form onSubmit={handleLogin} className="grid gap-3">
-              <div className="overflow-hidden rounded-[1.3rem] border border-[#f5f0e8]/10 bg-[#11100d]/18 shadow-[inset_0_1px_0_rgba(245,240,232,0.045)]">
-                <AuthField
-                  label="Email"
-                  type="email"
-                  value={email}
-                  onChange={setEmail}
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                />
-
-                <AuthField
-                  label="Password"
-                  type="password"
-                  value={password}
-                  onChange={setPassword}
-                  autoComplete="current-password"
-                  placeholder="Enter your password"
-                  last
-                />
-              </div>
-
-              {message ? (
-                <div className="rounded-[1.1rem] border border-[#dc2626]/35 bg-[#dc2626]/10 px-3.5 py-3">
-                  <p className="text-sm font-medium leading-6 text-[#dc2626]">
-                    {message}
-                  </p>
-                </div>
-              ) : null}
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="pressable rounded-full border border-[#c7ad75]/38 bg-[#c7ad75]/16 px-4 py-3 text-sm font-semibold text-[#f5f0e8] shadow-[inset_0_1px_0_rgba(245,240,232,0.09),0_14px_30px_rgba(0,0,0,0.18)] transition hover:border-[#c7ad75]/50 hover:bg-[#c7ad75]/22 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isLoading ? "Signing In…" : "Sign In"}
-              </button>
-            </form>
-
-            <div className="relative mt-3 flex items-center justify-between gap-4 rounded-[1.2rem] border border-[#f5f0e8]/9 bg-[#11100d]/16 px-3.5 py-3">
-              <p className="text-sm font-semibold text-[#f5f0e8]">
-                New to leftovr?
+                leftovr
               </p>
 
-              <Link
-                href="/signup"
-                className="dashboard-pill-button pressable shrink-0 !px-3 !py-1"
+              <p
+                className="mt-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.18em]"
+                style={{ color: "var(--theme-text-tertiary, #8f948f)" }}
               >
-                Create Account
-              </Link>
+                Personal finance
+              </p>
             </div>
           </div>
+
+          <span
+            className="shrink-0 rounded-full border px-3 py-1.5 text-[0.68rem] font-semibold"
+            style={{
+              borderColor:
+                "color-mix(in srgb, var(--theme-accent, #9db49a) 30%, var(--theme-border-default, rgba(245,240,232,0.12)))",
+              background:
+                "color-mix(in srgb, var(--theme-accent, #9db49a) 8%, var(--theme-surface-control, transparent))",
+              color: "var(--theme-text-secondary, #c4c6c2)",
+            }}
+          >
+            v2.0 Beta
+          </span>
+        </header>
+
+        <section
+          className="motion-card motion-card-delay-1 rounded-[2rem] border p-5 sm:p-6"
+          style={panelStyle}
+        >
+          <header className="mb-5">
+            <p
+              className="text-[0.68rem] font-semibold uppercase tracking-[0.2em]"
+              style={{ color: "var(--theme-accent, #9db49a)" }}
+            >
+              Welcome back
+            </p>
+
+            <h1
+              className="mt-2 text-[2rem] font-bold leading-[1.02] tracking-[-0.045em]"
+              style={{ color: "var(--theme-text, #f5f0e8)" }}
+            >
+              Sign in to leftovr
+            </h1>
+
+            <p
+              className="mt-2 text-sm leading-6"
+              style={{ color: "var(--theme-text-secondary, #b3b7b2)" }}
+            >
+              Your balances, bills, and cards are waiting.
+            </p>
+          </header>
+
+          <form
+            onSubmit={handleLogin}
+            className="grid gap-3"
+            aria-busy={isLoading}
+          >
+            <AuthField
+              label="Email"
+              type="email"
+              value={email}
+              onChange={setEmail}
+              autoComplete="email"
+              placeholder="you@example.com"
+            />
+
+            <AuthField
+              label="Password"
+              type="password"
+              value={password}
+              onChange={setPassword}
+              autoComplete="current-password"
+              placeholder="Enter your password"
+            />
+
+            {message ? <StatusMessage>{message}</StatusMessage> : null}
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="pressable mt-1 w-full rounded-[1.15rem] border px-4 py-3.5 text-sm font-semibold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-55"
+              style={{
+                borderColor:
+                  "color-mix(in srgb, var(--theme-accent, #9db49a) 48%, var(--theme-border-default, rgba(245,240,232,0.12)))",
+                background:
+                  "color-mix(in srgb, var(--theme-accent, #9db49a) 24%, var(--theme-surface-control, #26302d))",
+                color: "var(--theme-text, #f5f0e8)",
+                boxShadow:
+                  "inset 0 1px 0 color-mix(in srgb, var(--theme-highlight, #ffffff) 62%, transparent)",
+              }}
+            >
+              {isLoading ? "Signing in…" : "Sign in"}
+            </button>
+          </form>
+
+          <div
+            className="mt-5 flex items-center justify-center gap-2 border-t pt-4 text-sm"
+            style={{
+              borderColor: "var(--theme-divider, rgba(245,240,232,0.08))",
+              color: "var(--theme-text-tertiary, #8f948f)",
+            }}
+          >
+            <span>New to leftovr?</span>
+
+            <Link
+              href="/signup"
+              className="pressable font-semibold transition hover:opacity-75"
+              style={{ color: "var(--theme-text, #f5f0e8)" }}
+            >
+              Create an account
+            </Link>
+          </div>
         </section>
+
+        <p
+          className="motion-card motion-card-delay-2 mt-4 text-center text-[0.72rem] leading-5"
+          style={{ color: "var(--theme-text-tertiary, #8f948f)" }}
+        >
+          A calmer view of what is due and what is left.
+        </p>
       </div>
     </main>
+  );
+}
+
+function AuthBackdrop() {
+  return (
+    <>
+      <div
+        className="pointer-events-none absolute -left-28 top-[-9rem] h-80 w-80 rounded-full blur-3xl"
+        style={{
+          background:
+            "color-mix(in srgb, var(--theme-accent, #9db49a) 10%, transparent)",
+        }}
+        aria-hidden="true"
+      />
+
+      <div
+        className="pointer-events-none absolute -right-28 bottom-[-11rem] h-96 w-96 rounded-full blur-3xl"
+        style={{
+          background:
+            "color-mix(in srgb, var(--theme-accent, #9db49a) 7%, transparent)",
+        }}
+        aria-hidden="true"
+      />
+    </>
   );
 }
 
@@ -166,7 +224,6 @@ function AuthField({
   onChange,
   autoComplete,
   placeholder,
-  last = false,
 }: {
   label: string;
   type: "email" | "password";
@@ -174,15 +231,19 @@ function AuthField({
   onChange: (value: string) => void;
   autoComplete: string;
   placeholder: string;
-  last?: boolean;
 }) {
   return (
     <label
-      className={`grid gap-1.5 px-3.5 py-3.5 transition focus-within:bg-[#c7ad75]/[0.045] ${
-        last ? "" : "border-b border-[#f5f0e8]/8"
-      }`}
+      className="grid gap-1.5 rounded-[1.15rem] border px-3.5 py-3 transition focus-within:ring-2 focus-within:ring-[var(--theme-accent)]"
+      style={{
+        borderColor: "var(--theme-border-default, rgba(245, 240, 232, 0.12))",
+        background: "var(--theme-surface-control, rgba(17, 16, 13, 0.2))",
+      }}
     >
-      <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#c7ad75]/72">
+      <span
+        className="text-[0.66rem] font-semibold uppercase tracking-[0.16em]"
+        style={{ color: "var(--theme-text-tertiary, #8f948f)" }}
+      >
         {label}
       </span>
 
@@ -193,8 +254,29 @@ function AuthField({
         required
         autoComplete={autoComplete}
         placeholder={placeholder}
-        className="w-full bg-transparent text-base font-semibold text-[#f5f0e8] outline-none placeholder:text-stone-600"
+        className="w-full bg-transparent text-base font-semibold outline-none"
+        style={{ color: "var(--theme-text, #f5f0e8)" }}
       />
     </label>
+  );
+}
+
+function StatusMessage({ children }: { children: string }) {
+  const color = "var(--theme-danger, #d85b55)";
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="rounded-[1.05rem] border px-3.5 py-3"
+      style={{
+        borderColor: `color-mix(in srgb, ${color} 34%, transparent)`,
+        background: `color-mix(in srgb, ${color} 9%, transparent)`,
+      }}
+    >
+      <p className="text-sm font-medium leading-5" style={{ color }}>
+        {children}
+      </p>
+    </div>
   );
 }

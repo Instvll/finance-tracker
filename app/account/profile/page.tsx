@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import TopNav from "../../../components/TopNav";
-import { PageShell, Pill } from "../../../components/Layout";
+import { PageShell } from "../../../components/Layout";
 import { supabase } from "../../../lib/supabase/client";
 import {
   getFinanceCloudHandshake,
@@ -13,10 +13,10 @@ import {
 } from "../../../lib/financeCloud";
 import {
   flushFinanceStateRefresh,
-  restoreFinanceStateFromCloud,
   saveFinanceState,
 } from "../../../lib/financeStorage";
 import type { FinanceState } from "../../../lib/financeState";
+import { updateThisDeviceFromSavedAccount } from "../../../lib/financeDeviceUpdate";
 import {
   activateFinanceBackgroundSyncForCurrentUser,
   getFinanceBackgroundSyncStatus,
@@ -469,62 +469,18 @@ export default function ProfileSettingsPage() {
     setSyncError("");
 
     try {
-      const becameIdle = await waitForFinanceBackgroundSyncIdle({
-        timeoutMs: 12000,
-        quietPeriodMs: 500,
+      const result = await updateThisDeviceFromSavedAccount({
+        allowConflict: syncComparison === "conflict",
       });
 
-      if (!becameIdle) {
-        throw new Error(
-          "This device is still finishing a save. Wait a moment, then try updating again.",
-        );
-      }
-
-      const localState = await refreshLocalFinanceState();
-      const currentHandshake = await getFinanceCloudHandshake(localState);
-
-      setCloudFinanceState(currentHandshake.cloudState);
-      setSyncComparison(currentHandshake.comparison);
-
-      if (
-        currentHandshake.comparison !== "cloud-only" &&
-        currentHandshake.comparison !== "cloud-newer" &&
-        currentHandshake.comparison !== "conflict"
-      ) {
-        throw new Error(
-          "The device or saved account changed before the update. Check again before continuing.",
-        );
-      }
-
-      if (!currentHandshake.cloudState) {
-        throw new Error(
-          "No verified cloud finance state is available to restore.",
-        );
-      }
-
-      const restoredResult = restoreFinanceStateFromCloud(
-        currentHandshake.cloudState,
-      );
-
-      const verifiedHandshake = await getFinanceCloudHandshake(
-        restoredResult.state,
-      );
-
-      setLocalFinanceState(restoredResult.state);
-      setCloudFinanceState(verifiedHandshake.cloudState);
-      setSyncComparison(verifiedHandshake.comparison);
-
-      if (verifiedHandshake.comparison !== "in-sync") {
-        throw new Error(
-          "The cloud data was saved locally, but the final sync verification did not complete. Your pre-restore rollback snapshot is still available.",
-        );
-      }
-
-      const backgroundSyncActivated =
-        await enableVerifiedBackgroundSync();
+      setLocalFinanceState(result.handshake.localState);
+      setCloudFinanceState(result.handshake.cloudState);
+      setSyncComparison(result.handshake.comparison);
+      setIsBackgroundSyncActive(result.backgroundSyncActive);
+      setBackgroundSyncStatus(getFinanceBackgroundSyncStatus());
 
       setSyncMessage(
-        backgroundSyncActivated
+        result.backgroundSyncActive
           ? "This device is up to date. New changes will upload automatically."
           : "This device was updated, but automatic saving could not be enabled.",
       );
@@ -564,14 +520,6 @@ export default function ProfileSettingsPage() {
     isAutomaticCheckRunning ||
     isUploadingState ||
     isRestoringState;
-
-  const syncStatusLabel = isCheckingCloud || isAutomaticCheckRunning
-    ? "Checking"
-    : isUploadingState
-      ? "Uploading"
-      : isRestoringState
-        ? "Restoring"
-        : getSyncComparisonLabel(syncComparison);
 
   const canUploadLocalState =
     isSignedIn &&
@@ -614,201 +562,100 @@ export default function ProfileSettingsPage() {
     automaticUpdateStatus,
   );
 
-  const hasPrimarySyncAction =
-    canUploadLocalState ||
+  const consumerSyncTitle = getConsumerSyncTitle(
+    isSignedIn,
+    syncComparison,
+    backgroundSyncStatus,
+    automaticUpdateStatus,
+    isCheckingCloud || isAutomaticCheckRunning,
+    isUploadingState,
+    isRestoringState,
+  );
+
+  const consumerSyncPill = getConsumerSyncPillLabel(
+    isSignedIn,
+    syncComparison,
+    backgroundSyncStatus,
+    automaticUpdateStatus,
+    isCheckingCloud || isAutomaticCheckRunning,
+    isUploadingState,
+    isRestoringState,
+  );
+
+  const automaticSavingTitle = getAutomaticSavingTitle(
+    isSignedIn,
+    isBackgroundSyncActive,
+    backgroundSyncStatus,
+  );
+
+  const automaticSavingDetail = getAutomaticSavingDetail(
+    isSignedIn,
+    isBackgroundSyncActive,
+    backgroundSyncStatus,
+  );
+
+  const showSaveNowAction =
+    canUploadLocalState &&
+    (!isBackgroundSyncActive ||
+      backgroundSyncStatus?.status === "error" ||
+      backgroundSyncStatus?.status === "blocked");
+
+  const showUseThisDeviceDataAction =
+    isConflictResolution && canUseThisDeviceData;
+
+  const showAdvancedUseThisDeviceAction =
+    canUseThisDeviceData && !isConflictResolution;
+
+  const shouldShowRetryAction =
+    isSignedIn &&
+    !isSyncBusy &&
+    automaticUpdateStatus?.status === "error";
+
+  const hasVisibleSyncActions =
     canRestoreCloudState ||
-    canUseThisDeviceData;
+    showSaveNowAction ||
+    showUseThisDeviceDataAction ||
+    shouldShowRetryAction;
 
   return (
     <PageShell>
       <TopNav />
 
-      <div className="min-h-[70vh]">
+      <main className="min-h-[70vh] pb-3">
         <BackLink />
 
-        <header className="mb-1.5 motion-card">
-          <h1 className="text-[2.15rem] font-bold leading-tight tracking-tight text-[#f5f0e8] sm:text-4xl">
-            Account
+        <header className="motion-card mb-3 px-0.5">
+          <h1
+            className="text-[2.2rem] font-bold leading-[0.98] tracking-[-0.045em] sm:text-[2.5rem]"
+            style={{ color: "var(--theme-text)" }}
+          >
+            Account &amp; Sync
           </h1>
         </header>
 
-        <section className="grid gap-2">
-          <section className="liquid-glass-accent hero-glass-card dashboard-hero motion-card motion-card-delay-1 rounded-[2rem]">
-            <div className="liquid-content dashboard-hero-content relative p-3 sm:p-3.5">
-              <div
-                className="dashboard-hero-glow dashboard-hero-glow-accent"
-                aria-hidden="true"
-              />
-
-              <div
-                className="dashboard-hero-glow dashboard-hero-glow-soft"
-                aria-hidden="true"
-              />
-
-              <div className="dashboard-hero-reflection" aria-hidden="true" />
-
-              <div className="relative flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-2.5 pr-1">
-                  <span className="dashboard-hero-status-dot h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75]" />
-
-                  <p className="min-w-0 text-xs font-semibold uppercase leading-5 tracking-[0.22em] text-[#f5f0e8]">
-                    Account Access
-                  </p>
-                </div>
-
-                <div className="shrink-0">
-                  <Pill>{statusLabel}</Pill>
-                </div>
-              </div>
-
-              <div className="relative mt-2.5">
-                <div className="mb-2 grid h-10 w-10 place-items-center rounded-[1rem] border border-[#c7ad75]/28 bg-[#c7ad75]/12 text-[#c7ad75] shadow-[inset_0_1px_0_rgba(245,240,232,0.10),0_10px_24px_rgba(0,0,0,0.14)]">
-                  <AccountIcon />
-                </div>
-
-                <p
-                  className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-[clamp(1.15rem,5.2vw,1.55rem)] font-bold leading-tight tracking-[-0.035em] text-[#f5f0e8] sm:text-3xl"
-                  aria-live="polite"
-                  title={accountTitle}
+        <section className="grid gap-3">
+          <section
+            id="account-sync"
+            className="motion-card motion-card-delay-1 scroll-mt-24 overflow-hidden rounded-[1.5rem] border"
+            style={{
+              borderColor: "var(--theme-border-default)",
+              background: "var(--theme-surface-sheet)",
+              boxShadow:
+                "inset 0 1px 0 color-mix(in srgb, var(--theme-highlight) 64%, transparent)",
+            }}
+          >
+            <div className="px-5 py-5">
+              <div className="flex min-w-0 items-start gap-3.5">
+                <span
+                  className="grid h-12 w-12 shrink-0 place-items-center rounded-[1.05rem] border"
+                  style={{
+                    borderColor:
+                      "color-mix(in srgb, var(--theme-accent) 30%, var(--theme-border-default))",
+                    background:
+                      "color-mix(in srgb, var(--theme-accent) 10%, var(--theme-surface-control))",
+                    color: "var(--theme-accent)",
+                  }}
                 >
-                  {accountTitle}
-                </p>
-
-                <p className="mt-1 text-sm leading-5 text-stone-300/80">
-                  {accountDescription}
-                </p>
-              </div>
-
-              <div className="relative mt-2.5 overflow-hidden rounded-[1.3rem] border border-[#f5f0e8]/10 bg-[#11100d]/18 shadow-[inset_0_1px_0_rgba(245,240,232,0.045)]">
-                <AccountMetricRow
-                  label="Status"
-                  value={
-                    isLoading
-                      ? "Checking"
-                      : isSignedIn
-                        ? "Signed In"
-                        : "Signed Out"
-                  }
-                />
-
-                <AccountMetricRow
-                  label="Email"
-                  value={
-                    isLoading
-                      ? "Checking"
-                      : isSignedIn
-                        ? isEmailVerified
-                          ? "Verified"
-                          : "Not Verified"
-                        : "Not Connected"
-                  }
-                />
-
-                <AccountMetricRow
-                  label="Member Since"
-                  value={
-                    isLoading ? "Checking" : formatAccountDate(user?.createdAt)
-                  }
-                  last
-                />
-              </div>
-            </div>
-          </section>
-
-          <section className="motion-card motion-card-delay-2">
-            <div className="mb-1.5 px-1">
-              <SectionTitle title="Account Details" />
-            </div>
-
-            <div className="dashboard-surface relative overflow-hidden rounded-[1.55rem] border border-[#f5f0e8]/10 shadow-[inset_0_1px_0_rgba(245,240,232,0.05),0_16px_34px_rgba(0,0,0,0.08)]">
-              <div className="dashboard-surface-glow" aria-hidden="true" />
-
-              <div className="liquid-content relative">
-                <DetailRow
-                  icon={<EmailIcon />}
-                  title="Email Address"
-                  detail={
-                    isLoading
-                      ? "Checking your account"
-                      : user?.email || "No email connected"
-                  }
-                  status={
-                    isLoading
-                      ? "Checking"
-                      : isEmailVerified
-                        ? "Verified"
-                        : isSignedIn
-                          ? "Review"
-                          : "Offline"
-                  }
-                />
-
-                <DetailRow
-                  icon={<SessionIcon />}
-                  title="Current Session"
-                  detail={
-                    isLoading
-                      ? "Confirming this device"
-                      : isSignedIn
-                        ? `Last sign-in ${formatAccountDateTime(
-                            user?.lastSignInAt,
-                          )}`
-                        : "No active account session"
-                  }
-                  status={isSignedIn ? "Active" : "Inactive"}
-                  divided
-                />
-
-                <Link
-                  href="/account/backup"
-                  className="pressable group block border-t border-[#f5f0e8]/8 px-3.5 py-2.5 transition hover:bg-[#f5f0e8]/[0.035] sm:px-4 sm:py-3"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[1rem] border border-[#c7ad75]/22 bg-[#c7ad75]/9 text-[#c7ad75] shadow-[inset_0_1px_0_rgba(245,240,232,0.08)]">
-                      <DataIcon />
-                    </span>
-
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[0.95rem] font-semibold text-[#f5f0e8]">
-                        Backup & Recovery
-                      </p>
-
-                      <p className="mt-0.5 text-xs leading-5 text-stone-500 sm:text-sm">
-                        Export a copy or recover saved data manually.
-                      </p>
-                    </div>
-
-                    <span className="hidden text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500 sm:block">
-                      Manage
-                    </span>
-
-                    <ArrowIcon />
-                  </div>
-                </Link>
-              </div>
-            </div>
-          </section>
-
-          <section className="dashboard-surface motion-card motion-card-delay-3 rounded-[1.55rem] p-2.5">
-            <div className="dashboard-surface-glow" aria-hidden="true" />
-
-            <div className="liquid-content">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <SectionTitle title="Cloud Sync" />
-
-                  <p className="mt-1 text-sm leading-5 text-stone-400">
-                    Keep your saved finance data available across your devices.
-                  </p>
-                </div>
-
-                <div className="shrink-0">
-                  <Pill>{syncStatusLabel}</Pill>
-                </div>
-              </div>
-
-              <div className="mt-2 flex items-start gap-3 rounded-[1.2rem] border border-[#f5f0e8]/8 bg-[#11100d]/18 px-3 py-3">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[1rem] border border-[#9dbdb4]/24 bg-[#9dbdb4]/10 text-[#9dbdb4] shadow-[inset_0_1px_0_rgba(245,240,232,0.06)]">
                   <CloudSyncIcon
                     comparison={syncComparison}
                     isBusy={isSyncBusy}
@@ -816,220 +663,521 @@ export default function ProfileSettingsPage() {
                 </span>
 
                 <div className="min-w-0 flex-1">
-                  <p className="text-[0.95rem] font-semibold text-[#f5f0e8]">
-                    {syncStatusLabel}
-                  </p>
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2
+                        className="text-[1.08rem] font-semibold leading-6 tracking-[-0.02em]"
+                        style={{ color: "var(--theme-text)" }}
+                        aria-live="polite"
+                      >
+                        {consumerSyncTitle}
+                      </h2>
 
-                  <p className="mt-0.5 text-sm leading-5 text-stone-400">
-                    {syncStatusMessage}
-                  </p>
+                      <p
+                        className="mt-1 text-sm leading-5"
+                        style={{ color: "var(--theme-text-tertiary)" }}
+                      >
+                        {syncStatusMessage}
+                      </p>
+                    </div>
 
-                  <p className="mt-1 text-xs leading-5 text-stone-500">
-                    {syncComparison === null
-                      ? "leftovr checks automatically when this device becomes active."
-                      : `Last checked ${formatSyncTimestamp(
-                          automaticUpdateStatus?.updatedAt ??
-                            cloudFinanceState?.updatedAt ??
-                            localFinanceState?.updatedAt,
-                        )}`}
+                    <StatusBadge>{consumerSyncPill}</StatusBadge>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                className="my-4 h-px"
+                style={{ background: "var(--theme-divider)" }}
+                aria-hidden="true"
+              />
+
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{
+                        background:
+                          isBackgroundSyncActive &&
+                          backgroundSyncStatus?.status !== "error" &&
+                          backgroundSyncStatus?.status !== "blocked"
+                            ? "var(--theme-accent)"
+                            : "var(--theme-text-tertiary)",
+                        boxShadow:
+                          isBackgroundSyncActive &&
+                          backgroundSyncStatus?.status !== "error" &&
+                          backgroundSyncStatus?.status !== "blocked"
+                            ? "0 0 12px color-mix(in srgb, var(--theme-accent) 26%, transparent)"
+                            : "none",
+                      }}
+                      aria-hidden="true"
+                    />
+
+                    <p
+                      className="text-sm font-semibold"
+                      style={{ color: "var(--theme-text)" }}
+                    >
+                      {automaticSavingTitle}
+                    </p>
+                  </div>
+
+                  <p
+                    className="mt-1 pl-4 text-xs leading-5"
+                    style={{ color: "var(--theme-text-tertiary)" }}
+                  >
+                    {automaticSavingDetail}
+                  </p>
+                </div>
+
+                <span
+                  className="shrink-0 text-xs font-semibold"
+                  style={{ color: "var(--theme-text-secondary)" }}
+                >
+                  {backgroundUploadLabel}
+                </span>
+              </div>
+
+              {hasVisibleSyncActions ? (
+                <div
+                  className={`mt-4 grid gap-2 ${
+                    [
+                      canRestoreCloudState,
+                      showSaveNowAction,
+                      showUseThisDeviceDataAction,
+                      shouldShowRetryAction,
+                    ].filter(Boolean).length > 1
+                      ? "sm:grid-cols-2"
+                      : ""
+                  }`}
+                >
+                  {canRestoreCloudState ? (
+                    <PrimaryAction
+                      onClick={requestCloudFinanceRestore}
+                      disabled={isSyncBusy}
+                    >
+                      {isRestoringState
+                        ? "Updating This Device…"
+                        : isConflictResolution
+                          ? "Use Saved Account Data"
+                          : "Update This Device"}
+                    </PrimaryAction>
+                  ) : null}
+
+                  {showUseThisDeviceDataAction ? (
+                    <SecondaryAction
+                      onClick={requestLocalFinanceRecovery}
+                      disabled={isSyncBusy}
+                    >
+                      Keep This Device&apos;s Data
+                    </SecondaryAction>
+                  ) : null}
+
+                  {showSaveNowAction ? (
+                    <PrimaryAction
+                      onClick={uploadLocalFinanceState}
+                      disabled={isSyncBusy}
+                    >
+                      {isUploadingState ? "Saving…" : "Save Now"}
+                    </PrimaryAction>
+                  ) : null}
+
+                  {shouldShowRetryAction ? (
+                    <SecondaryAction
+                      onClick={checkCloudFinanceState}
+                      disabled={!isSignedIn || isSyncBusy}
+                    >
+                      Try Again
+                    </SecondaryAction>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {isConfirmingLocalRecovery && canUseThisDeviceData ? (
+                <ConfirmationPanel
+                  title="Keep the data on this device?"
+                  detail="Choose this only when the information shown here is the copy you want on your other devices."
+                  cancelLabel="Not Now"
+                  confirmLabel="Keep This Device's Data"
+                  onCancel={cancelLocalFinanceRecovery}
+                  onConfirm={recoverCloudFromThisDevice}
+                />
+              ) : null}
+
+              {isConfirmingCloudRestore && canRestoreCloudState ? (
+                <ConfirmationPanel
+                  title={
+                    isConflictResolution
+                      ? "Use the data saved to your account?"
+                      : "Update this device?"
+                  }
+                  detail={
+                    isConflictResolution
+                      ? "The saved account copy will replace what is currently shown here. leftovr creates a recovery copy first."
+                      : "Your latest saved information will replace the older copy on this device. leftovr creates a recovery copy first."
+                  }
+                  cancelLabel="Not Now"
+                  confirmLabel={
+                    isConflictResolution
+                      ? "Use Saved Account Data"
+                      : "Update This Device"
+                  }
+                  onCancel={cancelCloudFinanceRestore}
+                  onConfirm={restoreCloudFinanceState}
+                />
+              ) : null}
+
+              {syncMessage ? (
+                <Notice tone="positive">{syncMessage}</Notice>
+              ) : null}
+
+              {syncError ? (
+                <Notice tone="danger">{syncError}</Notice>
+              ) : null}
+            </div>
+          </section>
+
+          <section
+            className="motion-card motion-card-delay-2 overflow-hidden rounded-[1.5rem] border"
+            style={{
+              borderColor: "var(--theme-border-default)",
+              background: "var(--theme-surface-sheet)",
+              boxShadow:
+                "inset 0 1px 0 color-mix(in srgb, var(--theme-highlight) 64%, transparent)",
+            }}
+          >
+            <div className="flex min-w-0 items-start gap-3.5 px-5 py-5">
+              <span
+                className="grid h-12 w-12 shrink-0 place-items-center rounded-[1.05rem] border"
+                style={{
+                  borderColor:
+                    "color-mix(in srgb, var(--theme-accent) 24%, var(--theme-border-default))",
+                  background:
+                    "color-mix(in srgb, var(--theme-accent) 8%, var(--theme-surface-control))",
+                  color: "var(--theme-accent)",
+                }}
+              >
+                <AccountIcon />
+              </span>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2
+                      className="text-[1.02rem] font-semibold"
+                      style={{ color: "var(--theme-text)" }}
+                    >
+                      Your account
+                    </h2>
+
+                    <p
+                      className="mt-1 break-all text-sm leading-5"
+                      style={{ color: "var(--theme-text-secondary)" }}
+                      aria-live="polite"
+                    >
+                      {accountTitle}
+                    </p>
+                  </div>
+
+                  <StatusBadge>{statusLabel}</StatusBadge>
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="mx-5 h-px"
+              style={{ background: "var(--theme-divider)" }}
+              aria-hidden="true"
+            />
+
+            <InfoRow
+              label="Email"
+              value={
+                isLoading
+                  ? "Checking"
+                  : isEmailVerified
+                    ? "Verified"
+                    : isSignedIn
+                      ? "Review"
+                      : "Not connected"
+              }
+            />
+
+            <InfoRow
+              label="This device"
+              value={isSignedIn ? "Connected" : "Not connected"}
+            />
+
+            <div
+              className="mx-5 h-px"
+              style={{ background: "var(--theme-divider)" }}
+              aria-hidden="true"
+            />
+
+            <div className="px-5 py-4">
+              {isSignedIn ? (
+                <button
+                  type="button"
+                  onClick={signOut}
+                  className="pressable inline-flex items-center gap-2 text-sm font-semibold"
+                  style={{ color: "#dc2626" }}
+                >
+                  <ExitIcon />
+                  Sign out
+                </button>
+              ) : (
+                <Link
+                  href="/login"
+                  className="pressable inline-flex items-center gap-2 text-sm font-semibold"
+                  style={{ color: "var(--theme-accent)" }}
+                >
+                  Sign in
+                  <ChevronIcon />
+                </Link>
+              )}
+            </div>
+          </section>
+
+          <details
+            id="advanced-sync"
+            className="motion-card motion-card-delay-3 scroll-mt-24 overflow-hidden rounded-[1.5rem] border"
+            style={{
+              borderColor: "var(--theme-border-default)",
+              background: "var(--theme-surface-sheet)",
+              boxShadow:
+                "inset 0 1px 0 color-mix(in srgb, var(--theme-highlight) 64%, transparent)",
+            }}
+          >
+            <summary className="group cursor-pointer list-none px-5 py-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <h2
+                    className="text-[0.98rem] font-semibold"
+                    style={{ color: "var(--theme-text)" }}
+                  >
+                    Advanced sync
+                  </h2>
+
+                  <p
+                    className="mt-1 text-xs leading-5"
+                    style={{ color: "var(--theme-text-tertiary)" }}
+                  >
+                    Check devices, updates, and recovery options.
+                  </p>
+                </div>
+
+                <span
+                  className="transition-transform duration-200 group-open:rotate-90"
+                  style={{ color: "var(--theme-text-tertiary)" }}
+                >
+                  <ChevronIcon />
+                </span>
+              </div>
+            </summary>
+
+            <div
+              className="h-px"
+              style={{ background: "var(--theme-divider)" }}
+              aria-hidden="true"
+            />
+
+            <div className="px-5 py-5">
+              <div className="flex items-start gap-3.5">
+                <span
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-[1rem] border"
+                  style={{
+                    borderColor:
+                      "color-mix(in srgb, var(--theme-accent) 24%, var(--theme-border-default))",
+                    background:
+                      "color-mix(in srgb, var(--theme-accent) 8%, var(--theme-surface-control))",
+                    color: "var(--theme-accent)",
+                  }}
+                >
+                  <CloudSyncIcon
+                    comparison={syncComparison}
+                    isBusy={isSyncBusy}
+                  />
+                </span>
+
+                <div className="min-w-0">
+                  <h3
+                    className="text-sm font-semibold"
+                    style={{ color: "var(--theme-text)" }}
+                  >
+                    Your saved copies
+                  </h3>
+
+                  <p
+                    className="mt-1 text-xs leading-5"
+                    style={{ color: "var(--theme-text-tertiary)" }}
+                  >
+                    leftovr compares this device with your account before
+                    replacing anything.
                   </p>
                 </div>
               </div>
 
               <div
-                className={`mt-2 grid gap-2 ${
-                  hasPrimarySyncAction
-                    ? "sm:grid-cols-2"
-                    : ""
-                }`}
+                className="mt-4 overflow-hidden rounded-[1.1rem] border"
+                style={{
+                  borderColor: "var(--theme-border-default)",
+                  background: "var(--theme-surface-control)",
+                }}
               >
-                {canUploadLocalState ? (
-                  <button
-                    type="button"
-                    onClick={uploadLocalFinanceState}
-                    disabled={isSyncBusy}
-                    className="pressable rounded-full border border-[#c7ad75]/38 bg-[#c7ad75]/16 px-4 py-2.5 text-sm font-semibold text-[#f5f0e8] transition hover:border-[#c7ad75]/50 hover:bg-[#c7ad75]/22 disabled:cursor-not-allowed disabled:opacity-45"
-                  >
-                    {isUploadingState
-                      ? "Saving to Account…"
-                      : "Save This Device to My Account"}
-                  </button>
-                ) : null}
+                <AdvancedStatusRow
+                  label="This device"
+                  value={getDeviceCopyLabel(
+                    syncComparison,
+                    localFinanceState,
+                  )}
+                  detail={getDeviceCopyDetail(syncComparison)}
+                />
 
-                {canUseThisDeviceData ? (
-                  <button
-                    type="button"
-                    onClick={requestLocalFinanceRecovery}
-                    disabled={isSyncBusy}
-                    className="pressable rounded-full border border-[#c7ad75]/38 bg-[#c7ad75]/16 px-4 py-2.5 text-sm font-semibold text-[#f5f0e8] transition hover:border-[#c7ad75]/50 hover:bg-[#c7ad75]/22 disabled:cursor-not-allowed disabled:opacity-45"
-                  >
-                    Use This Device Data
-                  </button>
-                ) : null}
+                <div
+                  className="mx-4 h-px"
+                  style={{ background: "var(--theme-divider)" }}
+                  aria-hidden="true"
+                />
 
-                {canRestoreCloudState ? (
-                  <button
-                    type="button"
-                    onClick={requestCloudFinanceRestore}
-                    disabled={isSyncBusy}
-                    className="pressable rounded-full border border-[#9dbdb4]/34 bg-[#9dbdb4]/12 px-4 py-2.5 text-sm font-semibold text-[#f5f0e8] transition hover:border-[#9dbdb4]/48 hover:bg-[#9dbdb4]/18 disabled:cursor-not-allowed disabled:opacity-45"
-                  >
-                    {isRestoringState
-                      ? "Updating This Device…"
-                      : isConflictResolution
-                        ? "Use Saved Account Data"
-                        : "Update This Device"}
-                  </button>
-                ) : null}
+                <AdvancedStatusRow
+                  label="Saved account"
+                  value={getSavedCopyLabel(
+                    syncComparison,
+                    cloudFinanceState,
+                  )}
+                  detail={getSavedCopyDetail(syncComparison)}
+                />
 
-                <button
-                  type="button"
-                  onClick={checkCloudFinanceState}
-                  disabled={!isSignedIn || isSyncBusy}
-                  className="pressable rounded-full border border-[#f5f0e8]/12 bg-[#f5f0e8]/[0.055] px-4 py-2.5 text-sm font-semibold text-[#f5f0e8] transition hover:bg-[#f5f0e8]/[0.085] disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  {isCheckingCloud
-                    ? "Checking…"
-                    : syncComparison === null
-                      ? "Check for Updates"
-                      : "Check Again"}
-                </button>
+                <div
+                  className="mx-4 h-px"
+                  style={{ background: "var(--theme-divider)" }}
+                  aria-hidden="true"
+                />
+
+                <AdvancedStatusRow
+                  label="Automatic saving"
+                  value={backgroundUploadLabel}
+                  detail={automaticSavingDetail}
+                />
               </div>
 
-              {isConfirmingLocalRecovery &&
-              canUseThisDeviceData ? (
-                <div
-                  role="dialog"
-                  aria-label="Confirm saved account replacement"
-                  className="mt-2 rounded-[1.05rem] border border-[#c7ad75]/28 bg-[#c7ad75]/[0.075] px-3 py-2.5"
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <SecondaryAction
+                  onClick={checkCloudFinanceState}
+                  disabled={!isSignedIn || isSyncBusy}
                 >
-                  <p className="text-sm font-semibold text-[#f5f0e8]">
-                    Use this device as the saved account source?
-                  </p>
+                  {isCheckingCloud ? "Checking…" : "Check for Updates"}
+                </SecondaryAction>
 
-                  <p className="mt-1 text-xs leading-5 text-stone-400">
-                    This will keep the finance data currently shown on this
-                    device, create a newer verified version, and replace the
-                    saved account copy. Use this only on the device with the
-                    correct data.
-                  </p>
+                {canUploadLocalState ? (
+                  <SecondaryAction
+                    onClick={uploadLocalFinanceState}
+                    disabled={isSyncBusy}
+                  >
+                    Save This Device Now
+                  </SecondaryAction>
+                ) : null}
 
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={cancelLocalFinanceRecovery}
-                      className="pressable rounded-full border border-[#f5f0e8]/12 bg-[#f5f0e8]/[0.045] px-3 py-2 text-xs font-semibold text-stone-300 transition hover:bg-[#f5f0e8]/[0.075]"
+                {showAdvancedUseThisDeviceAction ? (
+                  <div className="sm:col-span-2">
+                    <SecondaryAction
+                      onClick={requestLocalFinanceRecovery}
+                      disabled={isSyncBusy}
                     >
-                      Not Now
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={recoverCloudFromThisDevice}
-                      className="pressable rounded-full border border-[#c7ad75]/42 bg-[#c7ad75]/18 px-3 py-2 text-xs font-semibold text-[#f5f0e8] transition hover:border-[#c7ad75]/58 hover:bg-[#c7ad75]/24"
-                    >
-                      Use This Device Data
-                    </button>
+                      Keep This Device&apos;s Data Instead
+                    </SecondaryAction>
                   </div>
-                </div>
-              ) : null}
+                ) : null}
+              </div>
 
-              {isConfirmingCloudRestore && canRestoreCloudState ? (
-                <div
-                  role="dialog"
-                  aria-label="Confirm device update"
-                  className="mt-2 rounded-[1.05rem] border border-[#9dbdb4]/28 bg-[#9dbdb4]/[0.075] px-3 py-2.5"
-                >
-                  <p className="text-sm font-semibold text-[#f5f0e8]">
-                    {isConflictResolution
-                      ? "Use your saved account data on this device?"
-                      : "Update this device with your saved account data?"}
-                  </p>
+              <details
+                className="mt-4 overflow-hidden rounded-[1.1rem] border"
+                style={{
+                  borderColor: "var(--theme-border-default)",
+                  background:
+                    "color-mix(in srgb, var(--theme-surface-control) 72%, transparent)",
+                }}
+              >
+                <summary className="group cursor-pointer list-none px-4 py-3.5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p
+                        className="text-sm font-semibold"
+                        style={{ color: "var(--theme-text-secondary)" }}
+                      >
+                        Technical details
+                      </p>
 
-                  <p className="mt-1 text-xs leading-5 text-stone-400">
-                    {isConflictResolution
-                      ? "This device and your saved account contain different changes. leftovr will create a recovery copy first, then replace this device with the saved account version."
-                      : "leftovr will save a recovery copy first, then bring the newer account data onto this device."}
-                  </p>
+                      <p
+                        className="mt-0.5 text-xs leading-5"
+                        style={{ color: "var(--theme-text-tertiary)" }}
+                      >
+                        Versions and timestamps for troubleshooting.
+                      </p>
+                    </div>
 
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={cancelCloudFinanceRestore}
-                      className="pressable rounded-full border border-[#f5f0e8]/12 bg-[#f5f0e8]/[0.045] px-3 py-2 text-xs font-semibold text-stone-300 transition hover:bg-[#f5f0e8]/[0.075]"
+                    <span
+                      className="transition-transform duration-200 group-open:rotate-90"
+                      style={{ color: "var(--theme-text-tertiary)" }}
                     >
-                      Not Now
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={restoreCloudFinanceState}
-                      className="pressable rounded-full border border-[#9dbdb4]/42 bg-[#9dbdb4]/18 px-3 py-2 text-xs font-semibold text-[#f5f0e8] transition hover:border-[#9dbdb4]/58 hover:bg-[#9dbdb4]/24"
-                    >
-                      {isConflictResolution
-                        ? "Use Saved Account Data"
-                        : "Update This Device"}
-                    </button>
+                      <ChevronIcon />
+                    </span>
                   </div>
-                </div>
-              ) : null}
-
-              {syncMessage ? (
-                <div
-                  role="status"
-                  aria-live="polite"
-                  className="mt-2 rounded-[1.05rem] border border-[#c7ad75]/24 bg-[#c7ad75]/9 px-3 py-2.5"
-                >
-                  <p className="text-sm leading-5 text-stone-300">
-                    {syncMessage}
-                  </p>
-                </div>
-              ) : null}
-
-              {syncError ? (
-                <div
-                  role="alert"
-                  className="mt-2 rounded-[1.05rem] border border-[#dc2626]/35 bg-[#dc2626]/10 px-3 py-2.5"
-                >
-                  <p className="text-sm leading-5 text-[#dc2626]">
-                    {syncError}
-                  </p>
-                </div>
-              ) : null}
-
-              <details className="mt-2 rounded-[1.05rem] border border-[#f5f0e8]/8 bg-[#11100d]/14">
-                <summary className="cursor-pointer px-3 py-2.5 text-xs font-semibold text-stone-500 transition hover:text-stone-300">
-                  Advanced sync details
                 </summary>
 
-                <div className="border-t border-[#f5f0e8]/8">
-                  <SyncMetricRow
-                    label="This Device"
-                    value={formatStateRevision(localFinanceState)}
-                  />
+                <div
+                  className="h-px"
+                  style={{ background: "var(--theme-divider)" }}
+                  aria-hidden="true"
+                />
 
-                  <SyncMetricRow
-                    label="Saved Account"
-                    value={
-                      syncComparison === null
-                        ? "Not Checked"
-                        : formatStateRevision(cloudFinanceState)
-                    }
-                  />
+                <InfoRow
+                  label="This device version"
+                  value={formatStateRevision(localFinanceState)}
+                />
 
-                  <SyncMetricRow
-                    label="Status"
-                    value={getSyncComparisonLabel(syncComparison)}
-                  />
+                <InfoRow
+                  label="Saved account version"
+                  value={
+                    syncComparison === null
+                      ? "Not checked"
+                      : formatStateRevision(cloudFinanceState)
+                  }
+                />
 
-                  <SyncMetricRow
-                    label="Automatic Saves"
-                    value={backgroundUploadLabel}
-                    last
-                  />
-                </div>
+                <InfoRow
+                  label="Comparison"
+                  value={getSyncComparisonLabel(syncComparison)}
+                />
 
-                <div className="grid gap-1 border-t border-[#f5f0e8]/8 px-3 py-2.5 text-xs text-stone-600 sm:grid-cols-2">
+                <InfoRow
+                  label="Member since"
+                  value={
+                    isLoading
+                      ? "Checking"
+                      : formatAccountDate(user?.createdAt)
+                  }
+                />
+
+                <InfoRow
+                  label="Last sign-in"
+                  value={
+                    isLoading
+                      ? "Checking"
+                      : formatAccountDateTime(user?.lastSignInAt)
+                  }
+                />
+
+                <div
+                  className="mx-4 h-px"
+                  style={{ background: "var(--theme-divider)" }}
+                  aria-hidden="true"
+                />
+
+                <div
+                  className="grid gap-1 px-4 py-3.5 text-xs leading-5 sm:grid-cols-2"
+                  style={{ color: "var(--theme-text-tertiary)" }}
+                >
                   <p>
                     Device updated{" "}
                     {formatSyncTimestamp(localFinanceState?.updatedAt)}
@@ -1039,61 +1187,23 @@ export default function ProfileSettingsPage() {
                     Account updated{" "}
                     {syncComparison === null
                       ? "not checked"
-                      : formatSyncTimestamp(
-                          cloudFinanceState?.updatedAt,
-                        )}
+                      : formatSyncTimestamp(cloudFinanceState?.updatedAt)}
                   </p>
                 </div>
 
                 {backgroundSyncStatus && isBackgroundSyncActive ? (
-                  <p className="border-t border-[#f5f0e8]/8 px-3 py-2.5 text-xs leading-5 text-stone-600">
+                  <p
+                    className="px-4 pb-3.5 text-xs leading-5"
+                    style={{ color: "var(--theme-text-tertiary)" }}
+                  >
                     {backgroundSyncStatus.message}
                   </p>
                 ) : null}
               </details>
             </div>
-          </section>
-
-          <section className="dashboard-surface motion-card motion-card-delay-3 rounded-[1.55rem] p-2.5">
-            <div className="dashboard-surface-glow" aria-hidden="true" />
-
-            <div className="liquid-content">
-              <div className="mb-2">
-                <SectionTitle title="Account Actions" />
-
-                <p className="mt-1 text-sm leading-5 text-stone-400">
-                  Manage access to leftovr on this device.
-                </p>
-              </div>
-
-              <div className="rounded-[1.1rem] border border-[#f5f0e8]/8 bg-[#11100d]/18 px-3 py-2">
-                <p className="text-sm leading-5 text-stone-400">
-                  {isSignedIn
-                    ? "Signing out will not remove financial data stored on this device."
-                    : "Your local financial data remains available while signed out."}
-                </p>
-              </div>
-
-              {isSignedIn ? (
-                <button
-                  type="button"
-                  onClick={signOut}
-                  className="pressable mt-2 w-full rounded-full border border-[#dc2626]/52 bg-[#dc2626]/14 px-4 py-2 text-center text-sm font-bold text-[#dc2626] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_10px_24px_rgba(127,29,29,0.10)] transition hover:border-[#dc2626]/70 hover:bg-[#dc2626]/20"
-                >
-                  Sign Out
-                </button>
-              ) : (
-                <Link
-                  href="/login"
-                  className="pressable mt-2 block w-full rounded-full border border-[#c7ad75]/30 bg-[#c7ad75]/14 px-4 py-2 text-center text-sm font-bold text-[#f5f0e8] shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_10px_24px_rgba(17,16,13,0.12)] transition hover:border-[#c7ad75]/45 hover:bg-[#c7ad75]/20"
-                >
-                  Sign In
-                </Link>
-              )}
-            </div>
-          </section>
+          </details>
         </section>
-      </div>
+      </main>
     </PageShell>
   );
 }
@@ -1121,80 +1231,6 @@ function formatAccountDateTime(value?: string) {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(value));
-}
-
-function BackLink() {
-  return (
-    <Link
-      href="/account"
-      className="motion-card mb-2 inline-flex items-center gap-2 text-sm font-semibold text-stone-400 transition hover:text-[#c7ad75]"
-    >
-      <span aria-hidden="true">←</span>
-      Settings
-    </Link>
-  );
-}
-
-function SectionTitle({ title }: { title: string }) {
-  return (
-    <div className="flex items-center gap-2.5">
-      <span className="dashboard-section-dot h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75]" />
-
-      <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
-        {title}
-      </h2>
-    </div>
-  );
-}
-
-function AccountMetricRow({
-  label,
-  value,
-  last = false,
-}: {
-  label: string;
-  value: string;
-  last?: boolean;
-}) {
-  return (
-    <div
-      className={`flex items-center justify-between gap-4 px-3.5 py-2.5 ${
-        last ? "" : "border-b border-[#f5f0e8]/8"
-      }`}
-    >
-      <p className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#c7ad75]/75">
-        {label}
-      </p>
-
-      <p className="shrink-0 text-right text-base font-bold tracking-tight text-[#f5f0e8]">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function SyncMetricRow({
-  label,
-  value,
-  last = false,
-}: {
-  label: string;
-  value: string;
-  last?: boolean;
-}) {
-  return (
-    <div
-      className={`flex items-center justify-between gap-4 px-3.5 py-2.5 ${
-        last ? "" : "border-b border-[#f5f0e8]/8"
-      }`}
-    >
-      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
-        {label}
-      </p>
-
-      <p className="shrink-0 text-sm font-semibold text-[#f5f0e8]">{value}</p>
-    </div>
-  );
 }
 
 function formatStateRevision(state: FinanceState | null) {
@@ -1266,6 +1302,104 @@ function getSyncComparisonLabel(comparison: FinanceStateComparison | null) {
   }
 }
 
+function getDeviceCopyLabel(
+  comparison: FinanceStateComparison | null,
+  state: FinanceState | null,
+) {
+  if (!state) {
+    return comparison === "cloud-only" ? "No local copy" : "Ready";
+  }
+
+  switch (comparison) {
+    case "local-only":
+    case "local-newer":
+      return "Newer changes";
+    case "cloud-only":
+    case "cloud-newer":
+      return "Update available";
+    case "in-sync":
+      return "Up to date";
+    case "conflict":
+      return "Review needed";
+    case "no-local-or-cloud-state":
+      return "Ready";
+    default:
+      return "Not checked";
+  }
+}
+
+function getDeviceCopyDetail(
+  comparison: FinanceStateComparison | null,
+) {
+  switch (comparison) {
+    case "local-only":
+    case "local-newer":
+      return "This device has changes that still need to finish saving.";
+    case "cloud-only":
+    case "cloud-newer":
+      return "A newer saved copy is available for this device.";
+    case "in-sync":
+      return "This device matches the copy saved to your account.";
+    case "conflict":
+      return "Different changes were found here and in your account.";
+    case "no-local-or-cloud-state":
+      return "leftovr is ready for your first saved update.";
+    default:
+      return "Run a check to compare this device with your account.";
+  }
+}
+
+function getSavedCopyLabel(
+  comparison: FinanceStateComparison | null,
+  state: FinanceState | null,
+) {
+  if (comparison === null) {
+    return "Not checked";
+  }
+
+  if (!state) {
+    return "No saved copy";
+  }
+
+  switch (comparison) {
+    case "local-only":
+    case "local-newer":
+      return "Waiting to update";
+    case "cloud-only":
+    case "cloud-newer":
+      return "Newer copy";
+    case "in-sync":
+      return "Up to date";
+    case "conflict":
+      return "Review needed";
+    case "no-local-or-cloud-state":
+      return "Ready";
+    default:
+      return "Not checked";
+  }
+}
+
+function getSavedCopyDetail(
+  comparison: FinanceStateComparison | null,
+) {
+  switch (comparison) {
+    case "local-only":
+    case "local-newer":
+      return "Your account will update after this device finishes saving.";
+    case "cloud-only":
+    case "cloud-newer":
+      return "Your account has newer information ready for this device.";
+    case "in-sync":
+      return "Your saved account and this device match.";
+    case "conflict":
+      return "Nothing was replaced automatically.";
+    case "no-local-or-cloud-state":
+      return "No finance data has been saved yet.";
+    default:
+      return "Run a check to see what is saved to your account.";
+  }
+}
+
 function getSyncCheckMessage(comparison: FinanceStateComparison) {
   switch (comparison) {
     case "local-only":
@@ -1294,62 +1428,244 @@ function getSyncStatusMessage(
   automaticUpdateStatus: FinanceUpdateCheckStatus | null,
 ) {
   if (!isSignedIn) {
-    return "Sign in to protect your data and use it on your other devices.";
+    return "Sign in to keep your finance data available on your other devices.";
   }
 
   if (isChecking) {
-    return "Checking for the latest saved data.";
+    return "Making sure this device has your latest saved information.";
   }
 
   if (isUploading) {
-    return "Saving this device to your account.";
+    return "Saving this device’s latest changes to your account.";
   }
 
   if (isRestoring) {
-    return "Bringing your latest saved data onto this device.";
+    return "Bringing your latest saved information onto this device.";
   }
 
   switch (automaticUpdateStatus?.status) {
     case "offline":
-      return "Your data remains available here. leftovr will check again when the internet returns.";
+      return "Your information is safe here. leftovr will reconnect automatically.";
     case "deferred":
-      return "leftovr is waiting for this device to finish saving before checking again.";
+      return "leftovr is finishing a save before checking again.";
     case "error":
-      return "leftovr could not check for updates. Your data was not changed.";
+      return "leftovr could not check your account. Your information was not changed.";
     default:
       break;
   }
 
   switch (backgroundStatus?.status) {
     case "uploading":
-      return "Saving your latest changes.";
+      return "Your latest changes are being saved to your account.";
     case "offline":
-      return "Your changes are safe here and will save when the internet returns.";
+      return "Your changes are safe on this device and will save when the internet returns.";
     case "blocked":
-      return "Changes were found in more than one place. Nothing was replaced.";
+      return "Changes were found in two places. Nothing was replaced.";
     case "error":
-      return "Your changes are safe on this device, but cloud saving needs another try.";
+      return "Your changes are safe on this device, but account saving needs another try.";
     default:
       break;
   }
 
   switch (comparison) {
     case "no-local-or-cloud-state":
-      return "Sync is ready. Your next save can be protected by your account.";
+      return "Account saving is ready for your first finance update.";
     case "local-only":
     case "local-newer":
-      return "This device has newer changes. Save them to your account before switching devices.";
+      return "Your latest changes are safe here and are being saved to your account.";
     case "cloud-only":
     case "cloud-newer":
-      return "A newer saved copy is ready. Update this device before making changes.";
+      return "Your latest saved information is ready to bring onto this device.";
     case "in-sync":
       return isBackgroundSyncActive
-        ? "You’re all set. New changes upload automatically after you press Save."
-        : "Your data matches. Check again to finish turning on automatic saving.";
+        ? "New changes save to your account automatically."
+        : "Your information matches. leftovr is finishing automatic saving setup.";
     case "conflict":
-      return "Changes were found in two places. Nothing has been replaced.";
+      return "Different changes were found on this device and in your account. Nothing was replaced.";
     default:
-      return "Check for updates before using leftovr on this device.";
+      return "leftovr is checking your saved information.";
+  }
+}
+
+function getConsumerSyncTitle(
+  isSignedIn: boolean,
+  comparison: FinanceStateComparison | null,
+  backgroundStatus: FinanceBackgroundSyncStatus | null,
+  automaticUpdateStatus: FinanceUpdateCheckStatus | null,
+  isChecking: boolean,
+  isUploading: boolean,
+  isRestoring: boolean,
+) {
+  if (!isSignedIn) {
+    return "Sign in to use account sync";
+  }
+
+  if (isChecking) {
+    return "Checking your saved data";
+  }
+
+  if (isUploading) {
+    return "Saving your latest changes";
+  }
+
+  if (isRestoring) {
+    return "Updating this device";
+  }
+
+  if (
+    automaticUpdateStatus?.status === "offline" ||
+    backgroundStatus?.status === "offline"
+  ) {
+    return "You’re currently offline";
+  }
+
+  if (
+    automaticUpdateStatus?.status === "error" ||
+    backgroundStatus?.status === "error"
+  ) {
+    return "Account saving needs another try";
+  }
+
+  if (backgroundStatus?.status === "blocked") {
+    return "Your data needs attention";
+  }
+
+  switch (comparison) {
+    case "no-local-or-cloud-state":
+      return "Account sync is ready";
+    case "local-only":
+    case "local-newer":
+      return "Saving your latest changes";
+    case "cloud-only":
+    case "cloud-newer":
+      return "An update is ready";
+    case "in-sync":
+      return "Everything is saved";
+    case "conflict":
+      return "Choose which data to keep";
+    default:
+      return "Checking your saved data";
+  }
+}
+
+function getConsumerSyncPillLabel(
+  isSignedIn: boolean,
+  comparison: FinanceStateComparison | null,
+  backgroundStatus: FinanceBackgroundSyncStatus | null,
+  automaticUpdateStatus: FinanceUpdateCheckStatus | null,
+  isChecking: boolean,
+  isUploading: boolean,
+  isRestoring: boolean,
+) {
+  if (!isSignedIn) {
+    return "Signed Out";
+  }
+
+  if (isChecking) {
+    return "Checking";
+  }
+
+  if (isUploading || backgroundStatus?.status === "uploading") {
+    return "Saving";
+  }
+
+  if (isRestoring) {
+    return "Updating";
+  }
+
+  if (
+    automaticUpdateStatus?.status === "offline" ||
+    backgroundStatus?.status === "offline"
+  ) {
+    return "Offline";
+  }
+
+  if (
+    automaticUpdateStatus?.status === "error" ||
+    backgroundStatus?.status === "error"
+  ) {
+    return "Try Again";
+  }
+
+  if (
+    comparison === "conflict" ||
+    backgroundStatus?.status === "blocked"
+  ) {
+    return "Review";
+  }
+
+  if (
+    comparison === "cloud-only" ||
+    comparison === "cloud-newer"
+  ) {
+    return "Update Ready";
+  }
+
+  if (
+    comparison === "local-only" ||
+    comparison === "local-newer"
+  ) {
+    return "Saving";
+  }
+
+  if (comparison === "in-sync") {
+    return "Saved";
+  }
+
+  return "Ready";
+}
+
+function getAutomaticSavingTitle(
+  isSignedIn: boolean,
+  isActive: boolean,
+  status: FinanceBackgroundSyncStatus | null,
+) {
+  if (!isSignedIn) {
+    return "Automatic saving is off";
+  }
+
+  if (!isActive) {
+    return "Automatic saving is getting ready";
+  }
+
+  switch (status?.status) {
+    case "uploading":
+      return "Saving changes to your account";
+    case "offline":
+      return "Changes are saved on this device";
+    case "blocked":
+      return "Automatic saving is paused";
+    case "error":
+      return "Automatic saving needs another try";
+    default:
+      return "Automatic saving is on";
+  }
+}
+
+function getAutomaticSavingDetail(
+  isSignedIn: boolean,
+  isActive: boolean,
+  status: FinanceBackgroundSyncStatus | null,
+) {
+  if (!isSignedIn) {
+    return "Sign in to keep changes available on your other devices.";
+  }
+
+  if (!isActive) {
+    return "leftovr will finish setting this up after your data is verified.";
+  }
+
+  switch (status?.status) {
+    case "uploading":
+      return "Your newest changes are being protected now.";
+    case "offline":
+      return "They will move to your account automatically when the internet returns.";
+    case "blocked":
+      return "Nothing was overwritten. Review the choices above to continue.";
+    case "error":
+      return "Your information remains safe here until saving succeeds.";
+    default:
+      return "New changes move to your account automatically after a brief pause.";
   }
 }
 
@@ -1458,50 +1774,245 @@ function getSyncErrorMessage(error: unknown) {
     : "leftovr could not complete the sync preview.";
 }
 
-function DetailRow({
-  icon,
+
+function BackLink() {
+  return (
+    <Link
+      href="/account"
+      className="motion-card mb-3 inline-flex items-center gap-2 text-sm font-semibold transition"
+      style={{ color: "var(--theme-text-tertiary)" }}
+    >
+      <span aria-hidden="true">←</span>
+      Settings
+    </Link>
+  );
+}
+
+function StatusBadge({ children }: { children: string }) {
+  return (
+    <span
+      className="shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold"
+      style={{
+        borderColor:
+          "color-mix(in srgb, var(--theme-accent) 34%, var(--theme-border-default))",
+        background:
+          "color-mix(in srgb, var(--theme-accent) 10%, var(--theme-surface-control))",
+        color: "var(--theme-text-secondary)",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function InfoRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 px-5 py-3.5">
+      <span
+        className="min-w-0 text-sm"
+        style={{ color: "var(--theme-text-tertiary)" }}
+      >
+        {label}
+      </span>
+
+      <span
+        className="shrink-0 text-right text-sm font-semibold"
+        style={{ color: "var(--theme-text)" }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function AdvancedStatusRow({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4 px-4 py-3.5">
+      <div className="min-w-0">
+        <p
+          className="text-sm font-semibold"
+          style={{ color: "var(--theme-text)" }}
+        >
+          {label}
+        </p>
+
+        <p
+          className="mt-0.5 text-xs leading-5"
+          style={{ color: "var(--theme-text-tertiary)" }}
+        >
+          {detail}
+        </p>
+      </div>
+
+      <span
+        className="shrink-0 rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold"
+        style={{
+          borderColor: "var(--theme-border-default)",
+          background:
+            "color-mix(in srgb, var(--theme-accent) 7%, var(--theme-surface-sheet))",
+          color: "var(--theme-text-secondary)",
+        }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function PrimaryAction({
+  children,
+  disabled,
+  onClick,
+}: {
+  children: string;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="pressable w-full rounded-full border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45"
+      style={{
+        borderColor:
+          "color-mix(in srgb, var(--theme-accent) 46%, var(--theme-border-default))",
+        background:
+          "color-mix(in srgb, var(--theme-accent) 18%, var(--theme-surface-control))",
+        color: "var(--theme-text)",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function SecondaryAction({
+  children,
+  disabled,
+  onClick,
+}: {
+  children: string;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="pressable w-full rounded-full border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45"
+      style={{
+        borderColor: "var(--theme-border-default)",
+        background: "var(--theme-surface-control)",
+        color: "var(--theme-text-secondary)",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ConfirmationPanel({
   title,
   detail,
-  status,
-  divided = false,
+  cancelLabel,
+  confirmLabel,
+  onCancel,
+  onConfirm,
 }: {
-  icon: React.ReactNode;
   title: string;
   detail: string;
-  status: string;
-  divided?: boolean;
+  cancelLabel: string;
+  confirmLabel: string;
+  onCancel: () => void;
+  onConfirm: () => void;
 }) {
   return (
     <div
-      className={`px-3.5 py-2.5 sm:px-4 sm:py-3 ${
-        divided ? "border-t border-[#f5f0e8]/8" : ""
-      }`}
+      role="dialog"
+      className="mt-4 rounded-[1.05rem] border px-4 py-3.5"
+      style={{
+        borderColor:
+          "color-mix(in srgb, var(--theme-accent) 34%, var(--theme-border-default))",
+        background:
+          "color-mix(in srgb, var(--theme-accent) 8%, var(--theme-surface-control))",
+      }}
     >
-      <div className="flex min-w-0 items-center gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[1rem] border border-[#c7ad75]/22 bg-[#c7ad75]/9 text-[#c7ad75] shadow-[inset_0_1px_0_rgba(245,240,232,0.08)]">
-          {icon}
-        </span>
+      <p
+        className="text-sm font-semibold"
+        style={{ color: "var(--theme-text)" }}
+      >
+        {title}
+      </p>
 
-        <div className="min-w-0 flex-1">
-          <p className="text-[0.95rem] font-semibold text-[#f5f0e8]">{title}</p>
+      <p
+        className="mt-1 text-xs leading-5"
+        style={{ color: "var(--theme-text-tertiary)" }}
+      >
+        {detail}
+      </p>
 
-          <p className="mt-0.5 break-all text-xs leading-5 text-stone-500 sm:text-sm">
-            {detail}
-          </p>
-        </div>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <SecondaryAction onClick={onCancel} disabled={false}>
+          {cancelLabel}
+        </SecondaryAction>
 
-        <span className="hidden shrink-0 text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500 sm:block">
-          {status}
-        </span>
+        <PrimaryAction onClick={onConfirm} disabled={false}>
+          {confirmLabel}
+        </PrimaryAction>
       </div>
     </div>
   );
 }
 
-function ArrowIcon() {
+function Notice({
+  children,
+  tone,
+}: {
+  children: string;
+  tone: "positive" | "danger";
+}) {
+  const isDanger = tone === "danger";
+
+  return (
+    <div
+      role={isDanger ? "alert" : "status"}
+      aria-live={isDanger ? undefined : "polite"}
+      className="mt-4 rounded-[1.05rem] border px-4 py-3"
+      style={{
+        borderColor: isDanger
+          ? "color-mix(in srgb, #dc2626 38%, var(--theme-border-default))"
+          : "color-mix(in srgb, var(--theme-accent) 30%, var(--theme-border-default))",
+        background: isDanger
+          ? "color-mix(in srgb, #dc2626 8%, var(--theme-surface-control))"
+          : "color-mix(in srgb, var(--theme-accent) 8%, var(--theme-surface-control))",
+        color: isDanger ? "#dc2626" : "var(--theme-text-secondary)",
+      }}
+    >
+      <p className="text-sm leading-5">{children}</p>
+    </div>
+  );
+}
+
+function ChevronIcon() {
   return (
     <svg
-      className="h-5 w-5 shrink-0 text-stone-600 transition group-hover:translate-x-0.5 group-hover:text-[#c7ad75]"
+      className="h-5 w-5"
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden="true"
@@ -1510,6 +2021,25 @@ function ArrowIcon() {
         d="m9 6 6 6-6 6"
         stroke="currentColor"
         strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ExitIcon() {
+  return (
+    <svg
+      className="h-[18px] w-[18px]"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M10 5H6.5A2.5 2.5 0 0 0 4 7.5v9A2.5 2.5 0 0 0 6.5 19H10M14 8l4 4-4 4M8 12h10"
+        stroke="currentColor"
+        strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -1531,86 +2061,6 @@ function AccountIcon() {
         stroke="currentColor"
         strokeWidth="1.8"
         strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function EmailIcon() {
-  return (
-    <svg
-      className="h-[18px] w-[18px]"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M4 6.5h16v11H4v-11Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-
-      <path
-        d="m5 7.5 7 5 7-5"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function SessionIcon() {
-  return (
-    <svg
-      className="h-[18px] w-[18px]"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <rect
-        x="6.5"
-        y="2.5"
-        width="11"
-        height="19"
-        rx="2.5"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-
-      <path
-        d="M10 18.5h4"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function DataIcon() {
-  return (
-    <svg
-      className="h-[18px] w-[18px]"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <ellipse
-        cx="12"
-        cy="6"
-        rx="7"
-        ry="3"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-
-      <path
-        d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"
-        stroke="currentColor"
-        strokeWidth="1.8"
       />
     </svg>
   );

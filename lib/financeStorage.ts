@@ -100,6 +100,14 @@ export type BillTrackingStorageState = BillOccurrenceStorageState & {
   preferences: PayPeriodPreferences;
 };
 
+export type BillPaymentStorageState<TSummary> = {
+  summary: TSummary;
+  cards: ManualCreditCard[];
+  activeOccurrenceDates: ActiveBillOccurrenceDates;
+  paidOccurrences: PaidBillOccurrences;
+  paidActions: PaidBillAction[];
+};
+
 function mergeStoredObjectWithDefaults<TValue>(
   defaults: TValue,
   storedValue: TValue,
@@ -190,6 +198,8 @@ function getPaidActionsIncludingLegacyAction(
           billAmount: legacyAction.billAmount,
           paymentSource: legacyAction.paymentSource,
           creditCardAdjustment: legacyAction.creditCardAdjustment,
+          checkingBalanceAdjustment:
+            legacyAction.checkingBalanceAdjustment,
         } satisfies PaidBillAction)
       : null;
 
@@ -723,6 +733,39 @@ export function loadBillTrackingStorageState(
     preferences: readPayPeriodPreferences(),
     ...loadBillOccurrenceStorageState(),
   };
+}
+
+export function saveBillPaymentStorageState<TSummary>(
+  state: BillPaymentStorageState<TSummary>,
+) {
+  applyFinanceStorageWrites([
+    {
+      key: summaryStorageKey,
+      value: JSON.stringify(state.summary),
+    },
+    {
+      key: cardsStorageKey,
+      value: JSON.stringify(state.cards),
+    },
+    {
+      key: activeBillOccurrencesStorageKey,
+      value: JSON.stringify(state.activeOccurrenceDates),
+    },
+    {
+      key: paidBillsStorageKey,
+      value: JSON.stringify(state.paidOccurrences),
+    },
+    {
+      key: recentPaidActionsStorageKey,
+      value: JSON.stringify(state.paidActions),
+    },
+    {
+      key: legacyLastPaidActionStorageKey,
+      value: null,
+    },
+  ]);
+
+  scheduleFinanceStateRefresh();
 }
 
 export function saveFinanceSummary<TSummary>(summary: TSummary) {

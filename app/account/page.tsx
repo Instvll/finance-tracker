@@ -1,188 +1,305 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import TopNav from "../../components/TopNav";
-import { PageShell, Pill } from "../../components/Layout";
+import { PageShell } from "../../components/Layout";
+import {
+  getFinanceUpdateCheckStatus,
+  subscribeFinanceUpdateCheckStatus,
+  type FinanceUpdateCheckStatus,
+} from "../../lib/financeUpdateCheck";
+import {
+  getFinanceBackgroundSyncStatus,
+  subscribeFinanceBackgroundSyncStatus,
+  type FinanceBackgroundSyncStatus,
+} from "../../lib/financeSync";
 
-type SettingsItem = {
+type ThemeId =
+  | "classic"
+  | "mocha"
+  | "forest"
+  | "slate"
+  | "rose-gold"
+  | "classic-light"
+  | "mocha-light"
+  | "forest-light"
+  | "slate-light"
+  | "rose-gold-light"
+  | "july-fourth";
+
+type PayFrequency = "weekly" | "biweekly";
+
+type StoredPreferences = {
+  payFrequency?: PayFrequency;
+};
+
+type SettingsRowItem = {
   title: string;
   description: string;
-  status: string;
   href: string;
+  value: string;
   icon: ReactNode;
+  valueLive?: boolean;
 };
 
-type SettingsSection = {
-  label: string;
-  items: SettingsItem[];
+const themeStorageKey = "leftovr-theme";
+const preferencesStorageKey = "leftovr-preferences";
+
+const themeNames: Record<ThemeId, string> = {
+  classic: "leftovr Dark",
+  mocha: "Mocha",
+  forest: "Forest",
+  slate: "Slate",
+  "rose-gold": "Rose Gold",
+  "classic-light": "leftovr Light",
+  "mocha-light": "Mocha Light",
+  "forest-light": "Forest Light",
+  "slate-light": "Slate Light",
+  "rose-gold-light": "Rose Gold Light",
+  "july-fourth": "Fourth of July",
 };
 
-const settingsSections: SettingsSection[] = [
-  {
-    label: "Your leftovr",
-    items: [
-      {
-        title: "Account",
-        description: "Account details and sign-in status.",
-        status: "Account",
-        href: "/account/profile",
-        icon: <ProfileIcon />,
-      },
-      {
-        title: "Preferences",
-        description: "Pay cycle and planning behavior.",
-        status: "Planning",
-        href: "/account/preferences",
-        icon: <PreferencesIcon />,
-      },
-      {
-        title: "Appearance",
-        description: "Themes and visual preferences.",
-        status: "Themes",
-        href: "/account/appearance",
-        icon: <AppearanceIcon />,
-      },
-    ],
-  },
-  {
-    label: "App & Data",
-    items: [
-      {
-        title: "Data",
-        description: "Back up, restore, and manage local data.",
-        status: "Local",
-        href: "/account/backup",
-        icon: <BackupIcon />,
-      },
-      {
-        title: "About leftovr",
-        description: "Version, safety, and app information.",
-        status: "v1.2.2",
-        href: "/account/about",
-        icon: <InfoIcon />,
-      },
-    ],
-  },
-];
+function isThemeId(value: string | null): value is ThemeId {
+  return Boolean(value && value in themeNames);
+}
 
-export default function AccountPage() {
+function readThemeName() {
+  const savedTheme = window.localStorage.getItem(themeStorageKey);
+
+  return isThemeId(savedTheme)
+    ? themeNames[savedTheme]
+    : themeNames.classic;
+}
+
+function readPayFrequencyLabel() {
+  const savedPreferences = window.localStorage.getItem(
+    preferencesStorageKey,
+  );
+
+  if (!savedPreferences) {
+    return "Bi-weekly";
+  }
+
+  try {
+    const preferences = JSON.parse(
+      savedPreferences,
+    ) as StoredPreferences;
+
+    return preferences.payFrequency === "weekly"
+      ? "Weekly"
+      : "Bi-weekly";
+  } catch {
+    return "Bi-weekly";
+  }
+}
+
+export default function SettingsPage() {
+  const [themeName, setThemeName] = useState("leftovr Dark");
+  const [payFrequencyLabel, setPayFrequencyLabel] =
+    useState("Bi-weekly");
+  const [updateStatus, setUpdateStatus] =
+    useState<FinanceUpdateCheckStatus | null>(null);
+  const [backgroundStatus, setBackgroundStatus] =
+    useState<FinanceBackgroundSyncStatus | null>(null);
+
+  useEffect(() => {
+    function refreshLocalSettings() {
+      setThemeName(readThemeName());
+      setPayFrequencyLabel(readPayFrequencyLabel());
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        refreshLocalSettings();
+      }
+    }
+
+    refreshLocalSettings();
+
+    window.addEventListener("focus", refreshLocalSettings);
+    window.addEventListener("pageshow", refreshLocalSettings);
+    window.addEventListener("storage", refreshLocalSettings);
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange,
+    );
+
+    return () => {
+      window.removeEventListener("focus", refreshLocalSettings);
+      window.removeEventListener("pageshow", refreshLocalSettings);
+      window.removeEventListener("storage", refreshLocalSettings);
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange,
+      );
+    };
+  }, []);
+
+  useEffect(() => {
+    setUpdateStatus(getFinanceUpdateCheckStatus());
+    setBackgroundStatus(getFinanceBackgroundSyncStatus());
+
+    const unsubscribeUpdate =
+      subscribeFinanceUpdateCheckStatus(setUpdateStatus);
+    const unsubscribeBackground =
+      subscribeFinanceBackgroundSyncStatus(setBackgroundStatus);
+
+    return () => {
+      unsubscribeUpdate();
+      unsubscribeBackground();
+    };
+  }, []);
+
+  const syncLabel = getSyncLabel(
+    updateStatus,
+    backgroundStatus,
+  );
+
+  const settingsItems: SettingsRowItem[] = [
+    {
+      title: "Appearance",
+      description: "Themes and visual style.",
+      href: "/account/appearance",
+      value: themeName,
+      icon: <AppearanceIcon />,
+    },
+    {
+      title: "Planning Preferences",
+      description: "Pay schedule and planning behavior.",
+      href: "/account/preferences",
+      value: payFrequencyLabel,
+      icon: <PreferencesIcon />,
+    },
+    {
+      title: "Account & Sync",
+      description: "Account, devices, and automatic saving.",
+      href: "/account/profile",
+      value: syncLabel,
+      icon: <SyncIcon />,
+      valueLive: true,
+    },
+    {
+      title: "About leftovr",
+      description: "Version and release information.",
+      href: "/account/about",
+      value: "v2.0 Beta",
+      icon: <InfoIcon />,
+    },
+  ];
+
   return (
     <PageShell>
       <TopNav />
 
-      <div className="min-h-[70vh]">
-        <header className="-mt-1 mb-3 motion-card sm:-mt-2">
-          <div className="mb-1.5 flex items-center justify-between gap-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#c7ad75]/80">
-              App Settings
-            </p>
+      <main className="min-h-[70vh] pb-3">
+        <header className="motion-card mb-3 px-0.5">
+          <p
+            className="text-[0.66rem] font-semibold uppercase tracking-[0.3em]"
+            style={{
+              color:
+                "color-mix(in srgb, var(--theme-accent) 82%, var(--theme-text))",
+            }}
+          >
+            App Settings
+          </p>
 
-            <Pill>v1.3 Beta</Pill>
-          </div>
-
-          <h1 className="text-[2.15rem] font-bold leading-tight tracking-tight text-[#f5f0e8] sm:text-4xl">
+          <h1
+            className="mt-1.5 text-[2.2rem] font-bold leading-[0.98] tracking-[-0.045em] sm:text-[2.5rem]"
+            style={{ color: "var(--theme-text)" }}
+          >
             Settings
           </h1>
+
+          <p
+            className="mt-2 max-w-[31rem] text-sm leading-6"
+            style={{ color: "var(--theme-text-secondary)" }}
+          >
+            Personalize leftovr and manage how it plans and saves.
+          </p>
         </header>
 
-        <section className="grid gap-4">
-          {settingsSections.map((section, index) => (
-            <SettingsGroup
-              key={section.label}
-              section={section}
-              delayClass={
-                index === 0
-                  ? "motion-card-delay-1"
-                  : "motion-card-delay-2"
-              }
-            />
-          ))}
+        <section className="motion-card motion-card-delay-1">
+          <div
+            className="relative isolate overflow-hidden rounded-[1.5rem] border"
+            style={{
+              borderColor: "var(--theme-border-default)",
+              background: "var(--theme-surface-sheet)",
+              boxShadow:
+                "inset 0 1px 0 color-mix(in srgb, var(--theme-highlight) 72%, transparent), 0 14px 30px color-mix(in srgb, var(--theme-shadow) 12%, transparent)",
+            }}
+          >
+            {settingsItems.map((item, index) => (
+              <SettingsRow
+                key={item.href}
+                item={item}
+                divided={index > 0}
+              />
+            ))}
+          </div>
         </section>
-      </div>
+      </main>
     </PageShell>
   );
 }
 
-function SettingsGroup({
-  section,
-  delayClass,
-}: {
-  section: SettingsSection;
-  delayClass: string;
-}) {
-  return (
-    <section className={`motion-card ${delayClass}`}>
-      <div className="mb-2 px-1">
-        <SectionTitle title={section.label} />
-      </div>
-
-      <div className="dashboard-surface relative overflow-hidden rounded-[1.55rem] border border-[#f5f0e8]/10 shadow-[inset_0_1px_0_rgba(245,240,232,0.05),0_16px_34px_rgba(0,0,0,0.08)]">
-        <div className="dashboard-surface-glow" aria-hidden="true" />
-
-        <div
-          className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[#f5f0e8]/25 to-transparent"
-          aria-hidden="true"
-        />
-
-        <div className="liquid-content relative">
-          {section.items.map((item, index) => (
-            <SettingsLinkRow
-              key={item.href}
-              title={item.title}
-              description={item.description}
-              status={item.status}
-              href={item.href}
-              icon={item.icon}
-              divided={index > 0}
-            />
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function SettingsLinkRow({
-  title,
-  description,
-  status,
-  href,
-  icon,
+function SettingsRow({
+  item,
   divided,
 }: {
-  title: string;
-  description: string;
-  status: string;
-  href: string;
-  icon: ReactNode;
+  item: SettingsRowItem;
   divided: boolean;
 }) {
   return (
     <Link
-      href={href}
-      className={`pressable group relative block px-3.5 py-3 transition duration-200 hover:bg-[#f5f0e8]/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c7ad75]/35 sm:px-4 sm:py-3.5 ${
-        divided ? "border-t border-[#f5f0e8]/8" : ""
-      }`}
+      href={item.href}
+      className="pressable group relative block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset"
+      style={{
+        borderTop: divided
+          ? "1px solid var(--theme-divider)"
+          : undefined,
+      }}
     >
-      <div className="flex min-w-0 items-center gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[1rem] border border-[#c7ad75]/22 bg-[#c7ad75]/9 text-[#c7ad75] shadow-[inset_0_1px_0_rgba(245,240,232,0.08)] transition duration-200 group-hover:border-[#c7ad75]/32 group-hover:bg-[#c7ad75]/12">
-          {icon}
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-3.5 py-3.5 sm:px-4">
+        <span
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-[0.95rem] border transition duration-200"
+          style={{
+            borderColor:
+              "color-mix(in srgb, var(--theme-accent) 24%, var(--theme-border-default))",
+            background:
+              "color-mix(in srgb, var(--theme-accent) 9%, var(--theme-surface-control))",
+            color: "var(--theme-accent)",
+            boxShadow:
+              "inset 0 1px 0 color-mix(in srgb, var(--theme-highlight) 68%, transparent)",
+          }}
+          aria-hidden="true"
+        >
+          {item.icon}
         </span>
 
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[0.95rem] font-semibold text-[#f5f0e8]">
-            {title}
+        <div className="min-w-0">
+          <p
+            className="text-[0.96rem] font-semibold tracking-[-0.012em]"
+            style={{ color: "var(--theme-text)" }}
+          >
+            {item.title}
           </p>
 
-          <p className="mt-0.5 text-xs leading-5 text-stone-500 sm:text-sm">
-            {description}
+          <p
+            className="mt-0.5 text-xs leading-5"
+            style={{ color: "var(--theme-text-tertiary)" }}
+          >
+            {item.description}
           </p>
         </div>
 
-        <div className="ml-1 flex shrink-0 items-center gap-2">
-          <span className="hidden text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500 sm:block">
-            {status}
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span
+            className="max-w-[7.5rem] truncate text-right text-xs font-semibold sm:max-w-[10rem] sm:text-sm"
+            style={{ color: "var(--theme-text-secondary)" }}
+            aria-live={item.valueLive ? "polite" : undefined}
+          >
+            {item.value}
           </span>
 
           <ArrowIcon />
@@ -192,22 +309,70 @@ function SettingsLinkRow({
   );
 }
 
-function SectionTitle({ title }: { title: string }) {
-  return (
-    <div className="flex items-center gap-2.5">
-      <span className="dashboard-section-dot h-2.5 w-2.5 shrink-0 rounded-full bg-[#c7ad75]" />
+function getSyncLabel(
+  updateStatus: FinanceUpdateCheckStatus | null,
+  backgroundStatus: FinanceBackgroundSyncStatus | null,
+) {
+  if (
+    backgroundStatus?.status === "uploading" ||
+    updateStatus?.status === "save-needed"
+  ) {
+    return "Saving";
+  }
 
-      <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f5f0e8]">
-        {title}
-      </h2>
-    </div>
-  );
+  if (updateStatus?.status === "checking") {
+    return "Checking";
+  }
+
+  if (updateStatus?.status === "update-available") {
+    return "Update Ready";
+  }
+
+  if (
+    updateStatus?.status === "needs-attention" ||
+    backgroundStatus?.status === "blocked"
+  ) {
+    return "Review";
+  }
+
+  if (
+    updateStatus?.status === "offline" ||
+    backgroundStatus?.status === "offline"
+  ) {
+    return "Offline";
+  }
+
+  if (
+    updateStatus?.status === "signed-out" ||
+    backgroundStatus?.status === "inactive" ||
+    backgroundStatus?.status === "protected"
+  ) {
+    return "Sign In";
+  }
+
+  if (
+    updateStatus?.status === "error" ||
+    backgroundStatus?.status === "error"
+  ) {
+    return "Try Again";
+  }
+
+  if (
+    updateStatus?.status === "up-to-date" ||
+    backgroundStatus?.status === "saved" ||
+    backgroundStatus?.status === "ready"
+  ) {
+    return "In Sync";
+  }
+
+  return "Ready";
 }
 
 function ArrowIcon() {
   return (
     <svg
-      className="h-5 w-5 shrink-0 text-stone-600 transition duration-200 group-hover:translate-x-0.5 group-hover:text-[#c7ad75]"
+      className="h-[18px] w-[18px] shrink-0 transition duration-200 group-hover:translate-x-0.5"
+      style={{ color: "var(--theme-text-tertiary)" }}
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden="true"
@@ -223,7 +388,7 @@ function ArrowIcon() {
   );
 }
 
-function ProfileIcon() {
+function AppearanceIcon() {
   return (
     <svg
       className="h-[18px] w-[18px]"
@@ -232,15 +397,16 @@ function ProfileIcon() {
       aria-hidden="true"
     >
       <path
-        d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
+        d="M12 3a9 9 0 0 0 0 18h.6a2.2 2.2 0 0 0 1.6-3.7 1.4 1.4 0 0 1 1-2.4H16a5 5 0 0 0 5-5C21 6.1 17 3 12 3Z"
         stroke="currentColor"
         strokeWidth="1.8"
+        strokeLinejoin="round"
       />
 
       <path
-        d="M4.5 20a7.5 7.5 0 0 1 15 0"
+        d="M7.6 10.2h.01M9.9 6.9h.01M14.1 6.9h.01M16.4 10.2h.01"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="2.4"
         strokeLinecap="round"
       />
     </svg>
@@ -289,32 +455,7 @@ function PreferencesIcon() {
   );
 }
 
-function AppearanceIcon() {
-  return (
-    <svg
-      className="h-[18px] w-[18px]"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M12 3a9 9 0 0 0 0 18h.6a2.2 2.2 0 0 0 1.6-3.7 1.4 1.4 0 0 1 1-2.4H16a5 5 0 0 0 5-5C21 6.1 17 3 12 3Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-
-      <path
-        d="M7.6 10.2h.01M9.9 6.9h.01M14.1 6.9h.01M16.4 10.2h.01"
-        stroke="currentColor"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function BackupIcon() {
+function SyncIcon() {
   return (
     <svg
       className="h-[18px] w-[18px]"
@@ -330,7 +471,7 @@ function BackupIcon() {
       />
 
       <path
-        d="M12 12v7M9.5 14.5 12 12l2.5 2.5"
+        d="m8.8 14.3 2.1 2.1 4.5-4.9"
         stroke="currentColor"
         strokeWidth="1.8"
         strokeLinecap="round"

@@ -17,6 +17,14 @@ export type CreditCardAdjustment = {
   creditCardId: string;
   amount: string;
   balanceRevision?: number;
+  balanceBefore?: string;
+  balanceAfter?: string;
+};
+
+export type CheckingBalanceAdjustment = {
+  amount: string;
+  balanceBefore: string;
+  balanceAfter: string;
 };
 
 export type ManualBill = {
@@ -51,6 +59,7 @@ export type PaidBillAction = {
   billAmount?: string;
   paymentSource?: PaymentSource;
   creditCardAdjustment?: CreditCardAdjustment;
+  checkingBalanceAdjustment?: CheckingBalanceAdjustment;
 };
 
 export type ActiveBillOccurrenceDates = Record<string, string>;
